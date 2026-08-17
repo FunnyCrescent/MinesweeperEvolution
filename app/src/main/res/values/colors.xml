@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="bg_dark">#FF101418</color>
+    <color name="bg_panel">#FF1A1F26</color>
+    <color name="bg_panel_alt">#FF222831</color>
+    <color name="cell_hidden">#FF2E3640</color>
+    <color name="cell_hidden_top">#FF3D4651</color>
+    <color name="cell_revealed">#FF1A1F26</color>
+    <color name="cell_flag">#FFB71C1C</color>
+    <color name="cell_mine">#FFD32F2F</color>
+    <color name="cell_exploded">#FFFF5252</color>
+
+    <color name="text_primary">#FFECEFF1</color>
+    <color name="text_secondary">#FFB0BEC5</color>
+    <color name="text_dim">#FF607D8B</color>
+    <color name="accent">#FF00BCD4</color>
+    <color name="accent_2">#FF26C6DA</color>
+    <color name="warning">#FFFFB300</color>
+    <color name="danger">#FFEF5350</color>
+    <color name="success">#FF66BB6A</color>
+
+    <!-- Number colors (minesweeper convention) -->
+    <color name="num1">#FF42A5F5</color>
+    <color name="num2">#FF66BB6A</color>
+    <color name="num3">#FFEF5350</color>
+    <color name="num4">#FFAB47BC</color>
+    <color name="num5">#FFFF7043</color>
+    <color name="num6">#FF26C6DA</color>
+    <color name="num7">#FFB0BEC5</color>
+    <color name="num8">#FF607D8B</color>
+</resources>

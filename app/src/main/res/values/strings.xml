@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Сапёр: Эволюция</string>
+    <string name="app_subtitle">Эволюция классической игры</string>
+
+    <!-- Modes -->
+    <string name="mode_classic">Классика</string>
+    <string name="mode_drift">Дрейф</string>
+    <string name="mode_chaos">Хаос</string>
+    <string name="mode_anarchy">Анархия</string>
+
+    <string name="mode_classic_desc">Классический сапёр. Мины стоят на месте.</string>
+    <string name="mode_drift_desc">Каждые 10 сек мины дрейфуют. Мины под флажком остаются.</string>
+    <string name="mode_chaos_desc">Каждые 10 сек все мины перемещаются. Флажки сбрасываются.</string>
+    <string name="mode_anarchy_desc">Хаос + случайное число мин каждый сдвиг. Лимита нет!</string>
+
+    <!-- Difficulties -->
+    <string name="diff_beginner">Новичок</string>
+    <string name="diff_veteran">Ветеран</string>
+    <string name="diff_master">Мастер</string>
+
+    <string name="diff_beginner_desc">8 × 8 · 10 мин</string>
+    <string name="diff_veteran_desc">16 × 16 · 40 мин</string>
+    <string name="diff_master_desc">16 × 30 · 99 мин</string>
+
+    <!-- UI -->
+    <string name="start_game">Начать игру</string>
+    <string name="continue_game">Продолжить</string>
+    <string name="new_game">Новая игра</string>
+    <string name="select_mode">Выберите режим</string>
+    <string name="select_difficulty">Выберите сложность</string>
+    <string name="back">Назад</string>
+    <string name="menu">Меню</string>
+    <string name="restart">Заново</string>
+    <string name="flag_mode">Флажок</string>
+    <string name="dig_mode">Копать</string>
+
+    <!-- Game -->
+    <string name="win">Победа!</string>
+    <string name="lose">Поражение</string>
+    <string name="game_over">Игра окончена</string>
+    <string name="time">Время</string>
+    <string name="mines_left">Мин</string>
+    <string name="shift_in">Сдвиг через</string>
+    <string name="play_again">Играть снова</string>
+    <string name="to_menu">В меню</string>
+    <string name="no_save">Нет сохранённой игры</string>
+    <string name="save_loaded">Сохранение загружено</string>
+    <string name="game_saved">Игра сохранена</string>
+    <string name="autosaved">Автосохранение…</string>
+
+    <!-- Settings -->
+    <string name="settings">Настройки</string>
+    <string name="vibration">Вибрация</string>
+    <string name="long_press_flag">Долгое нажатие = флажок</string>
+    <string name="shift_interval">Интервал сдвига (сек)</string>
+
+    <!-- Stats -->
+    <string name="stats">Статистика</string>
+    <string name="best_time">Лучшее время</string>
+    <string name="games_played">Сыграно</string>
+    <string name="games_won">Побед</string>
+    <string name="reset_stats">Сбросить статистику</string>
+
+</resources>
