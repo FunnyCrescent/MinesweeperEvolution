@@ -54,6 +54,10 @@ class GameEngine {
     private val flagged = ArrayList<BooleanArray>()
     private val explodedAt: IntArray = intArrayOf(-1, -1)  // куда наступил игрок (если поражение)
 
+    /** Клетки, открытые последним вызовом reveal() — для анимации. */
+    private val _lastRevealed = ArrayList<Pair<Int, Int>>()
+    val lastRevealed: List<Pair<Int, Int>> get() = _lastRevealed
+
     private val rng = Random()
 
     /** Полная (пере)инициализация партии. */
@@ -69,6 +73,7 @@ class GameEngine {
         this.flaggedCount = 0
         this.revealedCount = 0
         explodedAt[0] = -1; explodedAt[1] = -1
+        _lastRevealed.clear()
 
         mines.clear(); revealed.clear(); flagged.clear()
         for (r in 0 until rows) {
@@ -194,8 +199,10 @@ class GameEngine {
             ensureSafeStart(row, col)
         }
 
+        _lastRevealed.clear()
         revealed[row][col] = true
         revealedCount++
+        _lastRevealed.add(row to col)
 
         return if (mines[row][col]) {
             explodedAt[0] = row; explodedAt[1] = col
@@ -260,6 +267,7 @@ class GameEngine {
             if (!revealed[r][c]) {
                 revealed[r][c] = true
                 revealedCount++
+                _lastRevealed.add(r to c)
             }
             if (adjacentMines(r, c) == 0) {
                 for (dr in -1..1) for (dc in -1..1) {

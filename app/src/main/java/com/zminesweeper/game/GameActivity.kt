@@ -40,7 +40,8 @@ class GameActivity : AppCompatActivity() {
                 shiftRemainingSec--
                 if (shiftRemainingSec <= 0) {
                     engine.shiftMines()
-                    gameView.invalidate()
+                    gameView.animateShift()
+                    haptic(heavy = false)
                     shiftRemainingSec = save.shiftInterval()
                     updateMinesLabel()
                 }
@@ -73,13 +74,14 @@ class GameActivity : AppCompatActivity() {
         }
 
         gameView.engine = engine
-        gameView.onRevealListener = { _, _, exploded, won ->
+        gameView.onRevealListener = { row, col, exploded, won ->
+            // Анимация волной от точки клика по всем открытым в этом ходе клеткам
+            gameView.animateRevealWave(engine.lastRevealed, row, col)
             if (exploded || won) showGameOver(won)
             updateMinesLabel()
         }
         gameView.onFlagListener = { _, _ -> updateMinesLabel() }
 
-        // Кнопки
         findViewById<Button>(R.id.btnFlagMode).setOnClickListener {
             gameView.flagMode = !gameView.flagMode
             it.isSelected = gameView.flagMode
@@ -93,7 +95,8 @@ class GameActivity : AppCompatActivity() {
         findViewById<TextView>(R.id.tvShift).text = if (engine.mode.shifts) "${save.shiftInterval()}с" else "—"
         findViewById<View>(R.id.llShift).visibility = if (engine.mode.shifts) View.VISIBLE else View.INVISIBLE
 
-        startTimeMs = System.currentTimeMillis() - (elapsedSec * 1000L)
+        startTimeMs = System.currentTimeMillis()
+        findViewById<TextView>(R.id.tvTime).text = "0:00"
     }
 
     private fun initNewGame(mode: GameMode, diff: Difficulty) {
@@ -105,6 +108,9 @@ class GameActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        // Убираем все предыдущие runnable, чтобы не было дублей
+        handler.removeCallbacks(tickRunnable)
+        handler.removeCallbacks(shiftRunnable)
         handler.post(tickRunnable)
         if (engine.mode.shifts) {
             shiftRemainingSec = save.shiftInterval()
@@ -124,6 +130,7 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
+    @Suppress("DEPRECATION")
     override fun onBackPressed() {
         confirmExit()
     }
@@ -144,17 +151,36 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun restartGame() {
+        // Полный сброс handlers и движка
+        handler.removeCallbacks(tickRunnable)
+        handler.removeCallbacks(shiftRunnable)
+
         val mode = engine.mode
         val diff = engine.difficulty
         initNewGame(mode, diff)
         gameView.engine = engine
+
         updateModeLabel()
         updateMinesLabel()
         findViewById<TextView>(R.id.tvShift).text = if (mode.shifts) "${save.shiftInterval()}с" else "—"
+        findViewById<View>(R.id.llShift).visibility = if (mode.shifts) View.VISIBLE else View.INVISIBLE
+
+        // Сброс таймера
         startTimeMs = System.currentTimeMillis()
+        elapsedSec = 0
+        findViewById<TextView>(R.id.tvTime).text = "0:00"
+
+        // Сброс счётчика сдвига
         if (mode.shifts) {
             shiftRemainingSec = save.shiftInterval()
         }
+
+        // Перезапуск handlers — КЛЮЧЕВОЙ ФИКС: ранее shiftRunnable не перезапускался
+        handler.post(tickRunnable)
+        if (mode.shifts) {
+            handler.post(shiftRunnable)
+        }
+
         save.clearSavedGame()
     }
 
@@ -169,7 +195,10 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun showGameOver(won: Boolean) {
+        // Останавливаем таймер и сдвиг
         handler.removeCallbacks(shiftRunnable)
+        handler.removeCallbacks(tickRunnable)
+
         if (won) {
             save.recordGame(engine.mode, engine.difficulty, true, elapsedSec)
         } else {
@@ -185,8 +214,8 @@ class GameActivity : AppCompatActivity() {
         view.findViewById<TextView>(R.id.tvResultDetails).text =
             "Время: ${formatTime(elapsedSec)}\n$shifts"
         view.findViewById<Button>(R.id.btnPlayAgain).setOnClickListener {
-            restartGame()
             dialog?.dismiss()
+            restartGame()
         }
         view.findViewById<Button>(R.id.btnToMenu).setOnClickListener {
             dialog?.dismiss()

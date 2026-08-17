@@ -4,10 +4,10 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
@@ -19,6 +19,12 @@ import kotlin.math.max
  * Кастомная вьюшка, рисующая игровое поле сапёра.
  * Поддерживает: короткий тап = копать, долгое нажатие = флажок (настраиваемо),
  * режим «флажок» (если включён — короткий тап ставит флажок).
+ *
+ * Анимации:
+ *  - reveal: при открытии клетки — масштаб 0.3 → 1.0 + альфа 0 → 1, ~250 мс
+ *  - flood reveal: волна от точки клика — задержка растёт с расстоянием
+ *  - flag: при постановке флажка — пульсация масштаба, ~300 мс
+ *  - shift: жёлтая вспышка на всех скрытых клетках, ~600 мс
  */
 class GameView : View {
     constructor(context: Context) : this(context, null)
@@ -34,6 +40,7 @@ class GameView : View {
     var engine: GameEngine? = null
         set(value) {
             field = value
+            rebuildAnims()
             invalidate()
         }
 
@@ -46,6 +53,149 @@ class GameView : View {
 
     private var cellSize: Float = 0f
 
+    // ----- Анимации -----
+
+    private data class CellAnim(
+        var revealStartedAt: Long = 0L,   // 0 = нет анимации
+        var revealDelay: Long = 0L,
+        var flagStartedAt: Long = 0L,
+    )
+    private val cellAnims = ArrayList<ArrayList<CellAnim>>()
+    private var shiftStartedAt: Long = 0L
+
+    private val animHandler = Handler(Looper.getMainLooper())
+    @Volatile private var animRunning = false
+    private val animRunnable = object : Runnable {
+        override fun run() {
+            if (hasActiveAnims()) {
+                invalidate()
+                animHandler.postDelayed(this, 16)  // ~60 FPS
+            } else {
+                animRunning = false
+            }
+        }
+    }
+
+    private fun startAnimLoop() {
+        if (!animRunning) {
+            animRunning = true
+            animHandler.post(animRunnable)
+        }
+    }
+
+    private fun hasActiveAnims(): Boolean {
+        val now = SystemClock.uptimeMillis()
+        if (shiftStartedAt > 0 && now - shiftStartedAt < 700) return true
+        for (row in cellAnims) {
+            for (cell in row) {
+                if (cell.revealStartedAt > 0 && now - cell.revealStartedAt - cell.revealDelay < 300) return true
+                if (cell.flagStartedAt > 0 && now - cell.flagStartedAt < 350) return true
+            }
+        }
+        return false
+    }
+
+    private fun rebuildAnims() {
+        cellAnims.clear()
+        val e = engine ?: return
+        for (r in 0 until e.rows) {
+            val row = ArrayList<CellAnim>()
+            for (c in 0 until e.cols) {
+                row.add(CellAnim())
+            }
+            cellAnims.add(row)
+        }
+    }
+
+    /**
+     * Анимировать волну открытия от точки клика.
+     * Клетки рядом с (originRow, originCol) появляются первыми, дальние — с задержкой.
+     */
+    fun animateRevealWave(cells: List<Pair<Int, Int>>, originRow: Int, originCol: Int) {
+        if (cells.isEmpty()) return
+        val now = SystemClock.uptimeMillis()
+        for ((r, c) in cells) {
+            if (r !in cellAnims.indices) continue
+            if (c !in cellAnims[r].indices) continue
+            val dist = max(abs(r - originRow), abs(c - originCol))
+            val delay = dist * 22L  // 22 мс на шаг дистанции
+            cellAnims[r][c].revealStartedAt = now
+            cellAnims[r][c].revealDelay = delay
+        }
+        startAnimLoop()
+    }
+
+    fun animateFlag(r: Int, c: Int) {
+        if (r !in cellAnims.indices) return
+        if (c !in cellAnims[r].indices) return
+        cellAnims[r][c].flagStartedAt = SystemClock.uptimeMillis()
+        startAnimLoop()
+    }
+
+    fun animateShift() {
+        shiftStartedAt = SystemClock.uptimeMillis()
+        startAnimLoop()
+    }
+
+    private fun revealProgress(r: Int, c: Int): Float {
+        if (r !in cellAnims.indices) return 1f
+        if (c !in cellAnims[r].indices) return 1f
+        val start = cellAnims[r][c].revealStartedAt
+        if (start == 0L) return 1f
+        val delay = cellAnims[r][c].revealDelay
+        val elapsed = SystemClock.uptimeMillis() - start - delay
+        if (elapsed < 0) return 0f
+        val dur = 220L
+        if (elapsed >= dur) {
+            cellAnims[r][c].revealStartedAt = 0L
+            return 1f
+        }
+        val t = elapsed.toFloat() / dur
+        // Замедление (decelerate): быстрый старт, плавный конец
+        return 1f - (1f - t) * (1f - t)
+    }
+
+    private fun flagScale(r: Int, c: Int): Float {
+        if (r !in cellAnims.indices) return 1f
+        if (c !in cellAnims[r].indices) return 1f
+        val start = cellAnims[r][c].flagStartedAt
+        if (start == 0L) return 1f
+        val elapsed = SystemClock.uptimeMillis() - start
+        val dur = 300L
+        if (elapsed >= dur) {
+            cellAnims[r][c].flagStartedAt = 0L
+            return 1f
+        }
+        val t = elapsed.toFloat() / dur
+        // Punch: 1 → 1.3 → 1, пик на t=0.4
+        val peak = 0.4f
+        return if (t < peak) {
+            1f + 0.3f * (t / peak)
+        } else {
+            1f + 0.3f * (1f - (t - peak) / (1f - peak))
+        }
+    }
+
+    private fun shiftFlashAlpha(): Float {
+        if (shiftStartedAt == 0L) return 0f
+        val elapsed = SystemClock.uptimeMillis() - shiftStartedAt
+        val dur = 700L
+        if (elapsed >= dur) {
+            shiftStartedAt = 0L
+            return 0f
+        }
+        val t = elapsed.toFloat() / dur
+        // Пик на t=0.15, плавный затухание
+        return if (t < 0.15f) t / 0.15f else 1f - (t - 0.15f) / 0.85f
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        animHandler.removeCallbacks(animRunnable)
+    }
+
+    // ----- Рисование -----
+
     private val paintHidden = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#2E3640")
         style = Paint.Style.FILL
@@ -56,10 +206,6 @@ class GameView : View {
     }
     private val paintRevealed = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#1A1F26")
-        style = Paint.Style.FILL
-    }
-    private val paintFlagBg = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#B71C1C")
         style = Paint.Style.FILL
     }
     private val paintMine = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -84,10 +230,9 @@ class GameView : View {
         textAlign = Paint.Align.CENTER
         typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
-    private val paintGrid = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#0A0D10")
-        style = Paint.Style.STROKE
-        strokeWidth = 1f
+    private val paintShiftFlash = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FFC107")
+        style = Paint.Style.FILL
     }
     private val rect = RectF()
 
@@ -105,13 +250,13 @@ class GameView : View {
     private val longPressRunnable = Runnable {
         if (!hasMoved && downRow >= 0) {
             longPressFired = true
-            // В обычном режиме долгое нажатие = флажок, в режиме флажка = копать.
             val engine = this.engine ?: return@Runnable
             if (flagMode) {
                 val res = engine.reveal(downRow, downCol)
                 handleRevealResult(downRow, downCol, res)
             } else {
                 if (engine.toggleFlag(downRow, downCol)) {
+                    animateFlag(downRow, downCol)
                     onFlagListener?.invoke(downRow, downCol)
                     performHaptic()
                 }
@@ -134,13 +279,10 @@ class GameView : View {
         ))
         cellSize = minOf(
             desiredCell,
-            // верхний предел, чтобы мегаполе не занимало весь экран
             maxOf(availW.toFloat() / engine.cols, availH.toFloat() / engine.rows)
         )
-        // Не больше 80dp
         val maxCell = 80f * resources.displayMetrics.density
         if (cellSize > maxCell) cellSize = maxCell
-        // Но не меньше 18dp
         val minCell = 18f * resources.displayMetrics.density
         if (cellSize < minCell) cellSize = minCell
 
@@ -153,6 +295,8 @@ class GameView : View {
         super.onDraw(canvas)
         val engine = engine ?: return
         val pad = 1f
+        val flashAlpha = shiftFlashAlpha()
+
         for (r in 0 until engine.rows) {
             for (c in 0 until engine.cols) {
                 val left = c * cellSize + pad
@@ -162,40 +306,77 @@ class GameView : View {
                 rect.set(left, top, right, bottom)
 
                 val isExploded = engine.explodedRow() == r && engine.explodedCol() == c
+                val revealProg = revealProgress(r, c)
+                val flagScale = flagScale(r, c)
+
                 when {
                     engine.isRevealed(r, c) && engine.isMine(r, c) -> {
-                        canvas.drawRoundRect(rect, 4f, 4f, if (isExploded) paintMineExploded else paintMine)
-                        drawMine(canvas, rect)
+                        // Для мины — лёгкая пульсация при первом открытии
+                        canvas.save()
+                        val cx = rect.centerX()
+                        val cy = rect.centerY()
+                        val sc = 0.5f + 0.5f * revealProg
+                        canvas.scale(sc, sc, cx, cy)
+                        val alpha = (255 * revealProg).toInt().coerceIn(0, 255)
+                        val bg = if (isExploded) paintMineExploded else paintMine
+                        bg.alpha = alpha
+                        canvas.drawRoundRect(rect, 4f, 4f, bg)
+                        paintMineNormal.alpha = alpha
+                        drawMine(canvas, rect, alpha)
+                        bg.alpha = 255
+                        paintMineNormal.alpha = 255
+                        canvas.restore()
                     }
                     engine.isRevealed(r, c) -> {
+                        // Анимация открытия: масштаб + альфа
+                        canvas.save()
+                        val cx = rect.centerX()
+                        val cy = rect.centerY()
+                        val sc = 0.4f + 0.6f * revealProg
+                        canvas.scale(sc, sc, cx, cy)
+                        val alpha = (255 * revealProg).toInt().coerceIn(0, 255)
+                        paintRevealed.alpha = alpha
                         canvas.drawRoundRect(rect, 4f, 4f, paintRevealed)
                         val n = engine.adjacentMines(r, c)
-                        if (n > 0) drawNumber(canvas, n, rect)
+                        if (n > 0) drawNumber(canvas, n, rect, alpha)
+                        paintRevealed.alpha = 255
+                        paintNumber.alpha = 255
+                        canvas.restore()
                     }
                     engine.isFlagged(r, c) -> {
+                        canvas.save()
+                        val cx = rect.centerX()
+                        val cy = rect.centerY()
+                        canvas.scale(flagScale, flagScale, cx, cy)
                         canvas.drawRoundRect(rect, 4f, 4f, paintHidden)
-                        // Тонкая верхняя «полочка»
                         rect.set(left, top, right, top + (bottom - top) * 0.4f)
                         canvas.drawRoundRect(rect, 4f, 4f, paintHiddenTop)
                         drawFlag(canvas, RectF(left, top, right, bottom))
+                        canvas.restore()
                     }
                     else -> {
                         canvas.drawRoundRect(rect, 4f, 4f, paintHidden)
                         rect.set(left, top, right, top + (bottom - top) * 0.4f)
                         canvas.drawRoundRect(rect, 4f, 4f, paintHiddenTop)
+                        // Вспышка при сдвиге мин
+                        if (flashAlpha > 0f) {
+                            paintShiftFlash.alpha = (flashAlpha * 110).toInt()
+                            rect.set(left, top, right, bottom)
+                            canvas.drawRoundRect(rect, 4f, 4f, paintShiftFlash)
+                        }
                     }
                 }
             }
         }
     }
 
-    private fun drawMine(canvas: Canvas, r: RectF) {
+    private fun drawMine(canvas: Canvas, r: RectF, alpha: Int) {
         val cx = r.centerX()
         val cy = r.centerY()
         val radius = (r.right - r.left) * 0.22f
         paintMineNormal.style = Paint.Style.FILL
+        paintMineNormal.alpha = alpha
         canvas.drawCircle(cx, cy, radius, paintMineNormal)
-        // лучи
         paintMineNormal.strokeWidth = (radius * 0.25f)
         paintMineNormal.style = Paint.Style.STROKE
         val len = radius * 1.5f
@@ -203,18 +384,17 @@ class GameView : View {
         canvas.drawLine(cx, cy - len, cx, cy + len, paintMineNormal)
         canvas.drawLine(cx - len * 0.7f, cy - len * 0.7f, cx + len * 0.7f, cy + len * 0.7f, paintMineNormal)
         canvas.drawLine(cx + len * 0.7f, cy - len * 0.7f, cx - len * 0.7f, cy + len * 0.7f, paintMineNormal)
+        paintMineNormal.style = Paint.Style.FILL
+        paintMineNormal.alpha = 255
     }
 
     private fun drawFlag(canvas: Canvas, r: RectF) {
         val cx = r.centerX()
-        val cy = r.centerY()
         val w = r.right - r.left
         val h = r.bottom - r.top
-        // Флагшток
         paintFlagPole.color = Color.parseColor("#ECEFF1")
         paintFlagPole.strokeWidth = w * 0.06f
         canvas.drawLine(cx - w * 0.05f, r.top + h * 0.18f, cx - w * 0.05f, r.bottom - h * 0.18f, paintFlagPole)
-        // Треугольник-флаг (красный)
         val flagPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#FF5252"); style = Paint.Style.FILL }
         val path = android.graphics.Path()
         path.moveTo(cx - w * 0.05f, r.top + h * 0.2f)
@@ -222,12 +402,11 @@ class GameView : View {
         path.lineTo(cx - w * 0.05f, r.top + h * 0.45f)
         path.close()
         canvas.drawPath(path, flagPaint)
-        // Основание
         flagPaint.color = Color.parseColor("#607D8B")
         canvas.drawRect(cx - w * 0.18f, r.bottom - h * 0.22f, cx + w * 0.08f, r.bottom - h * 0.12f, flagPaint)
     }
 
-    private fun drawNumber(canvas: Canvas, n: Int, r: RectF) {
+    private fun drawNumber(canvas: Canvas, n: Int, r: RectF, alpha: Int) {
         val color = when (n) {
             1 -> Color.parseColor("#42A5F5")
             2 -> Color.parseColor("#66BB6A")
@@ -239,9 +418,11 @@ class GameView : View {
             else -> Color.parseColor("#607D8B")
         }
         paintNumber.color = color
+        paintNumber.alpha = alpha
         paintNumber.textSize = (r.right - r.left) * 0.6f
         val baseline = r.centerY() - (paintNumber.descent() + paintNumber.ascent()) / 2f
         canvas.drawText(n.toString(), r.centerX(), baseline, paintNumber)
+        paintNumber.alpha = 255
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -267,9 +448,9 @@ class GameView : View {
                 handler.removeCallbacks(longPressRunnable)
                 if (event.actionMasked == MotionEvent.ACTION_CANCEL) return true
                 if (!hasMoved && !longPressFired && downRow >= 0) {
-                    // Короткий тап.
                     if (flagMode) {
                         if (engine.toggleFlag(downRow, downCol)) {
+                            animateFlag(downRow, downCol)
                             onFlagListener?.invoke(downRow, downCol)
                         }
                     } else {
