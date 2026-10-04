@@ -287,6 +287,17 @@ class GameView : View {
         color = Color.parseColor("#FF1744")
         style = Paint.Style.FILL
     }
+    /** Тусклый фон для не-взорванных мин при показе всех мин после поражения. */
+    private val paintMineDim = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#5C2A2A")
+        style = Paint.Style.FILL
+    }
+    /** Оранжевый крест поверх флага, который стоит не на мине (после поражения). */
+    private val paintFlagWrong = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FF9800")
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.ROUND
+    }
     private val paintMineNormal = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#ECEFF1")
         style = Paint.Style.FILL
@@ -418,6 +429,13 @@ class GameView : View {
                         paintMineNormal.alpha = 255
                         canvas.restore()
                     }
+                    engine.gameOver && engine.isMine(r, c) && !engine.isFlagged(r, c) -> {
+                        // После поражения — показать ВСЕ мины, даже не открытые.
+                        // Взорвавшаяся уже нарисована выше красным, остальные — тускло-красным.
+                        val bg = if (isExploded) paintMineExploded else paintMineDim
+                        canvas.drawRoundRect(rect, 4f, 4f, bg)
+                        drawMine(canvas, rect, 255)
+                    }
                     engine.isRevealed(r, c) -> {
                         // Анимация открытия: масштаб + альфа
                         canvas.save()
@@ -443,6 +461,25 @@ class GameView : View {
                         rect.set(left, top, right, top + (bottom - top) * 0.4f)
                         canvas.drawRoundRect(rect, 4f, 4f, paintHiddenTop)
                         drawFlag(canvas, RectF(left, top, right, bottom))
+                        // Если поражение и флаг стоит НЕ на мине — перечёркиваем оранжевым крестом
+                        if (engine.gameOver && !engine.isMine(r, c)) {
+                            paintFlagWrong.strokeWidth = (right - left) * 0.12f
+                            rect.set(left, top, right, bottom)
+                            canvas.drawLine(
+                                left + (right - left) * 0.15f,
+                                top + (bottom - top) * 0.15f,
+                                right - (right - left) * 0.15f,
+                                bottom - (bottom - top) * 0.15f,
+                                paintFlagWrong
+                            )
+                            canvas.drawLine(
+                                right - (right - left) * 0.15f,
+                                top + (bottom - top) * 0.15f,
+                                left + (right - left) * 0.15f,
+                                bottom - (bottom - top) * 0.15f,
+                                paintFlagWrong
+                            )
+                        }
                         canvas.restore()
                     }
                     else -> {

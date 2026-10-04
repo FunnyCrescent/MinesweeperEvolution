@@ -923,8 +923,8 @@ function deduplicateNickname(nickname, existing) {
 // ============================ RENDERER + INPUT ============================
 const COLORS = {
   hidden: '#2E3640', hiddenTop: '#3D4651', revealed: '#1A1F26',
-  mine: '#FF5252', mineExploded: '#FF1744', mineIcon: '#ECEFF1',
-  flagPole: '#ECEFF1', flagCloth: '#FF5252', flagBase: '#607D8B',
+  mine: '#FF5252', mineExploded: '#FF1744', mineDim: '#5C2A2A', mineIcon: '#ECEFF1',
+  flagPole: '#ECEFF1', flagCloth: '#FF5252', flagBase: '#607D8B', flagWrong: '#FF9800',
   shiftFlash: '#FFC107',
 };
 const NUMBER_COLORS = ['#000000','#42A5F5','#66BB6A','#EF5350','#AB47BC','#FF7043','#26C6DA','#B0BEC5','#607D8B'];
@@ -1030,6 +1030,14 @@ class BoardRenderer {
           this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
           this._drawMine(left, top, right, bottom);
           ctx.restore();
+        } else if (e.gameOver && e.isMine(r, c) && !e.isFlagged(r, c)) {
+          // После поражения — показать ВСЕ мины, даже не открытые.
+          // Взорвавшаяся — красным (см. выше), остальные — серо-красным фоном.
+          ctx.save();
+          ctx.fillStyle = isExploded ? COLORS.mineExploded : COLORS.mineDim;
+          this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
+          this._drawMine(left, top, right, bottom);
+          ctx.restore();
         } else if (e.isRevealed(r, c)) {
           ctx.save();
           const cx = (left + right) / 2, cy = (top + bottom) / 2;
@@ -1050,6 +1058,18 @@ class BoardRenderer {
           ctx.fillStyle = COLORS.hiddenTop;
           this._roundRect(left, top, right - left, (bottom - top) * 0.4, 4); ctx.fill();
           this._drawFlag(left, top, right, bottom);
+          // Если поражение и флаг стоит НЕ на мине — перечёркиваем оранжевым крестом
+          if (e.gameOver && !e.isMine(r, c)) {
+            ctx.strokeStyle = COLORS.flagWrong;
+            ctx.lineWidth = (right - left) * 0.12;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(left + (right - left) * 0.15, top + (bottom - top) * 0.15);
+            ctx.lineTo(right - (right - left) * 0.15, bottom - (bottom - top) * 0.15);
+            ctx.moveTo(right - (right - left) * 0.15, top + (bottom - top) * 0.15);
+            ctx.lineTo(left + (right - left) * 0.15, bottom - (bottom - top) * 0.15);
+            ctx.stroke();
+          }
           ctx.restore();
         } else {
           ctx.fillStyle = COLORS.hidden;
