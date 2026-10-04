@@ -52,6 +52,7 @@
     <!-- Settings -->
     <string name="settings">Настройки</string>
     <string name="vibration">Вибрация</string>
+    <string name="sound">Звук</string>
     <string name="long_press_flag">Долгое нажатие = флажок</string>
     <string name="shift_interval">Интервал сдвига (сек)</string>
 
@@ -61,5 +62,19 @@
     <string name="games_played">Сыграно</string>
     <string name="games_won">Побед</string>
     <string name="reset_stats">Сбросить статистику</string>
+
+    <!-- Multiplayer -->
+    <string name="mp_host">Создать игру (хост)</string>
+    <string name="mp_join">Подключиться к игре</string>
+    <string name="mp_lobby_title">Лобби хоста</string>
+    <string name="mp_join_title">Подключение</string>
+    <string name="mp_nickname_hint">Твой ник</string>
+    <string name="mp_host_ip_hint">IP хоста</string>
+    <string name="mp_port_hint">Порт</string>
+    <string name="mp_connect">Подключиться</string>
+    <string name="mp_disconnect">Отключиться</string>
+    <string name="mp_start_game">Начать игру</string>
+    <string name="mp_your_turn">▼ ВАШ ХОД ▼</string>
+    <string name="mp_turn_of">Ход: %1$s</string>
 
 </resources>

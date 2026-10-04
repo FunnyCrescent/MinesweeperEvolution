@@ -48,6 +48,19 @@ class GameView : View {
     var flagMode: Boolean = false
         set(value) { field = value; invalidate() }
 
+    /**
+     * Если задан — все локальные тапы идут в этот колбэк вместо прямого вызова engine.
+     * Аргументы: (row, col, isFlag) — isFlag true если игрок хотел поставить/снять флажок
+     * (через long-press или flag mode).
+     *
+     * Используется мультиплеером, чтобы хост и клиент сами решали, как обрабатывать тап.
+     * Если null — обычное поведение (engine.reveal / engine.toggleFlag).
+     */
+    var externalClickListener: ((row: Int, col: Int, isFlag: Boolean) -> Unit)? = null
+
+    /** Если false — тапы игнорируются (ход другого игрока в мультиплеере). */
+    var inputEnabled: Boolean = true
+
     var onRevealListener: ((row: Int, col: Int, exploded: Boolean, won: Boolean) -> Unit)? = null
     var onFlagListener: ((row: Int, col: Int) -> Unit)? = null
 
@@ -251,14 +264,24 @@ class GameView : View {
         if (!hasMoved && downRow >= 0) {
             longPressFired = true
             val engine = this.engine ?: return@Runnable
-            if (flagMode) {
-                val res = engine.reveal(downRow, downCol)
-                handleRevealResult(downRow, downCol, res)
+            // Долгий тап — всегда «противоположное» действие к flag mode:
+            //  - если flagMode off → долгий тап ставит флажок
+            //  - если flagMode on  → долгий тап копает
+            val isFlag = !flagMode
+            if (!inputEnabled) return@Runnable
+            val ext = externalClickListener
+            if (ext != null) {
+                ext.invoke(downRow, downCol, isFlag)
             } else {
-                if (engine.toggleFlag(downRow, downCol)) {
-                    animateFlag(downRow, downCol)
-                    onFlagListener?.invoke(downRow, downCol)
-                    performHaptic()
+                if (isFlag) {
+                    if (engine.toggleFlag(downRow, downCol)) {
+                        animateFlag(downRow, downCol)
+                        onFlagListener?.invoke(downRow, downCol)
+                        performHaptic()
+                    }
+                } else {
+                    val res = engine.reveal(downRow, downCol)
+                    handleRevealResult(downRow, downCol, res)
                 }
             }
             invalidate()
@@ -448,16 +471,23 @@ class GameView : View {
                 handler.removeCallbacks(longPressRunnable)
                 if (event.actionMasked == MotionEvent.ACTION_CANCEL) return true
                 if (!hasMoved && !longPressFired && downRow >= 0) {
-                    if (flagMode) {
-                        if (engine.toggleFlag(downRow, downCol)) {
-                            animateFlag(downRow, downCol)
-                            onFlagListener?.invoke(downRow, downCol)
-                        }
+                    if (!inputEnabled) return true
+                    val ext = externalClickListener
+                    if (ext != null) {
+                        // В external-режиме flag mode означает «короткий тап = флажок»
+                        ext.invoke(downRow, downCol, flagMode)
                     } else {
-                        val res = engine.reveal(downRow, downCol)
-                        handleRevealResult(downRow, downCol, res)
-                        if (res == GameEngine.RevealResult.REVEALED || res == GameEngine.RevealResult.WON) {
-                            performHaptic()
+                        if (flagMode) {
+                            if (engine.toggleFlag(downRow, downCol)) {
+                                animateFlag(downRow, downCol)
+                                onFlagListener?.invoke(downRow, downCol)
+                            }
+                        } else {
+                            val res = engine.reveal(downRow, downCol)
+                            handleRevealResult(downRow, downCol, res)
+                            if (res == GameEngine.RevealResult.REVEALED || res == GameEngine.RevealResult.WON) {
+                                performHaptic()
+                            }
                         }
                     }
                     invalidate()
@@ -486,7 +516,12 @@ class GameView : View {
 
     private fun performHaptic(heavy: Boolean = false) {
         try {
-            (context as? GameActivity)?.haptic(heavy)
+            val act = context
+            if (act is GameActivity) {
+                act.haptic(heavy)
+            } else if (act is com.zminesweeper.game.mp.MpGameActivity) {
+                act.haptic(heavy)
+            }
         } catch (_: Exception) {}
     }
 }

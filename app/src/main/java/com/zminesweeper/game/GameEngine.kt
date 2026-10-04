@@ -6,12 +6,17 @@ import java.util.Random
  * Игровая логика сапёра. Поддерживает 4 режима и 3 уровня сложности.
  *
  * Ключевые правила:
+ *  - В ЛЮБОМ режиме первый клик всегда безопасен (мины убираются из клетки и её 8 соседей).
  *  - В ЛЮБОМ режиме мина не может появиться в уже открытой игроком клетке.
  *  - В режимах со сдвигом DRIFT/CHAOS/ANARCHY мины перемещаются каждые N секунд.
  *  - DRIFT: сохраняет флажки и мины под флажком (мины под флажком остаются на месте).
  *  - CHAOS: сбрасывает флажки, перемещает все мины.
  *  - ANARCHY: то же, что CHAOS, плюс случайное число мин каждый сдвиг.
  *  - Цифры на открытых клетках пересчитываются после каждого сдвига.
+ *  - ПРАВИЛО ДРЕЙФА (v1.2): любая открытая клетка, на которой была цифра (>0 мин вокруг),
+ *    после сдвига остаётся «цифрой» — пустоты (0) на месте бывших цифр быть не должно.
+ *    Если случайное переразмещение обнуляет такую клетку — рядом с ней принудительно
+ *    кладётся одна мина в любого доступного соседа.
  */
 class GameEngine {
 
@@ -126,6 +131,19 @@ class GameEngine {
     fun shiftMines() {
         if (gameOver || !mode.shifts) return
 
+        // --- ПРАВИЛО ДРЕЙФА (v1.2) ---
+        // Любая ОТКРЫТАЯ клетка, на которой сейчас есть цифра (>0 мин вокруг),
+        // после сдвига должна остаться «цифрой» — то есть adjMines по-прежнему >0.
+        // Пустоты (0) на месте бывших цифр быть не должно.
+        val numberedRevealed = ArrayList<Pair<Int, Int>>()
+        for (r in 0 until rows) {
+            for (c in 0 until cols) {
+                if (revealed[r][c] && !mines[r][c] && adjacentMines(r, c) > 0) {
+                    numberedRevealed.add(r to c)
+                }
+            }
+        }
+
         // Список «замороженных» мин (под флажком) — для DRIFT.
         val frozen = ArrayList<Pair<Int, Int>>()
         if (mode.preservesFlags) {
@@ -151,7 +169,6 @@ class GameEngine {
         }
 
         // Переразмещаем мины (кроме замороженных) в доступные клетки.
-        // Сначала убираем все мины, кроме замороженных.
         for (r in 0 until rows) java.util.Arrays.fill(mines[r], false)
         for ((r, c) in frozen) mines[r][c] = true
 
@@ -173,6 +190,36 @@ class GameEngine {
         }
         mineCount = frozen.size + actual
         shiftsCount++
+
+        // Финальный проход: защищаем «цифры» от обнуления.
+        enforceNumberedInvariant(numberedRevealed)
+    }
+
+    /**
+     * Гарантирует, что каждая клетка из [guarded] (открытая, ранее имевшая >0 мин вокруг)
+     * по-прежнему имеет >0 мин в окрестности. Если сдвиг обнулил её — кладём одну
+     * мину в любого доступного (закрытого, без флага, не заминированного) соседа.
+     */
+    private fun enforceNumberedInvariant(guarded: List<Pair<Int, Int>>) {
+        for ((r, c) in guarded) {
+            if (adjacentMines(r, c) > 0) continue
+            val candidates = ArrayList<Pair<Int, Int>>(8)
+            for (dr in -1..1) for (dc in -1..1) {
+                if (dr == 0 && dc == 0) continue
+                val nr = r + dr
+                val nc = c + dc
+                if (nr in 0 until rows && nc in 0 until cols) {
+                    if (!revealed[nr][nc] && !flagged[nr][nc] && !mines[nr][nc]) {
+                        candidates.add(nr to nc)
+                    }
+                }
+            }
+            if (candidates.isNotEmpty()) {
+                val (mr, mc) = candidates[rng.nextInt(candidates.size)]
+                mines[mr][mc] = true
+                mineCount++
+            }
+        }
     }
 
     /** Количество мин вокруг клетки (8 соседей). */

@@ -51,12 +51,33 @@
             android:id="@+id/btnNewGame"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:layout_marginBottom="20dp"
+            android:layout_marginBottom="8dp"
             android:background="@drawable/bg_button_primary"
             android:text="@string/new_game"
             android:textColor="@color/bg_dark"
             android:textSize="16sp"
             android:textStyle="bold" />
+
+        <!-- Multiplayer buttons -->
+        <Button
+            android:id="@+id/btnMpHost"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_button_secondary"
+            android:text="@string/mp_host"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnMpJoin"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/bg_button_secondary"
+            android:text="@string/mp_join"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
 
         <TextView
             android:layout_width="wrap_content"

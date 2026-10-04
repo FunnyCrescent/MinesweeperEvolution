@@ -1,0 +1,27 @@
+# Gradle
+.gradle/
+build/
+
+# Local config
+local.properties
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Android Studio / Gradle generated
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Keystore (never commit)
+*.jks
+*.keystore
+
+# Logs
+*.log
+
+# Keep release APK explicitly (overridden above)
+!release/MinesweeperEvolution.apk

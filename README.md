@@ -1,40 +1,62 @@
-# MinesweeperEvolution
+# Сапёр: Эволюция (MinesweeperEvolution)
 
-Android Minesweeper game with 4 modes and 3 difficulty levels.
+Android-игра «Сапёр» с 4 режимами и мультиплеером по IP.
 
-## Game Modes
+## Режимы
 
-1. **Classic** — static mines, traditional minesweeper rules
-2. **Drift (~50% Random)** — every N seconds mines drift; mines under flags stay put, numbers update
-3. **Chaos (~75% Random)** — every N seconds all mines relocate, flags reset
-4. **Anarchy (Full Random)** — Chaos + random mine count (1 to total cells) on each shift
+- **Классика** — обычный сапёр.
+- **Дрейф** — мины перемещаются каждые N секунд. Мины под флажком остаются на месте.
+- **Хаос** — все мины перемещаются, флажки сбрасываются.
+- **Анархия** — Хаос + случайное число мин каждый сдвиг (лимита нет).
 
-## Difficulties
+## Правила дрейфа (v1.2)
 
-- Beginner: 8 × 8, 10 mines
-- Veteran: 16 × 16, 40 mines
-- Master: 16 × 30, 99 mines
+В режимах с дрейфом:
+1. **Первый клик всегда безопасен** — мины убираются из клетки и её 8 соседей.
+2. **Где была цифра — там и останется цифра.** Любая открытая клетка с числом (>0 мин вокруг)
+   после сдвига сохраняет число >0. Пустоты на месте бывших цифр быть не должно.
 
-## Build
+## Звуки
 
-Requirements: JDK 17, Android SDK 34, Gradle 8.7.
+В игре есть звуки открытия, взрыва, флажка, победы, сдвига, клика.
+Переключаются в Настройках → «Звук».
+
+## Мультиплеер
+
+Поддержка игры по IP (включая ZeroTier/Tailscale).
+
+### Хост
+1. Главное меню → «Создать игру (хост)»
+2. Ввести ник (или использовать сохранённый)
+3. На экране лобби — выбрать режим/сложность/интервал сдвига
+4. Подождать подключений (видно IP-адреса хоста, до 5 игроков)
+5. Нажать «Начать игру»
+
+### Клиент
+1. Главное меню → «Подключиться к игре»
+2. Ввести IP хоста (например `10.147.17.5` если через ZeroTier), порт, ник
+3. Подождать старта хоста
+
+### Правила хода
+- Ходы идут по кругу: хост → p1 → p2 → … → хост
+- Сверху показывается «▼ ВАШ ХОД ▼» или «Ход: NICK»
+- Тапы в чужой ход игнорируются
+- Игра заканчивается, когда кто-то наступил на мину (он проиграл)
+  или открыл последнюю безопасную клетку (он выиграл)
+
+### Защита от одинаковых ников
+Если в лобби уже есть игрок с таким же ником (case-insensitive),
+к новому автоматически добавляется суффикс `(2)`, `(3)`, и т.д.
+
+## Установка APK
+
+Скачай `release/MinesweeperEvolution.apk` и установи на Android (min SDK 21+).
+
+## Сборка из исходников
 
 ```bash
-cd minesweeper  # project root with build.gradle
-gradle assembleDebug --offline
+./gradlew assembleDebug
+# APK появится в app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Output: `app/build/outputs/apk/debug/app-debug.apk`
-
-Pre-built APK is in `release/MinesweeperEvolution.apk`.
-
-## Features
-
-- Custom bomb launcher icon (PNG, all densities)
-- Adaptive icon support (Android 8+)
-- Save / autosave on exit
-- Statistics per mode & difficulty
-- Settings: vibration, long-press flag, shift interval (3-30 sec)
-- Safe first click (mines removed around first click)
-- Numbers update after each mine shift
-- Mines never spawn on opened cells
+Требуется Android SDK 34 и JDK 17+.

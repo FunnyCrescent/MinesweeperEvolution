@@ -18,6 +18,7 @@ class GameActivity : AppCompatActivity() {
     private lateinit var engine: GameEngine
     private lateinit var save: SaveManager
     private lateinit var gameView: GameView
+    private var sound: SoundManager? = null
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -42,6 +43,7 @@ class GameActivity : AppCompatActivity() {
                     engine.shiftMines()
                     gameView.animateShift()
                     haptic(heavy = false)
+                    sound?.play(SoundManager.Type.SHIFT)
                     shiftRemainingSec = save.shiftInterval()
                     updateMinesLabel()
                 }
@@ -58,6 +60,7 @@ class GameActivity : AppCompatActivity() {
         setContentView(R.layout.activity_game)
         save = SaveManager(this)
         gameView = findViewById(R.id.gameView)
+        sound = SoundManager(this).also { it.enabled = save.isSound() }
 
         val loadSave = intent.getBooleanExtra(EXTRA_LOAD_SAVE, false)
         if (loadSave && save.hasSavedGame()) {
@@ -77,10 +80,20 @@ class GameActivity : AppCompatActivity() {
         gameView.onRevealListener = { row, col, exploded, won ->
             // Анимация волной от точки клика по всем открытым в этом ходе клеткам
             gameView.animateRevealWave(engine.lastRevealed, row, col)
+            if (exploded) {
+                sound?.play(SoundManager.Type.EXPLODE)
+            } else if (won) {
+                sound?.play(SoundManager.Type.WIN)
+            } else {
+                sound?.play(SoundManager.Type.REVEAL)
+            }
             if (exploded || won) showGameOver(won)
             updateMinesLabel()
         }
-        gameView.onFlagListener = { _, _ -> updateMinesLabel() }
+        gameView.onFlagListener = { _, _ ->
+            sound?.play(SoundManager.Type.FLAG)
+            updateMinesLabel()
+        }
 
         findViewById<Button>(R.id.btnFlagMode).setOnClickListener {
             gameView.flagMode = !gameView.flagMode
@@ -128,6 +141,14 @@ class GameActivity : AppCompatActivity() {
         } else if (savedFromLoaded) {
             save.clearSavedGame()
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        handler.removeCallbacks(tickRunnable)
+        handler.removeCallbacks(shiftRunnable)
+        sound?.release()
+        sound = null
     }
 
     @Suppress("DEPRECATION")

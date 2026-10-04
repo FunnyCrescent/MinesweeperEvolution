@@ -35,11 +35,33 @@ class SaveManager(context: Context) {
     fun setVibration(enabled: Boolean) = prefs.edit().putBoolean(KEY_VIBRATION, enabled).apply()
     fun isVibration(): Boolean = prefs.getBoolean(KEY_VIBRATION, true)
 
+    fun setSound(enabled: Boolean) = prefs.edit().putBoolean(KEY_SOUND, enabled).apply()
+    fun isSound(): Boolean = prefs.getBoolean(KEY_SOUND, true)
+
     fun setLongPressFlag(enabled: Boolean) = prefs.edit().putBoolean(KEY_LONG_PRESS, enabled).apply()
     fun isLongPressFlag(): Boolean = prefs.getBoolean(KEY_LONG_PRESS, true)
 
     fun setShiftInterval(sec: Int) = prefs.edit().putInt(KEY_SHIFT_INTERVAL, sec).apply()
     fun shiftInterval(): Int = prefs.getInt(KEY_SHIFT_INTERVAL, 10)
+
+    // ---------- Никнейм для мультиплеера ----------
+
+    fun setNickname(name: String?) {
+        if (name.isNullOrBlank()) {
+            prefs.edit().remove(KEY_NICKNAME).apply()
+        } else {
+            prefs.edit().putString(KEY_NICKNAME, name.trim().take(20)).apply()
+        }
+    }
+    fun nickname(): String? = prefs.getString(KEY_NICKNAME, null)?.takeIf { it.isNotBlank() }
+
+    // ---------- Последний IP хоста для мультиплеера ----------
+
+    fun setLastHostIp(ip: String?) =
+        prefs.edit().apply {
+            if (ip.isNullOrBlank()) remove(KEY_LAST_HOST_IP) else putString(KEY_LAST_HOST_IP, ip)
+        }.apply()
+    fun lastHostIp(): String? = prefs.getString(KEY_LAST_HOST_IP, null)
 
     // ---------- Статистика ----------
 
@@ -79,7 +101,10 @@ class SaveManager(context: Context) {
         private const val KEY_GAME_STATE = "game_state"
         private const val KEY_SAVE_TIME = "save_time"
         private const val KEY_VIBRATION = "vibration"
+        private const val KEY_SOUND = "sound"
         private const val KEY_LONG_PRESS = "long_press_flag"
         private const val KEY_SHIFT_INTERVAL = "shift_interval"
+        private const val KEY_NICKNAME = "nickname"
+        private const val KEY_LAST_HOST_IP = "last_host_ip"
     }
 }

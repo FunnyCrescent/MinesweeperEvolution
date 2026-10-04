@@ -10,6 +10,8 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
+import com.zminesweeper.game.mp.JoinClientActivity
+import com.zminesweeper.game.mp.LobbyHostActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,8 +37,38 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.widget.Button>(R.id.btnStats).setOnClickListener {
             showStatsDialog()
         }
+        findViewById<android.widget.Button>(R.id.btnMpHost).setOnClickListener {
+            ensureNicknameThen { startActivity(Intent(this, LobbyHostActivity::class.java)) }
+        }
+        findViewById<android.widget.Button>(R.id.btnMpJoin).setOnClickListener {
+            ensureNicknameThen { startActivity(Intent(this, JoinClientActivity::class.java)) }
+        }
 
         buildModeCards()
+    }
+
+    /** Если у пользователя ещё нет ника — спросим. Иначе — запускаем [action]. */
+    private fun ensureNicknameThen(action: () -> Unit) {
+        val cur = save.nickname()
+        if (cur.isNullOrBlank()) {
+            val input = android.widget.EditText(this).apply {
+                hint = "Твой ник"
+                setSingleLine()
+            }
+            AlertDialog.Builder(this)
+                .setTitle("Ник для мультиплеера")
+                .setMessage("Введи ник, под которым тебя увидят другие игроки.")
+                .setView(input)
+                .setPositiveButton("OK") { _, _ ->
+                    val n = input.text.toString().trim().ifBlank { "Игрок" }
+                    save.setNickname(n)
+                    action()
+                }
+                .setNegativeButton("Отмена", null)
+                .show()
+        } else {
+            action()
+        }
     }
 
     override fun onResume() {
@@ -129,11 +161,13 @@ class MainActivity : AppCompatActivity() {
     private fun showSettingsDialog() {
         val view = layoutInflater.inflate(R.layout.dialog_settings, null)
         val swVibration = view.findViewById<SwitchCompat>(R.id.swVibration)
+        val swSound = view.findViewById<SwitchCompat>(R.id.swSound)
         val swLongPress = view.findViewById<SwitchCompat>(R.id.swLongPress)
         val sliderShift = view.findViewById<SeekBar>(R.id.sliderShift)
         val tvShiftVal = view.findViewById<TextView>(R.id.tvShiftVal)
 
         swVibration.isChecked = save.isVibration()
+        swSound.isChecked = save.isSound()
         swLongPress.isChecked = save.isLongPressFlag()
         sliderShift.max = 27   // 27 = 30 - 3
         sliderShift.progress = save.shiftInterval() - 3
@@ -151,6 +185,7 @@ class MainActivity : AppCompatActivity() {
             .setView(view)
             .setPositiveButton("OK") { _, _ ->
                 save.setVibration(swVibration.isChecked)
+                save.setSound(swSound.isChecked)
                 save.setLongPressFlag(swLongPress.isChecked)
                 save.setShiftInterval(sliderShift.progress + 3)
             }
