@@ -23,5 +23,9 @@ local.properties
 # Logs
 *.log
 
+# Node.js (relay server)
+server/node_modules/
+server/npm-debug.log*
+
 # Keep release APK explicitly (overridden above)
 !release/MinesweeperEvolution.apk
