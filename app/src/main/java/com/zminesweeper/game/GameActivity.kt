@@ -88,6 +88,13 @@ class GameActivity : AppCompatActivity() {
         }
 
         gameView.engine = engine
+        // Принудительная перерисовка: при загрузке сохранения cellAnims создаются
+        // с revealStartedAt = 0 (что значит «прогресс = 1, анимации нет»), но
+        // иногда invalidate() не успевает сработать до показа экрана. Дополнительный
+        // invalidate + requestLayout гарантируют, что onDraw вызовется с реальными
+        // размерами canvas.
+        gameView.requestLayout()
+        gameView.invalidate()
         gameView.onRevealListener = { row, col, exploded, won ->
             // Анимация волной от точки клика по всем открытым в этом ходе клеткам
             gameView.animateRevealWave(engine.lastRevealed, row, col)

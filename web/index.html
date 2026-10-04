@@ -1857,6 +1857,12 @@ function initMenu() {
         App.engine = e;
         showScreen('screen-game');
         initGameScreen();
+        // Дополнительный фолбэк через 300мс — если по какой-то причине
+        // предыдущие measure/draw не отрисовали цифры (например, canvas
+        // был нулевого размера в момент первого вызова).
+        setTimeout(() => {
+          if (App.renderer && App.engine) { App.renderer.measure(); App.renderer.draw(); }
+        }, 300);
       }
     }
   };
@@ -1991,7 +1997,13 @@ function initGameScreen() {
     App.sound.play('FLAG');
     updateMinesLabel();
   };
-  setTimeout(() => App.renderer.measure(), 50);
+  // Гарантируем, что canvas получит реальные размеры перед draw.
+  // setTimeout + RAF fallback: экран должен был отрисоваться к этому моменту.
+  setTimeout(() => {
+    requestAnimationFrame(() => {
+      if (App.renderer) { App.renderer.measure(); App.renderer.draw(); }
+    });
+  }, 100);
 
   const btnFlag = $('btnFlagMode');
   btnFlag.classList.toggle('flag-on', App.renderer.flagMode);
@@ -2085,7 +2097,13 @@ function restartGame() {
     if (exploded || won) showGameOver(won);
   };
   App.renderer.onFlagListener = (r, c) => { App.sound.play('FLAG'); updateMinesLabel(); };
-  setTimeout(() => App.renderer.measure(), 50);
+  // Гарантируем, что canvas получит реальные размеры перед draw.
+  // setTimeout + RAF fallback: экран должен был отрисоваться к этому моменту.
+  setTimeout(() => {
+    requestAnimationFrame(() => {
+      if (App.renderer) { App.renderer.measure(); App.renderer.draw(); }
+    });
+  }, 100);
 
   $('tvModeLabel').textContent = `${App.engine.mode.display} · ${App.engine.difficulty.display}`;
   $('llShift').style.display = App.engine.mode.shifts ? '' : 'none';
@@ -2631,7 +2649,13 @@ function initMpGameScreen(isHost) {
     updateTurnIndicator();
   };
   App.renderer.onFlagListener = (r, c) => { App.sound.play('FLAG'); updateMinesLabel(); };
-  setTimeout(() => App.renderer.measure(), 50);
+  // Гарантируем, что canvas получит реальные размеры перед draw.
+  // setTimeout + RAF fallback: экран должен был отрисоваться к этому моменту.
+  setTimeout(() => {
+    requestAnimationFrame(() => {
+      if (App.renderer) { App.renderer.measure(); App.renderer.draw(); }
+    });
+  }, 100);
 
   const btnFlag = $('btnMpFlagMode');
   btnFlag.classList.toggle('flag-on', App.renderer.flagMode);
