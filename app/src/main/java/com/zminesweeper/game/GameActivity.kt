@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
@@ -45,7 +46,17 @@ class GameActivity : AppCompatActivity() {
                     haptic(heavy = false)
                     sound?.play(SoundManager.Type.SHIFT)
                     shiftRemainingSec = save.shiftInterval()
+                    // Защита от клика в течение 1 секунды после сдвига
+                    gameView.shiftCooldownUntilMs = SystemClock.uptimeMillis() + 1000
                     updateMinesLabel()
+                    findViewById<TextView>(R.id.tvShift).setTextColor(getColor(R.color.warning))
+                } else if (shiftRemainingSec <= 3) {
+                    // Нарастающий тик в последние 3 секунды
+                    val vol = 0.3f + (3 - shiftRemainingSec) * 0.2f  // 0.3, 0.5, 0.7
+                    sound?.play(SoundManager.Type.TICK, vol)
+                    findViewById<TextView>(R.id.tvShift).setTextColor(getColor(R.color.danger))
+                } else {
+                    findViewById<TextView>(R.id.tvShift).setTextColor(getColor(R.color.warning))
                 }
                 findViewById<TextView>(R.id.tvShift).text = "${shiftRemainingSec}с"
             } else if (!engine.firstClickDone) {

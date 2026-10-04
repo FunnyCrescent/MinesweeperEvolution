@@ -87,8 +87,17 @@ class MpGameActivity : AppCompatActivity() {
                         gameView.animateShift()
                         sound?.play(SoundManager.Type.SHIFT)
                         shiftRemainingSec = shiftInterval
+                        // Защита от клика в течение 1 секунды после сдвига
+                        gameView.shiftCooldownUntilMs = android.os.SystemClock.uptimeMillis() + 1000
                         updateMinesLabel()
                         broadcastState()
+                        findViewById<TextView>(R.id.tvShift).setTextColor(getColor(R.color.warning))
+                    } else if (shiftRemainingSec <= 3) {
+                        val vol = 0.3f + (3 - shiftRemainingSec) * 0.2f
+                        sound?.play(SoundManager.Type.TICK, vol)
+                        findViewById<TextView>(R.id.tvShift).setTextColor(getColor(R.color.danger))
+                    } else {
+                        findViewById<TextView>(R.id.tvShift).setTextColor(getColor(R.color.warning))
                     }
                     findViewById<TextView>(R.id.tvShift).text = "${shiftRemainingSec}с"
                 } else if (!e.firstClickDone) {
@@ -274,6 +283,10 @@ class MpGameActivity : AppCompatActivity() {
             is Message.State -> {
                 val e = GameEngine.deserialize(msg.engine)
                 if (e != null) {
+                    // Если у хоста только что был сдвиг (shiftsCount вырос) — ставим кулдаун
+                    if (engine != null && e.mode.shifts && e.shiftsCount > (engine?.shiftsCount ?: 0)) {
+                        gameView.shiftCooldownUntilMs = android.os.SystemClock.uptimeMillis() + 1000
+                    }
                     engine = e
                     gameView.engine = e
                     currentTurnId = msg.turn

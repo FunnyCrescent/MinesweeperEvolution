@@ -66,6 +66,14 @@ class GameView : View {
     var inputEnabled: Boolean = true
 
     /**
+     * Timestamp (SystemClock.uptimeMillis) до которого клики блокируются.
+     * Защита от нечестной смерти: игрок видит клетку безопасной, тапает,
+     * но в этот момент случается сдвиг и клетка становится миной.
+     * В течение 1 секунды после сдвига тапы игнорируются (с короткой вибрацией как фидбеком).
+     */
+    var shiftCooldownUntilMs: Long = 0L
+
+    /**
      * Коэффициент масштабирования поля. 1.0 = «как влезло в экран».
      * Пользователь может пинчить от 1.0 до 3.0 (для близоруких и крупных полей).
      * Двойной тап переключает между 1.0 и 2.0.
@@ -312,6 +320,11 @@ class GameView : View {
             //  - если flagMode on  → долгий тап копает
             val isFlag = !flagMode
             if (!inputEnabled) return@Runnable
+            // Кулдаун после сдвига — блокируем тапы
+            if (SystemClock.uptimeMillis() < shiftCooldownUntilMs) {
+                performHaptic(false)
+                return@Runnable
+            }
             val ext = externalClickListener
             if (ext != null) {
                 ext.invoke(downRow, downCol, isFlag)
@@ -564,6 +577,11 @@ class GameView : View {
 
                 if (!hasMoved && !longPressFired && downRow >= 0) {
                     if (!inputEnabled) return true
+                    // Кулдаун после сдвига — блокируем тапы
+                    if (SystemClock.uptimeMillis() < shiftCooldownUntilMs) {
+                        performHaptic(false)
+                        return true
+                    }
                     val ext = externalClickListener
                     if (ext != null) {
                         // В external-режиме flag mode означает «короткий тап = флажок»

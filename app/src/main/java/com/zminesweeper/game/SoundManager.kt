@@ -25,6 +25,7 @@ class SoundManager(context: Context) {
         WIN,
         SHIFT,
         CLICK,
+        TICK,
     }
 
     private val pool: SoundPool = SoundPool.Builder()
@@ -48,6 +49,7 @@ class SoundManager(context: Context) {
             Type.WIN     to R.raw.win,
             Type.SHIFT   to R.raw.shift,
             Type.CLICK   to R.raw.click,
+            Type.TICK    to R.raw.tick,
         )
         for ((type, resId) in lookup) {
             ids[type] = pool.load(context, resId, 1)

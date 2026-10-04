@@ -117,6 +117,12 @@ button.danger { background: var(--danger); color: white; border: none; }
 .topbar-value.mines { color: var(--danger); }
 .topbar-value.time { color: var(--accent); }
 .topbar-value.shift { color: var(--warning); }
+.topbar-value.shift.urgent { color: var(--danger); animation: pulse 0.5s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+.board-wrap.cooldown canvas { opacity: 0.65; transition: opacity 0.2s; }
 .topbar-label {
   font-size: 9px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;
   margin-top: 2px;
@@ -707,12 +713,12 @@ class SoundManager {
       this.ctx.resume().catch(() => {});
     }
   }
-  play(type) {
+  play(type, vol) {
     if (!this.enabled) return;
     this._ensureCtx();
     if (!this.ctx) return;
     switch (type) {
-      case 'REVEAL': this.beep(880, 0.06, 0.3, 'sine'); break;
+      case 'REVEAL': this.beep(880, 0.06, vol || 0.3, 'sine'); break;
       case 'EXPLODE': this.noise(0.45, 0.8, 0.3); this.beep(80, 0.45, 0.4, 'sine'); break;
       case 'FLAG':
         this.beep(1200, 0.08, 0.3, 'sine');
@@ -728,6 +734,7 @@ class SoundManager {
         this.noise(0.28, 0.15, 0.6);
         break;
       case 'CLICK': this.beep(1500, 0.035, 0.25, 'sine'); break;
+      case 'TICK': this.beep(1400, 0.04, vol || 0.5, 'square'); break;
     }
   }
   beep(freq, dur, vol, wave='sine', delay=0) {
@@ -881,6 +888,9 @@ class BoardRenderer {
     this.externalClickListener = null;
     this.onRevealListener = null;
     this.onFlagListener = null;
+
+    /** Timestamp (ms) до которого клики блокируются — защита от клика сразу после сдвига. */
+    this.shiftCooldownUntil = 0;
 
     this._downX = 0; this._downY = 0;
     this._downRow = -1; this._downCol = -1;
@@ -1245,6 +1255,13 @@ class BoardRenderer {
   _dispatchTap(isLong) {
     if (!this.inputEnabled) return;
     if (this._downRow < 0) return;
+    // Защита от клика в течение 1 секунды после сдвига мин.
+    // Предотвращает нечестную смерть: игрок видит клетку безопасной,
+    // тапает, но сдвиг уже случился и клетка стала миной.
+    if (performance.now() < this.shiftCooldownUntil) {
+      haptic(false);  // короткая вибрация — фидбек, что клик заблокирован
+      return;
+    }
     const isFlagAction = isLong ? !this.flagMode : this.flagMode;
     const ext = this.externalClickListener;
     if (ext) {
@@ -1702,8 +1719,18 @@ function initGameScreen() {
           haptic(false);
           App.sound.play('SHIFT');
           App.shiftRemainingSec = App.shiftInterval;
+          // Защита от клика в течение 1 секунды после сдвига
+          App.renderer.shiftCooldownUntil = performance.now() + 1000;
           updateMinesLabel();
           App.renderer.draw();
+          $('tvShift').classList.remove('urgent');
+        } else if (App.shiftRemainingSec <= 3) {
+          // Нарастающий тик в последние 3 секунды
+          const vol = 0.3 + (3 - App.shiftRemainingSec) * 0.2;  // 0.3, 0.5, 0.7
+          App.sound.play('TICK', vol);
+          $('tvShift').classList.add('urgent');
+        } else {
+          $('tvShift').classList.remove('urgent');
         }
         $('tvShift').textContent = `${App.shiftRemainingSec}с`;
       } else if (!App.engine.firstClickDone) {
@@ -1761,7 +1788,15 @@ function restartGame() {
           App.renderer.animateShift();
           haptic(false); App.sound.play('SHIFT');
           App.shiftRemainingSec = App.shiftInterval;
+          App.renderer.shiftCooldownUntil = performance.now() + 1000;
           updateMinesLabel(); App.renderer.draw();
+          $('tvShift').classList.remove('urgent');
+        } else if (App.shiftRemainingSec <= 3) {
+          const vol = 0.3 + (3 - App.shiftRemainingSec) * 0.2;
+          App.sound.play('TICK', vol);
+          $('tvShift').classList.add('urgent');
+        } else {
+          $('tvShift').classList.remove('urgent');
         }
         $('tvShift').textContent = `${App.shiftRemainingSec}с`;
       } else if (!App.engine.firstClickDone) {
@@ -2103,9 +2138,17 @@ function initMpGameScreen(isHost) {
             App.renderer.animateShift();
             App.sound.play('SHIFT');
             App.shiftRemainingSec = App.shiftInterval;
+            App.renderer.shiftCooldownUntil = performance.now() + 1000;
             updateMinesLabel();
             App.renderer.draw();
             broadcastMpState();
+            $('tvMpShift').classList.remove('urgent');
+          } else if (App.shiftRemainingSec <= 3) {
+            const vol = 0.3 + (3 - App.shiftRemainingSec) * 0.2;
+            App.sound.play('TICK', vol);
+            $('tvMpShift').classList.add('urgent');
+          } else {
+            $('tvMpShift').classList.remove('urgent');
           }
           $('tvMpShift').textContent = `${App.shiftRemainingSec}с`;
         } else if (App.engine && !App.engine.firstClickDone) {
@@ -2191,6 +2234,10 @@ function handleMpStateMessage(msg) {
   if (msg.t !== 'STATE') return;
   const e = GameEngine.deserialize(msg.engine);
   if (!e) return;
+  // Если у хоста только что был сдвиг (shiftsCount увеличился) — ставим кулдаун
+  if (App.engine && e.mode.shifts && e.shiftsCount > App.engine.shiftsCount) {
+    if (App.renderer) App.renderer.shiftCooldownUntil = performance.now() + 1000;
+  }
   App.engine = e;
   if (App.renderer) {
     App.renderer.rebuildAnims();
