@@ -10,6 +10,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import android.view.ViewConfiguration
 import kotlin.math.abs
@@ -19,6 +20,9 @@ import kotlin.math.max
  * Кастомная вьюшка, рисующая игровое поле сапёра.
  * Поддерживает: короткий тап = копать, долгое нажатие = флажок (настраиваемо),
  * режим «флажок» (если включён — короткий тап ставит флажок).
+ *
+ * Масштаб: pinch-to-zoom (от 1.0x до 3.0x) + двойной тап переключает 1x ↔ 2x.
+ * Сделано для близоруких игроков и крупных полей.
  *
  * Анимации:
  *  - reveal: при открытии клетки — масштаб 0.3 → 1.0 + альфа 0 → 1, ~250 мс
@@ -60,6 +64,45 @@ class GameView : View {
 
     /** Если false — тапы игнорируются (ход другого игрока в мультиплеере). */
     var inputEnabled: Boolean = true
+
+    /**
+     * Коэффициент масштабирования поля. 1.0 = «как влезло в экран».
+     * Пользователь может пинчить от 1.0 до 3.0 (для близоруких и крупных полей).
+     * Двойной тап переключает между 1.0 и 2.0.
+     */
+    var zoomFactor: Float = 1.0f
+        set(value) {
+            field = value.coerceIn(MIN_ZOOM, MAX_ZOOM)
+            requestLayout()
+            invalidate()
+        }
+
+    private val scaleDetector: ScaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            // Пока пользователь пинчит — просим родительский ScrollView не перехватывать.
+            parent?.requestDisallowInterceptTouchEvent(true)
+            return true
+        }
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            zoomFactor *= detector.scaleFactor
+            return true
+        }
+        override fun onScaleEnd(detector: ScaleGestureDetector) {
+            parent?.requestDisallowInterceptTouchEvent(false)
+        }
+    }).apply {
+        // Быстрый (low-latency) режим на новых API.
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
+                isQuickScaleEnabled = true
+            }
+        } catch (_: Throwable) {}
+    }
+
+    companion object {
+        const val MIN_ZOOM = 1.0f
+        const val MAX_ZOOM = 3.0f
+    }
 
     var onRevealListener: ((row: Int, col: Int, exploded: Boolean, won: Boolean) -> Unit)? = null
     var onFlagListener: ((row: Int, col: Int) -> Unit)? = null
@@ -300,14 +343,19 @@ class GameView : View {
             availW.toFloat() / engine.cols,
             availH.toFloat() / engine.rows
         ))
-        cellSize = minOf(
+        var baseCell = minOf(
             desiredCell,
             maxOf(availW.toFloat() / engine.cols, availH.toFloat() / engine.rows)
         )
         val maxCell = 80f * resources.displayMetrics.density
-        if (cellSize > maxCell) cellSize = maxCell
+        if (baseCell > maxCell) baseCell = maxCell
         val minCell = 18f * resources.displayMetrics.density
-        if (cellSize < minCell) cellSize = minCell
+        if (baseCell < minCell) baseCell = minCell
+
+        // Применяем масштабирование (pinch-to-zoom).
+        // Базовый размер — это «как влезло в экран», zoomFactor > 1 увеличивает клетки,
+        // и тогда родительский ScrollView позволяет прокручивать увеличенное поле.
+        cellSize = baseCell * zoomFactor
 
         val w = (cellSize * engine.cols).toInt()
         val h = (cellSize * engine.rows).toInt()
@@ -448,8 +496,23 @@ class GameView : View {
         paintNumber.alpha = 255
     }
 
+    /** Время последнего «UP» — для двойного тапа (toggle zoom). */
+    private var lastUpTimeMs: Long = 0L
+    private var lastUpX: Float = 0f
+    private var lastUpY: Float = 0f
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val engine = engine ?: return false
+
+        // Сначала отдаём событие пинч-детектору. Он сам поймёт, 1 палец или 2.
+        scaleDetector.onTouchEvent(event)
+        // Если пинч в процессе — НЕ обрабатываем как тап/долгое нажатие вообще.
+        if (scaleDetector.isInProgress) {
+            hasMoved = true
+            handler.removeCallbacks(longPressRunnable)
+            return true
+        }
+
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downX = event.x; downY = event.y
@@ -457,7 +520,15 @@ class GameView : View {
                 downRow = (event.y / cellSize).toInt().coerceIn(0, engine.rows - 1)
                 hasMoved = false
                 longPressFired = false
-                handler.postDelayed(longPressRunnable, longPressTimeout)
+                // Если только что был UP в радиусе 40px и за <300мс — это двойной тап,
+                // игнорируем long-press, ждём UP для toggling zoom.
+                val now = SystemClock.uptimeMillis()
+                val isDoubleClick = (now - lastUpTimeMs) < 300 &&
+                    abs(event.x - lastUpX) < 40f * resources.displayMetrics.density &&
+                    abs(event.y - lastUpY) < 40f * resources.displayMetrics.density
+                if (!isDoubleClick) {
+                    handler.postDelayed(longPressRunnable, longPressTimeout)
+                }
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
@@ -470,6 +541,27 @@ class GameView : View {
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 handler.removeCallbacks(longPressRunnable)
                 if (event.actionMasked == MotionEvent.ACTION_CANCEL) return true
+
+                val now = SystemClock.uptimeMillis()
+                val isDoubleClick = !longPressFired && !hasMoved &&
+                    (now - lastUpTimeMs) < 300 &&
+                    abs(event.x - lastUpX) < 40f * resources.displayMetrics.density &&
+                    abs(event.y - lastUpY) < 40f * resources.displayMetrics.density
+
+                if (isDoubleClick) {
+                    // Toggle zoom: 1.0 ↔ 2.0
+                    zoomFactor = if (zoomFactor > 1.5f) 1.0f else 2.0f
+                    lastUpTimeMs = 0L  // не даём тройной клик дать серию тоглов
+                    performHaptic()
+                    downRow = -1
+                    return true
+                }
+
+                // Запоминаем UP для возможного double-tap
+                lastUpTimeMs = now
+                lastUpX = event.x
+                lastUpY = event.y
+
                 if (!hasMoved && !longPressFired && downRow >= 0) {
                     if (!inputEnabled) return true
                     val ext = externalClickListener
