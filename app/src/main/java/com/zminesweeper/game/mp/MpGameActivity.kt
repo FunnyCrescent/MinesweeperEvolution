@@ -170,6 +170,8 @@ class MpGameActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnFlagMode).setOnClickListener {
             gameView.flagMode = !gameView.flagMode
             it.isSelected = gameView.flagMode
+            (it as Button).text = if (gameView.flagMode) "⛏" else "🚩"
+            sound?.play(SoundManager.Type.CLICK)
         }
         findViewById<Button>(R.id.btnMenu).setOnClickListener { confirmExit() }
 

@@ -88,7 +88,7 @@ class GameEngine {
         }
 
         // В классике и других режимах с лимитом — ставим стандартное число мин.
-        // В Анархии — случайное число (1..total).
+        // В Анархии — случайное число (1..total). Минимум 1 — гарантировано.
         mineCount = if (mode.hasMineLimit) {
             difficulty.mineCount
         } else {
@@ -96,6 +96,28 @@ class GameEngine {
             1 + rng.nextInt(total)   // 1..total включительно
         }
         placeMinesRandomly(emptyList())
+        // Защита: если somehow mineCount = 0 (например, на крошечном поле),
+        // принудительно ставим 1 мину в любую доступную клетку.
+        if (mineCount == 0) {
+            forcePlaceOneMine()
+        }
+    }
+
+    /** Принудительно ставит 1 мину в любую доступную закрытую клетку. */
+    private fun forcePlaceOneMine() {
+        val available = ArrayList<Pair<Int, Int>>()
+        for (r in 0 until rows) {
+            for (c in 0 until cols) {
+                if (!revealed[r][c] && !mines[r][c]) {
+                    available.add(r to c)
+                }
+            }
+        }
+        if (available.isNotEmpty()) {
+            val (r, c) = available[rng.nextInt(available.size)]
+            mines[r][c] = true
+            mineCount = 1
+        }
     }
 
     /**
@@ -119,7 +141,10 @@ class GameEngine {
             }
         }
         available.shuffle(rng)
-        val actual = minOf(target, available.size)
+        // Защита: если target = 0, но в Анархии должны быть мины — берём минимум 1.
+        // (target уже >= 1 для Анархии из initGame/shiftMines, но на всякий случай.)
+        val effectiveTarget = if (!mode.hasMineLimit) maxOf(1, target) else target
+        val actual = minOf(effectiveTarget, available.size)
         for (i in 0 until actual) {
             val (r, c) = available[i]
             mines[r][c] = true
@@ -193,6 +218,12 @@ class GameEngine {
 
         // Финальный проход: защищаем «цифры» от обнуления.
         enforceNumberedInvariant(numberedRevealed)
+
+        // Защита от 0 мин в Анархии: если после всех вычислений mineCount = 0,
+        // но есть доступные закрытые клетки — принудительно ставим 1 мину.
+        if (mineCount == 0) {
+            forcePlaceOneMine()
+        }
     }
 
     /**
