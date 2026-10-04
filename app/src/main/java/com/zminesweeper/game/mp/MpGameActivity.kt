@@ -48,6 +48,8 @@ class MpGameActivity : AppCompatActivity() {
 
     private var server: MultiplayerServer? = null
     private var client: MultiplayerClient? = null
+    private var relay: com.zminesweeper.game.net.WebSocketRelay? = null
+    private var useRelay: Boolean = false
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -136,33 +138,68 @@ class MpGameActivity : AppCompatActivity() {
         // Кто ходит первым — host (id=0).
         currentTurnId = 0
 
+        // relay flag — если true, используем WebSocket relay вместо TCP P2P
+        useRelay = intent.getBooleanExtra(EXTRA_USE_RELAY, false)
+
         // Подхватываем сетевой объект из контекста
         if (isHost) {
             engine = GameEngine().also { it.initGame(mode, difficulty) }
-            server = MpContextHolder.server
-            MpContextHolder.server = null
-            server?.onClientMessage = { clientId, msg -> handler.post { handleClientMessage(clientId, msg) } }
-            server?.onClientDisconnected = { clientId -> handler.post { handleClientDisconnect(clientId) } }
-            server?.onError = { msg -> handler.post { appendDebug("Ошибка: $msg") } }
+            if (useRelay) {
+                // WebSocket relay host
+                relay = MpContextHolder.relay
+                MpContextHolder.relay = null
+                relay?.onMessage = { obj -> handler.post { handleRelayMessageAsHost(obj) } }
+                relay?.onClose = { handler.post {
+                    AlertDialog.Builder(this)
+                        .setMessage("Соединение с сервером потеряно")
+                        .setCancelable(false)
+                        .setPositiveButton("OK") { _, _ -> finish() }
+                        .show()
+                } }
+                // Регистрируем handler для входящих от клиентов через Lobby (если активна)
+                MpContextHolder.clientMessageHandler = { clientId, msg ->
+                    handler.post { handleClientMessage(clientId, msg) }
+                }
+            } else {
+                server = MpContextHolder.server
+                MpContextHolder.server = null
+                server?.onClientMessage = { clientId, msg -> handler.post { handleClientMessage(clientId, msg) } }
+                server?.onClientDisconnected = { clientId -> handler.post { handleClientDisconnect(clientId) } }
+                server?.onError = { msg -> handler.post { appendDebug("Ошибка: $msg") } }
+            }
         } else {
             // У клиента engine будет создан при первом STATE от хоста
-            client = MpContextHolder.client
-            MpContextHolder.client = null
-            client?.onMessage = { msg -> handler.post { handleServerMessage(msg) } }
-            client?.onDisconnect = { handler.post {
-                AlertDialog.Builder(this)
-                    .setMessage("Соединение с хостом потеряно")
-                    .setCancelable(false)
-                    .setPositiveButton("OK") { _, _ -> finish() }
-                    .show()
-            } }
-            client?.onError = { msg -> handler.post { appendDebug("Ошибка: $msg") } }
+            if (useRelay) {
+                relay = MpContextHolder.relay
+                MpContextHolder.relay = null
+                relay?.onMessage = { obj -> handler.post { handleRelayMessageAsClient(obj) } }
+                relay?.onClose = { handler.post {
+                    AlertDialog.Builder(this)
+                        .setMessage("Соединение с сервером потеряно")
+                        .setCancelable(false)
+                        .setPositiveButton("OK") { _, _ -> finish() }
+                        .show()
+                } }
+            } else {
+                client = MpContextHolder.client
+                MpContextHolder.client = null
+                client?.onMessage = { msg -> handler.post { handleServerMessage(msg) } }
+                client?.onDisconnect = { handler.post {
+                    AlertDialog.Builder(this)
+                        .setMessage("Соединение с хостом потеряно")
+                        .setCancelable(false)
+                        .setPositiveButton("OK") { _, _ -> finish() }
+                        .show()
+                } }
+                client?.onError = { msg -> handler.post { appendDebug("Ошибка: $msg") } }
+            }
         }
 
         // Подключаем engine к view (у клиента — null, появится после первого STATE)
         gameView.engine = engine
         // Все локальные тапы идут через externalClickListener —我们自己 маршрутизируем.
         gameView.externalClickListener = { row, col, isFlag -> onLocalAction(row, col, isFlag) }
+        gameView.externalChordListener = { row, col -> onLocalChord(row, col) }
         gameView.onRevealListener = { row, col, exploded, won ->
             gameView.animateRevealWave(engine?.lastRevealed ?: emptyList(), row, col)
             if (exploded) sound?.play(SoundManager.Type.EXPLODE)
@@ -233,8 +270,67 @@ class MpGameActivity : AppCompatActivity() {
         } else {
             // Клиент — отправляем хосту
             val msg = if (isFlag) Message.Flag(row, col) else Message.Click(row, col)
-            client?.send(msg)
+            if (useRelay) {
+                sendToHostViaRelay(msg)
+            } else {
+                client?.send(msg)
+            }
         }
+    }
+
+    private fun onLocalChord(row: Int, col: Int) {
+        if (currentTurnId != myId) return
+        if (isHost) {
+            val e = engine ?: return
+            val n = e.adjacentMines(row, col)
+            if (n == 0) return
+            var flags = 0
+            val candidates = ArrayList<Pair<Int, Int>>()
+            for (dr in -1..1) for (dc in -1..1) {
+                if (dr == 0 && dc == 0) continue
+                val nr = row + dr; val nc = col + dc
+                if (nr !in 0 until e.rows || nc !in 0 until e.cols) continue
+                if (e.isFlagged(nr, nc)) flags++
+                else if (!e.isRevealed(nr, nc)) candidates.add(nr to nc)
+            }
+            if (flags != n) return
+            val allRevealed = ArrayList<Pair<Int, Int>>()
+            var exploded = false
+            var won = false
+            for ((r, c) in candidates) {
+                val res = e.reveal(r, c)
+                if (res == GameEngine.RevealResult.EXPLODED) exploded = true
+                else if (res == GameEngine.RevealResult.WON) won = true
+                allRevealed.addAll(e.lastRevealed)
+                if (exploded) break
+            }
+            gameView.animateRevealWave(allRevealed, row, col)
+            gameView.invalidate()
+            updateMinesLabel()
+            handleHostRevealResult(row, col,
+                if (exploded) GameEngine.RevealResult.EXPLODED
+                else if (won) GameEngine.RevealResult.WON
+                else GameEngine.RevealResult.REVEALED)
+            advanceTurnIfNeeded()
+            broadcastState()
+        } else {
+            val msg = Message.Chord(row, col)
+            if (useRelay) {
+                sendToHostViaRelay(msg)
+            } else {
+                client?.send(msg)
+            }
+        }
+    }
+
+    /** Отправить сообщение хосту через relay-сервер (wrapper для SEND_TO_HOST). */
+    private fun sendToHostViaRelay(message: Message) {
+        val r = relay ?: return
+        val wrapper = org.json.JSONObject().apply {
+            put("t", "SEND_TO_HOST")
+            put("payload", message.toJson())
+        }
+        r.send(wrapper)
     }
 
     private fun handleHostRevealResult(row: Int, col: Int, res: GameEngine.RevealResult) {
@@ -274,7 +370,86 @@ class MpGameActivity : AppCompatActivity() {
             turn = currentTurnId,
             elapsed = elapsedSec,
         )
-        server?.broadcast(msg)
+        if (useRelay) {
+            relay?.broadcast(msg)
+        } else {
+            server?.broadcast(msg)
+        }
+    }
+
+    /** Обработка входящих relay-сообщений на стороне хоста. */
+    private fun handleRelayMessageAsHost(obj: org.json.JSONObject) {
+        val t = obj.optString("t")
+        when (t) {
+            "LOBBY" -> {
+                // Список игроков обновился — синхронизируем
+                val arr = obj.optJSONArray("players")
+                val newPlayers = ArrayList<Message.PlayerInfo>()
+                if (arr != null) {
+                    for (i in 0 until arr.length()) {
+                        val p = arr.getJSONObject(i)
+                        newPlayers.add(Message.PlayerInfo(
+                            p.optInt("id"), p.optString("name"), p.optBoolean("isHost")
+                        ))
+                    }
+                }
+                players = newPlayers
+            }
+            "PLAYER_LEFT" -> {
+                val pid = obj.optInt("playerId")
+                handleClientDisconnect(pid)
+            }
+            // Клиентские сообщения приходят с senderId (см. server.js)
+            "CLICK", "FLAG", "CHORD" -> {
+                val senderId = obj.optInt("senderId", -1)
+                if (senderId < 0) return
+                val msg: Message = when (t) {
+                    "CLICK" -> Message.Click(obj.optInt("row"), obj.optInt("col"))
+                    "FLAG" -> Message.Flag(obj.optInt("row"), obj.optInt("col"))
+                    "CHORD" -> Message.Chord(obj.optInt("row"), obj.optInt("col"))
+                    else -> return
+                }
+                handleClientMessage(senderId, msg)
+            }
+            else -> {}
+        }
+    }
+
+    /** Обработка входящих relay-сообщений на стороне клиента. */
+    private fun handleRelayMessageAsClient(obj: org.json.JSONObject) {
+        val t = obj.optString("t")
+        when (t) {
+            "STATE" -> {
+                val engineStr = obj.optString("engine")
+                val e = GameEngine.deserialize(engineStr)
+                if (e != null) {
+                    if (engine != null && e.mode.shifts && e.shiftsCount > (engine?.shiftsCount ?: 0)) {
+                        gameView.shiftCooldownUntilMs = android.os.SystemClock.uptimeMillis() + 1000
+                    }
+                    engine = e
+                    gameView.engine = e
+                    currentTurnId = obj.optInt("turn")
+                    elapsedSec = obj.optInt("elapsed")
+                    findViewById<TextView>(R.id.tvTime).text = formatTime(elapsedSec)
+                    updateMinesLabel()
+                    updateTurnLabel()
+                }
+            }
+            "OVER" -> {
+                showGameOver(obj.optString("reason"), obj.optInt("loserId"), obj.optInt("winnerId"))
+            }
+            "GOODBYE" -> {
+                AlertDialog.Builder(this)
+                    .setMessage("Хост закрыл игру")
+                    .setCancelable(false)
+                    .setPositiveButton("OK") { _, _ -> finish() }
+                    .show()
+            }
+            "ERROR" -> {
+                appendDebug("Ошибка: ${obj.optString("message")}")
+            }
+            else -> {}
+        }
     }
 
     /** Обработка входящих сообщений от хоста (на стороне клиента). */
@@ -335,6 +510,11 @@ class MpGameActivity : AppCompatActivity() {
                 updateMinesLabel()
                 broadcastState()
             }
+            is Message.Chord -> {
+                if (clientId != currentTurnId) return
+                // Клиент прислал chord — выполняем на хосте
+                onLocalChord(msg.row, msg.col)
+            }
             is Message.Leave, Message.Goodbye -> {
                 handleClientDisconnect(clientId)
             }
@@ -360,7 +540,8 @@ class MpGameActivity : AppCompatActivity() {
     private fun endGame(reason: String, loserId: Int, winnerId: Int) {
         handler.removeCallbacks(shiftRunnable)
         handler.removeCallbacks(tickRunnable)
-        server?.broadcast(Message.Over(reason, loserId, winnerId))
+        if (useRelay) relay?.broadcast(Message.Over(reason, loserId, winnerId))
+        else server?.broadcast(Message.Over(reason, loserId, winnerId))
         showGameOver(reason, loserId, winnerId)
     }
 
@@ -417,11 +598,23 @@ class MpGameActivity : AppCompatActivity() {
             .setMessage("Игра будет прервана для всех игроков.")
             .setPositiveButton("Выйти") { _, _ ->
                 if (isHost) {
-                    server?.broadcast(Message.Goodbye)
-                    server?.stop()
+                    if (useRelay) {
+                        relay?.broadcast(Message.Goodbye)
+                        relay?.send(org.json.JSONObject().apply { put("t", "LEAVE") })
+                        relay?.disconnect()
+                    } else {
+                        server?.broadcast(Message.Goodbye)
+                        server?.stop()
+                    }
                 } else {
-                    client?.send(Message.Leave)
-                    client?.disconnect()
+                    if (useRelay) {
+                        sendToHostViaRelay(Message.Leave)
+                        relay?.send(org.json.JSONObject().apply { put("t", "LEAVE") })
+                        relay?.disconnect()
+                    } else {
+                        client?.send(Message.Leave)
+                        client?.disconnect()
+                    }
                 }
                 finish()
             }
@@ -480,8 +673,11 @@ class MpGameActivity : AppCompatActivity() {
         handler.removeCallbacks(shiftRunnable)
         sound?.release()
         sound = null
+        // Очищаем handler relay-хоста, если он был установлен
+        MpContextHolder.clientMessageHandler = null
         server?.stop()
         client?.disconnect()
+        relay?.disconnect()
     }
 
     private fun formatTime(sec: Int): String {
@@ -499,5 +695,6 @@ class MpGameActivity : AppCompatActivity() {
         const val EXTRA_MY_ID = "extra_my_id"
         const val EXTRA_NICKNAME = "extra_nickname"
         const val EXTRA_PLAYERS = "extra_players_json"
+        const val EXTRA_USE_RELAY = "extra_use_relay"
     }
 }

@@ -227,8 +227,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 
   <button id="btnContinue" class="primary" style="display:none">Продолжить</button>
   <button id="btnNewGame" class="primary">Новая игра</button>
-  <button id="btnMpHost" class="secondary">Создать игру (хост)</button>
-  <button id="btnMpJoin" class="secondary">Подключиться к игре</button>
+  <button id="btnMpHost" class="secondary">Создать игру (P2P)</button>
+  <button id="btnMpJoin" class="secondary">Подключиться (P2P)</button>
+  <button id="btnMpRelayHost" class="secondary">Создать игру на сервере (кроссплат)</button>
+  <button id="btnMpRelayJoin" class="secondary">Подключиться через сервер</button>
 
   <div class="field-label">Режим</div>
   <div id="modeCards"></div>
@@ -299,9 +301,67 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   <button class="secondary" id="btnCloseLobby">Закрыть лобби</button>
 </div>
 
+<!-- =================== MP RELAY HOST LOBBY =================== -->
+<div id="screen-relay-host" class="screen scroll">
+  <h1>Лобби на сервере</h1>
+
+  <div class="field-label">URL relay-сервера</div>
+  <input class="input mono" id="etRelayHostUrl" placeholder="wss://your-relay.onrender.com" autocomplete="off">
+
+  <button class="primary" id="btnRelayHostCreate">Создать комнату</button>
+
+  <div id="relayHostInfo" style="display:none">
+    <div class="peer-id-display">
+      <div class="label">Код комнаты (поделись с друзьями)</div>
+      <div class="id" id="tvRelayRoomId">…</div>
+      <div class="hint">Скопируй код и отправь другу. Он введёт его в «Подключиться через сервер».</div>
+    </div>
+    <div class="muted" style="margin-bottom:12px">Сервер: <span id="tvRelayHostUrl"></span></div>
+
+    <button class="secondary" id="btnRelayHostNick">Ник: Хост</button>
+    <button class="secondary" id="btnRelayPickMode">Режим: Классика</button>
+    <button class="secondary" id="btnRelayPickDiff">Сложность: Новичок</button>
+    <button class="secondary" id="btnRelayPickShift">Сдвиг: 10 сек</button>
+
+    <div class="field-label">Игроки в лобби:</div>
+    <div class="player-list" id="relayHostPlayers"></div>
+
+    <div class="log" id="tvRelayHostLog"></div>
+
+    <div class="spacer"></div>
+    <button class="primary" id="btnRelayStartMp">Начать игру</button>
+    <button class="secondary" id="btnRelayCloseLobby">Закрыть лобби</button>
+  </div>
+</div>
+
+<!-- =================== MP RELAY JOIN CLIENT =================== -->
+<div id="screen-relay-join" class="screen scroll">
+  <h1>Подключиться через сервер</h1>
+
+  <div class="field-label">URL relay-сервера</div>
+  <input class="input mono" id="etRelayClientUrl" placeholder="wss://your-relay.onrender.com" autocomplete="off">
+
+  <div class="field-label">Код комнаты хоста</div>
+  <input class="input mono" id="etRelayRoomId" placeholder="ABC123" autocomplete="off" style="text-transform:uppercase">
+
+  <div class="field-label">Ник</div>
+  <input class="input" id="etRelayNick" placeholder="Твой ник" maxlength="20" autocomplete="off">
+
+  <button class="primary" id="btnRelayConnect">Подключиться</button>
+  <button class="secondary" id="btnRelayDisconnect" style="display:none">Отключиться</button>
+
+  <div class="field-label">Игроки в лобби:</div>
+  <div class="player-list" id="tvRelayClientPlayers"></div>
+
+  <div class="log" id="tvRelayClientLog"></div>
+
+  <div class="spacer"></div>
+  <button class="secondary" id="btnBackRelayJoin">Назад</button>
+</div>
+
 <!-- =================== MP JOIN CLIENT =================== -->
 <div id="screen-join-client" class="screen scroll">
-  <h1>Подключиться</h1>
+  <h1>Подключиться (P2P)</h1>
 
   <div class="field-label">Peer ID хоста</div>
   <input class="input mono" id="etHostId" placeholder="напр. abc123-def456" autocomplete="off">
@@ -886,6 +946,7 @@ class BoardRenderer {
     this.flagMode = false;
     this.inputEnabled = true;
     this.externalClickListener = null;
+    this.externalChordListener = null;
     this.onRevealListener = null;
     this.onFlagListener = null;
 
@@ -1227,8 +1288,18 @@ class BoardRenderer {
       Math.abs(this._downX - this._lastUpX) < this.DOUBLE_TAP_DIST &&
       Math.abs(this._downY - this._lastUpY) < this.DOUBLE_TAP_DIST;
     if (isDoubleClick) {
-      this.zoomFactor = this.zoomFactor > 1.5 ? 1.0 : 2.0;
-      this.measure();
+      // Если двойной тап по ОТКРЫТОЙ клетке с цифрой — chord (открыть всех соседей,
+      // если число флагов вокруг == числу в клетке). Иначе — toggle zoom.
+      const e = this.getEngine();
+      if (e && this._downRow >= 0 &&
+          e.isRevealed(this._downRow, this._downCol) &&
+          !e.isMine(this._downRow, this._downCol) &&
+          e.adjacentMines(this._downRow, this._downCol) > 0) {
+        this._doChord(this._downRow, this._downCol);
+      } else {
+        this.zoomFactor = this.zoomFactor > 1.5 ? 1.0 : 2.0;
+        this.measure();
+      }
       this._lastUpTime = 0;
       this._downRow = -1;
       return;
@@ -1287,6 +1358,70 @@ class BoardRenderer {
     else if (res === 'REVEALED') this.onRevealListener && this.onRevealListener(row, col, false, false);
   }
 
+  /**
+   * Chord: открыть всех не-флагнутых соседей открытой клетки с числом N,
+   * если вокруг стоит ровно N флагов. Стандартное правило сапёра.
+   * Если среди открываемых окажется мина — взрыв (как обычно).
+   */
+  _doChord(row, col) {
+    if (!this.inputEnabled) return;
+    if (performance.now() < this.shiftCooldownUntil) {
+      haptic(false);
+      return;
+    }
+    const e = this.getEngine();
+    if (!e) return;
+    const n = e.adjacentMines(row, col);
+    if (n === 0) return;
+
+    // Считаем флаги вокруг, собираем кандидатов на открытие
+    let flagCount = 0;
+    const candidates = [];
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nr = row + dr, nc = col + dc;
+        if (nr < 0 || nr >= e.rows || nc < 0 || nc >= e.cols) continue;
+        if (e.isFlagged(nr, nc)) flagCount++;
+        else if (!e.isRevealed(nr, nc)) candidates.push([nr, nc]);
+      }
+    }
+    if (flagCount !== n) return;  // не совпало — ничего не делаем
+
+    // External mode (MP) — отправляем CHORD хосту, он выполнит и разошлёт STATE
+    const ext = this.externalClickListener;
+    if (ext) {
+      // Используем externalChordListener если задан, иначе ничего
+      if (this.externalChordListener) {
+        this.externalChordListener(row, col);
+      }
+      return;
+    }
+
+    // Локальный режим — открываем всех кандидатов
+    const allRevealed = [];
+    let exploded = false, won = false;
+    for (const [r, c] of candidates) {
+      const res = e.reveal(r, c);
+      if (res === 'EXPLODED') exploded = true;
+      else if (res === 'WON') won = true;
+      if (e._lastRevealed && e._lastRevealed.length) {
+        for (const cell of e._lastRevealed) allRevealed.push(cell);
+      }
+      if (exploded) break;
+    }
+    if (allRevealed.length > 0) {
+      this.animateRevealWave(allRevealed, row, col);
+    }
+    this.draw();
+    if (exploded) this.onRevealListener && this.onRevealListener(row, col, true, false);
+    else if (won) this.onRevealListener && this.onRevealListener(row, col, false, true);
+    else if (allRevealed.length > 0) {
+      this.onRevealListener && this.onRevealListener(row, col, false, false);
+      haptic(false);
+    }
+  }
+
   _onMouseDown(e) {
     if (e.button === 2) {
       const rect = this.canvas.getBoundingClientRect();
@@ -1328,6 +1463,7 @@ const MpProtocol = {
   JoinAck: (nickname, playerId) => ({ t: 'JOIN_ACK', nickname, playerId }),
   Click: (row, col) => ({ t: 'CLICK', row, col }),
   Flag: (row, col) => ({ t: 'FLAG', row, col }),
+  Chord: (row, col) => ({ t: 'CHORD', row, col }),
   Leave: () => ({ t: 'LEAVE' }),
   Lobby: (players) => ({ t: 'LOBBY', players }),
   Start: (mode, difficulty, shiftInterval, players, hostSeed) => ({ t: 'START', mode, difficulty, shiftInterval, players, hostSeed }),
@@ -1444,6 +1580,168 @@ class MpClient {
   }
 }
 
+// ============================ MULTIPLAYER via WebSocket Relay ============================
+/**
+ * Bridge: тот же интерфейс что у MpHost/MpClient, но через WebSocket relay.
+ * Позволяет Android APK и HTML играть вместе.
+ *
+ * URL релея задаёт пользователь — может быть wss://your-relay.onrender.com
+ * или ws://localhost:8080 для локального теста.
+ *
+ * Хост: CREATE_ROOM → получает roomId (6 символов) → даёт друзьям.
+ * Клиент: JOIN_ROOM с этим roomId.
+ *
+ * Архитектура host-authoritative: хост шлёт BROADCAST (STATE/START/OVER),
+ * клиенты шлют SEND_TO_HOST (CLICK/FLAG/CHORD).
+ */
+
+class MpRelayHost {
+  constructor(serverUrl, onClientMessage, onClientConnected, onClientDisconnected, onError) {
+    this.serverUrl = serverUrl;
+    this.ws = null;
+    this.roomId = null;
+    this.playerId = 0;
+    this.players = [{ id: 0, name: '', isHost: true }];  // host будет добавлен при CREATE_ROOM
+    this.onClientMessage = onClientMessage;
+    this.onClientConnected = onClientConnected;
+    this.onClientDisconnected = onClientDisconnected;
+    this.onError = onError;
+  }
+  start(hostNickname) {
+    this.players[0].name = hostNickname;
+    return new Promise((resolve, reject) => {
+      try {
+        this.ws = new WebSocket(this.serverUrl);
+      } catch (err) { reject(err); return; }
+      this.ws.onopen = () => {
+        this.ws.send(JSON.stringify({ t: 'CREATE_ROOM', nickname: hostNickname }));
+      };
+      this.ws.onmessage = (ev) => {
+        let msg;
+        try { msg = JSON.parse(ev.data); } catch (e) { return; }
+        if (msg.t === 'ROOM_CREATED') {
+          this.roomId = msg.roomId;
+          this.playerId = msg.playerId;
+          resolve(msg.roomId);
+        } else if (msg.t === 'LOBBY') {
+          // Список игроков обновился. Определяем, кто подключился/отключился.
+          const newPlayers = msg.players || [];
+          // Найти новых
+          for (const p of newPlayers) {
+            if (p.id !== 0 && !this.players.find(x => x.id === p.id)) {
+              this.players.push(p);
+              this.onClientConnected(p.id, p.name);
+            }
+          }
+          // Найти ушедших
+          this.players = this.players.filter(p => newPlayers.find(x => x.id === p.id));
+        } else if (msg.t === 'PLAYER_LEFT') {
+          const idx = this.players.findIndex(p => p.id === msg.playerId);
+          if (idx >= 0) {
+            const removed = this.players.splice(idx, 1)[0];
+            this.onClientDisconnected(msg.playerId);
+          }
+        } else if (msg.t === 'ERROR') {
+          this.onError(msg.message);
+        } else {
+          // Relay-сообщение от клиента (CLICK/FLAG/CHORD)
+          // У server нет clientId в payload — придётся искать по... хм.
+          // Реализация: сервер не передаёт clientId в SEND_TO_HOST.
+          // Это упрощение — будем считать что от "текущего ходящего" клиента.
+          // Чтобы знать clientId — сервер должен добавить senderId. См. ниже фикс в server.js.
+          // Пока: берём из msg.senderId если есть, иначе 0 (хост сам себе).
+          const senderId = msg.senderId !== undefined ? msg.senderId : 0;
+          this.onClientMessage(senderId, msg);
+        }
+      };
+      this.ws.onerror = (err) => {
+        this.onError('WebSocket error');
+        reject(err);
+      };
+      this.ws.onclose = () => {
+        // Если закрылось без явного stop — это disconnect
+      };
+    });
+  }
+  broadcast(message) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try { this.ws.send(JSON.stringify({ t: 'BROADCAST', payload: message })); } catch (e) {}
+    }
+  }
+  sendTo(clientId, message) {
+    // На relay-сервере sendTo не поддерживается напрямую — но мы можем добавить.
+    // Пока просто broadcast.
+    this.broadcast(message);
+  }
+  stop() {
+    this.broadcast(MpProtocol.Goodbye());
+    if (this.ws) {
+      try { this.ws.send(JSON.stringify({ t: 'LEAVE' })); } catch (e) {}
+      try { this.ws.close(); } catch (e) {}
+      this.ws = null;
+    }
+  }
+}
+
+class MpRelayClient {
+  constructor(serverUrl, roomId, onMessage, onDisconnect, onError) {
+    this.serverUrl = serverUrl;
+    this.roomId = roomId;
+    this.ws = null;
+    this.playerId = -1;
+    this.myNickname = '';
+    this.onMessage = onMessage;
+    this.onDisconnect = onDisconnect;
+    this.onError = onError;
+  }
+  connect(myNickname) {
+    this.myNickname = myNickname;
+    return new Promise((resolve, reject) => {
+      try {
+        this.ws = new WebSocket(this.serverUrl);
+      } catch (err) { reject(err); return; }
+      this.ws.onopen = () => {
+        this.ws.send(JSON.stringify({ t: 'JOIN_ROOM', roomId: this.roomId, nickname: myNickname }));
+      };
+      this.ws.onmessage = (ev) => {
+        let msg;
+        try { msg = JSON.parse(ev.data); } catch (e) { return; }
+        if (msg.t === 'JOIN_ACK') {
+          this.playerId = msg.playerId;
+          this.myNickname = msg.nickname;
+          resolve();
+        } else if (msg.t === 'ERROR') {
+          this.onError(msg.message);
+        } else {
+          // Relay-сообщение от хоста (STATE/START/OVER/LOBBY/GOODBYE)
+          this.onMessage(msg);
+        }
+      };
+      this.ws.onerror = () => {
+        this.onError('WebSocket error');
+        reject(new Error('WebSocket error'));
+      };
+      this.ws.onclose = () => {
+        this.onDisconnect();
+      };
+    });
+  }
+  send(message) {
+    // Клиент шлёт хосту через SEND_TO_HOST
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      try { this.ws.send(JSON.stringify({ t: 'SEND_TO_HOST', payload: message })); } catch (e) {}
+    }
+  }
+  disconnect() {
+    if (this.ws) {
+      try { this.ws.send(JSON.stringify({ t: 'LEAVE' })); } catch (e) {}
+      try { this.ws.close(); } catch (e) {}
+      this.ws = null;
+    }
+    this.onDisconnect();
+  }
+}
+
 // ============================ APP NAVIGATION & UI ============================
 const App = {
   engine: null,
@@ -1546,6 +1844,8 @@ function initMenu() {
   $('btnStats').onclick = showStats;
   $('btnMpHost').onclick = () => ensureNickname(() => startMpHost());
   $('btnMpJoin').onclick = () => ensureNickname(() => { showScreen('screen-join-client'); });
+  $('btnMpRelayHost').onclick = () => ensureNickname(() => showScreen('screen-relay-host'));
+  $('btnMpRelayJoin').onclick = () => ensureNickname(() => showScreen('screen-relay-join'));
   updateContinueButton();
 }
 function buildDiffButtons() {
@@ -1969,7 +2269,7 @@ function handleHostClientMessage(clientId, msg) {
     broadcastLobby();
     refreshHostPlayers();
     appendLobbyLog(`${finalNick} присоединился`);
-  } else if (msg.t === 'CLICK' || msg.t === 'FLAG') {
+  } else if (msg.t === 'CLICK' || msg.t === 'FLAG' || msg.t === 'CHORD') {
     handleMpClientAction(clientId, msg);
   } else if (msg.t === 'LEAVE' || msg.t === 'GOODBYE') {
     const removed = App.players.find(p => p.id === clientId);
@@ -2008,6 +2308,232 @@ function initJoinScreen() {
     if (App.mpClient) { App.mpClient.disconnect(); App.mpClient = null; }
     showScreen('screen-menu'); updateContinueButton();
   };
+}
+
+// ----- RELAY HOST (WebSocket server) -----
+function initRelayScreens() {
+  // Default URLs (last used)
+  $('etRelayHostUrl').value = SaveManager.getStr('relay_url', '');
+  $('etRelayClientUrl').value = SaveManager.getStr('relay_url', '');
+  $('etRelayNick').value = SaveManager.nickname() || '';
+
+  // HOST: создать комнату
+  $('btnRelayHostCreate').onclick = () => {
+    const url = $('etRelayHostUrl').value.trim();
+    if (!url) { toast('Введи URL сервера'); return; }
+    if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
+      toast('URL должен начинаться с ws:// или wss://'); return;
+    }
+    SaveManager.setStr('relay_url', url);
+    const nick = SaveManager.nickname() || 'Хост';
+    startRelayHost(url, nick);
+  };
+
+  // HOST: никнейм, режим, сложность, сдвиг — те же диалоги что и для P2P
+  $('btnRelayHostNick').onclick = promptRelayHostNickname;
+  $('btnRelayPickMode').onclick = () => pickRelayOption('mode');
+  $('btnRelayPickDiff').onclick = () => pickRelayOption('diff');
+  $('btnRelayPickShift').onclick = () => pickRelayOption('shift');
+  $('btnRelayStartMp').onclick = startRelayGame;
+  $('btnRelayCloseLobby').onclick = () => {
+    showModal('Закрыть лобби?', '<p>Игроки будут отключены.</p>', [
+      { label: 'Закрыть', class: 'danger', onClick: () => {
+        if (App.mpHost) App.mpHost.stop();
+        App.mpHost = null; App.isMpHost = false;
+        showScreen('screen-menu'); updateContinueButton();
+      }},
+      { label: 'Отмена' }
+    ]);
+  };
+
+  // CLIENT: подключиться к комнате
+  $('btnRelayConnect').onclick = () => {
+    const url = $('etRelayClientUrl').value.trim();
+    const roomId = $('etRelayRoomId').value.trim().toUpperCase();
+    const nick = $('etRelayNick').value.trim() || 'Игрок';
+    if (!url) { toast('Введи URL сервера'); return; }
+    if (!roomId) { toast('Введи код комнаты'); return; }
+    SaveManager.setStr('relay_url', url);
+    SaveManager.setNickname(nick);
+    App.myNickname = nick;
+    $('btnRelayConnect').disabled = true;
+    $('btnRelayDisconnect').style.display = 'block';
+    appendRelayClientLog(`Подключаемся к ${url}, комната ${roomId}…`);
+    startRelayClient(url, roomId, nick);
+  };
+  $('btnRelayDisconnect').onclick = () => {
+    if (App.mpClient) { App.mpClient.disconnect(); App.mpClient = null; }
+    resetRelayClientButtons();
+  };
+  $('btnBackRelayJoin').onclick = () => {
+    if (App.mpClient) { App.mpClient.disconnect(); App.mpClient = null; }
+    showScreen('screen-menu'); updateContinueButton();
+  };
+}
+
+function startRelayHost(url, nick) {
+  App.players = [{ id: 0, name: nick, isHost: true }];
+  App.myId = 0;
+  App.myNickname = nick;
+  $('tvRelayHostLog').textContent = '';
+  appendRelayHostLog(`Подключаемся к ${url}…`);
+
+  App.isMpHost = true;
+  App.mpHost = new MpRelayHost(url,
+    (clientId, msg) => handleHostClientMessage(clientId, msg),
+    (clientId, name) => {
+      appendRelayHostLog(`${name} подключился`);
+    },
+    (clientId) => {
+      const removed = App.players.find(p => p.id === clientId);
+      App.players = App.players.filter(p => p.id !== clientId);
+      if (removed) appendRelayHostLog(`${removed.name} отключился`);
+      refreshRelayHostPlayers();
+      broadcastLobby();
+    },
+    (msg) => appendRelayHostLog(`Ошибка: ${msg}`)
+  );
+  App.mpHost.start(nick).then((roomId) => {
+    $('tvRelayRoomId').textContent = roomId;
+    $('tvRelayHostUrl').textContent = url;
+    $('relayHostInfo').style.display = 'block';
+    $('btnRelayHostNick').textContent = `Ник: ${nick}`;
+    $('btnRelayPickMode').textContent = `Режим: ${App.selectedMode.display}`;
+    $('btnRelayPickDiff').textContent = `Сложность: ${App.selectedDiff.display}`;
+    $('btnRelayPickShift').textContent = `Сдвиг: ${SaveManager.shiftInterval()} сек`;
+    refreshRelayHostPlayers();
+    appendRelayHostLog(`Комната создана. Код: ${roomId}`);
+  }).catch((err) => {
+    appendRelayHostLog(`Не удалось подключиться: ${err.message || err}`);
+  });
+}
+
+function appendRelayHostLog(text) {
+  const el = $('tvRelayHostLog');
+  el.textContent = el.textContent ? `${el.textContent}\n${text}` : text;
+}
+
+function refreshRelayHostPlayers() {
+  const c = $('relayHostPlayers');
+  if (!c) return;
+  c.innerHTML = '';
+  App.players.forEach((p, idx) => {
+    const item = document.createElement('div');
+    item.className = 'player-list-item' + (p.isHost ? ' host' : '');
+    item.textContent = `${idx + 1}. ${p.name}${p.isHost ? '  (хост)' : ''}`;
+    c.appendChild(item);
+  });
+}
+
+function promptRelayHostNickname() {
+  const input = document.createElement('input');
+  input.className = 'input'; input.value = App.myNickname;
+  $('modalBody').innerHTML = ''; $('modalBody').appendChild(input);
+  $('modalActions').innerHTML = '';
+  const ok = document.createElement('button');
+  ok.className = 'primary'; ok.textContent = 'OK';
+  ok.onclick = () => {
+    const name = input.value.trim() || 'Хост';
+    const existing = App.players.filter(p => p.id !== App.myId).map(p => p.name);
+    App.myNickname = deduplicateNickname(name, existing);
+    const me = App.players.find(p => p.id === App.myId);
+    if (me) me.name = App.myNickname;
+    $('btnRelayHostNick').textContent = `Ник: ${App.myNickname}`;
+    refreshRelayHostPlayers();
+    broadcastLobby();
+    SaveManager.setNickname(App.myNickname);
+    closeModal();
+  };
+  const cancel = document.createElement('button');
+  cancel.className = 'secondary'; cancel.textContent = 'Отмена';
+  cancel.onclick = closeModal;
+  $('modalActions').appendChild(ok); $('modalActions').appendChild(cancel);
+  $('modalTitle').textContent = 'Ник хоста';
+  $('modal').classList.add('active');
+}
+
+function pickRelayOption(kind) {
+  if (kind === 'mode') {
+    const modes = Object.values(GameMode);
+    const body = modes.map((m, i) =>
+      `<button class="secondary" data-idx="${i}" style="margin-bottom:6px">${m.display} — ${m.shortDesc}</button>`
+    ).join('');
+    showModal('Режим игры', body, []);
+    $('modalActions').innerHTML = '';
+    $('modalBody').querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        App.selectedMode = modes[parseInt(btn.dataset.idx, 10)];
+        $('btnRelayPickMode').textContent = `Режим: ${App.selectedMode.display}`;
+        closeModal();
+      };
+    });
+  } else if (kind === 'diff') {
+    const diffs = Object.values(Difficulty);
+    const body = diffs.map((d, i) =>
+      `<button class="secondary" data-idx="${i}" style="margin-bottom:6px">${d.display} — ${d.shortDesc}</button>`
+    ).join('');
+    showModal('Сложность', body, []);
+    $('modalActions').innerHTML = '';
+    $('modalBody').querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        App.selectedDiff = diffs[parseInt(btn.dataset.idx, 10)];
+        $('btnRelayPickDiff').textContent = `Сложность: ${App.selectedDiff.display}`;
+        closeModal();
+      };
+    });
+  } else if (kind === 'shift') {
+    const body = '<input type="range" id="shiftRange" min="3" max="30" value="' + SaveManager.shiftInterval() + '">' +
+      `<div class="muted" style="text-align:center;margin-top:8px"><span id="shiftVal">${SaveManager.shiftInterval()} сек</span></div>`;
+    showModal('Интервал сдвига', body, [
+      { label: 'OK', class: 'primary', onClick: () => {
+        SaveManager.setShiftInterval(parseInt($('shiftRange').value, 10));
+        $('btnRelayPickShift').textContent = `Сдвиг: ${SaveManager.shiftInterval()} сек`;
+      }},
+      { label: 'Отмена' }
+    ]);
+    $('shiftRange').oninput = (e) => $('shiftVal').textContent = e.target.value + ' сек';
+  }
+}
+
+function startRelayGame() {
+  App.mode = App.selectedMode;
+  App.difficulty = App.selectedDiff;
+  App.engine = new GameEngine();
+  App.engine.initGame(App.mode, App.difficulty);
+  App.players = App.players.slice();
+  App.currentTurnId = 0;
+  // Шлём START через relay
+  App.mpHost.broadcast(MpProtocol.Start(
+    App.mode.key, App.difficulty.key, SaveManager.shiftInterval(),
+    App.players, Date.now()
+  ));
+  showScreen('screen-mp-game');
+  initMpGameScreen(true);
+}
+
+function startRelayClient(url, roomId, nick) {
+  App.isMpClient = true;
+  App.mpClient = new MpRelayClient(url, roomId,
+    (msg) => handleClientServerMessage(msg),
+    () => { appendRelayClientLog('Отключено от хоста'); resetRelayClientButtons(); },
+    (msg) => { appendRelayClientLog(`Ошибка: ${msg}`); resetRelayClientButtons(); }
+  );
+  App.mpClient.connect(nick).then(() => {
+    appendRelayClientLog(`Подключён как ${App.mpClient.myNickname} (#${App.mpClient.playerId})`);
+    App.myId = App.mpClient.playerId;
+    App.myNickname = App.mpClient.myNickname;
+  }).catch((err) => {
+    appendRelayClientLog(`Ошибка: ${err.message || err}`);
+  });
+}
+
+function appendRelayClientLog(text) {
+  const el = $('tvRelayClientLog');
+  el.textContent = el.textContent ? `${el.textContent}\n${text}` : text;
+}
+function resetRelayClientButtons() {
+  $('btnRelayConnect').disabled = false;
+  $('btnRelayDisconnect').style.display = 'none';
 }
 function resetJoinButtons() {
   $('btnConnect').disabled = false;
@@ -2073,6 +2599,7 @@ function initMpGameScreen(isHost) {
   App.renderer = new BoardRenderer(canvas, () => App.engine);
   App.renderer.rebuildAnims();
   App.renderer.externalClickListener = (row, col, isFlag) => onMpLocalAction(row, col, isFlag);
+  App.renderer.externalChordListener = (row, col) => onMpLocalChord(row, col);
   App.renderer.onRevealListener = (row, col, exploded, won) => {
     if (App.engine && App.engine._lastRevealed) {
       App.renderer.animateRevealWave(App.engine._lastRevealed, row, col);
@@ -2183,6 +2710,41 @@ function onMpLocalAction(row, col, isFlag) {
     App.mpClient.send(msg);
   }
 }
+function onMpLocalChord(row, col) {
+  if (App.currentTurnId !== App.myId) return;
+  if (App.isMpHost) {
+    const e = App.engine; if (!e) return;
+    // Считаем флаги вокруг, как в _doChord
+    const n = e.adjacentMines(row, col);
+    if (n === 0) return;
+    let flags = 0; const candidates = [];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = row + dr, nc = col + dc;
+      if (nr < 0 || nr >= e.rows || nc < 0 || nc >= e.cols) continue;
+      if (e.isFlagged(nr, nc)) flags++;
+      else if (!e.isRevealed(nr, nc)) candidates.push([nr, nc]);
+    }
+    if (flags !== n) return;
+    const allRevealed = [];
+    let exploded = false, won = false;
+    for (const [r, c] of candidates) {
+      const res = e.reveal(r, c);
+      if (res === 'EXPLODED') exploded = true;
+      else if (res === 'WON') won = true;
+      if (e._lastRevealed) for (const cell of e._lastRevealed) allRevealed.push(cell);
+      if (exploded) break;
+    }
+    App.renderer.animateRevealWave(allRevealed, row, col);
+    App.renderer.draw();
+    updateMinesLabel();
+    handleHostRevealResult(row, col, exploded ? 'EXPLODED' : (won ? 'WON' : 'REVEALED'));
+    advanceTurnIfNeeded();
+    broadcastMpState();
+  } else if (App.isMpClient && App.mpClient) {
+    App.mpClient.send(MpProtocol.Chord(row, col));
+  }
+}
 function handleMpClientAction(clientId, msg) {
   if (!App.isMpHost) return;
   if (clientId !== App.currentTurnId) return;
@@ -2203,6 +2765,9 @@ function handleMpClientAction(clientId, msg) {
     App.renderer.draw();
     updateMinesLabel();
     broadcastMpState();
+  } else if (msg.t === 'CHORD') {
+    // Клиент прислал chord — выполняем на хосте
+    onMpLocalChord(msg.row, msg.col);
   }
 }
 function handleHostRevealResult(row, col, res) {
@@ -2299,6 +2864,7 @@ window.addEventListener('load', () => {
   App.sound.enabled = SaveManager.isSound();
   initMenu();
   initJoinScreen();
+  initRelayScreens();
   const unlock = () => {
     App.sound._ensureCtx();
     document.body.removeEventListener('touchstart', unlock);

@@ -63,6 +63,14 @@ class SaveManager(context: Context) {
         }.apply()
     fun lastHostIp(): String? = prefs.getString(KEY_LAST_HOST_IP, null)
 
+    // ---------- URL relay-сервера для кроссплатформенного мультиплеера ----------
+
+    fun setLastRelayUrl(url: String?) =
+        prefs.edit().apply {
+            if (url.isNullOrBlank()) remove(KEY_LAST_RELAY_URL) else putString(KEY_LAST_RELAY_URL, url)
+        }.apply()
+    fun lastRelayUrl(): String? = prefs.getString(KEY_LAST_RELAY_URL, null)
+
     // ---------- Статистика ----------
 
     fun recordGame(mode: GameMode, diff: Difficulty, won: Boolean, timeSec: Int) {
@@ -106,5 +114,6 @@ class SaveManager(context: Context) {
         private const val KEY_SHIFT_INTERVAL = "shift_interval"
         private const val KEY_NICKNAME = "nickname"
         private const val KEY_LAST_HOST_IP = "last_host_ip"
+        private const val KEY_LAST_RELAY_URL = "last_relay_url"
     }
 }

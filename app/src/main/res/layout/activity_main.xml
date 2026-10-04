@@ -73,9 +73,29 @@
             android:id="@+id/btnMpJoin"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:layout_marginBottom="20dp"
+            android:layout_marginBottom="8dp"
             android:background="@drawable/bg_button_secondary"
             android:text="@string/mp_join"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnMpRelayHost"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_button_secondary"
+            android:text="@string/mp_relay_host"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp" />
+
+        <Button
+            android:id="@+id/btnMpRelayJoin"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginBottom="20dp"
+            android:background="@drawable/bg_button_secondary"
+            android:text="@string/mp_relay_join"
             android:textColor="@color/text_primary"
             android:textSize="14sp" />
 

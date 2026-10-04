@@ -12,6 +12,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.SwitchCompat
 import com.zminesweeper.game.mp.JoinClientActivity
 import com.zminesweeper.game.mp.LobbyHostActivity
+import com.zminesweeper.game.mp.RelayHostActivity
+import com.zminesweeper.game.mp.RelayJoinActivity
 
 class MainActivity : AppCompatActivity() {
 
@@ -42,6 +44,12 @@ class MainActivity : AppCompatActivity() {
         }
         findViewById<android.widget.Button>(R.id.btnMpJoin).setOnClickListener {
             ensureNicknameThen { startActivity(Intent(this, JoinClientActivity::class.java)) }
+        }
+        findViewById<android.widget.Button>(R.id.btnMpRelayHost).setOnClickListener {
+            ensureNicknameThen { startActivity(Intent(this, RelayHostActivity::class.java)) }
+        }
+        findViewById<android.widget.Button>(R.id.btnMpRelayJoin).setOnClickListener {
+            ensureNicknameThen { startActivity(Intent(this, RelayJoinActivity::class.java)) }
         }
 
         buildModeCards()

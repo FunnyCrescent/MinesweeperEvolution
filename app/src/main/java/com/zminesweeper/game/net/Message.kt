@@ -41,6 +41,9 @@ sealed class Message {
     data class Flag(val row: Int, val col: Int) : Message() {
         override fun toJson() = JSONObject().put("t", "FLAG").put("row", row).put("col", col)
     }
+    data class Chord(val row: Int, val col: Int) : Message() {
+        override fun toJson() = JSONObject().put("t", "CHORD").put("row", row).put("col", col)
+    }
     object Leave : Message() {
         override fun toJson() = JSONObject().put("t", "LEAVE")
     }
@@ -119,6 +122,7 @@ sealed class Message {
                 "JOIN_ACK" -> JoinAck(o.optString("nickname"), o.optInt("playerId"))
                 "CLICK"    -> Click(o.optInt("row"), o.optInt("col"))
                 "FLAG"     -> Flag(o.optInt("row"), o.optInt("col"))
+                "CHORD"    -> Chord(o.optInt("row"), o.optInt("col"))
                 "LEAVE"    -> Leave
                 "GOODBYE"  -> Goodbye
                 "ERROR"    -> Error(o.optString("message"))

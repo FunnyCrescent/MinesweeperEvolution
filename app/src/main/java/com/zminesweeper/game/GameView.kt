@@ -62,6 +62,13 @@ class GameView : View {
      */
     var externalClickListener: ((row: Int, col: Int, isFlag: Boolean) -> Unit)? = null
 
+    /**
+     * Если задан — chord-действие (двойной тап по открытой цифре) уходит в этот колбэк.
+     * Используется в MP — клиент шлёт CHORD message хосту, хост выполняет и бродкастит STATE.
+     * Если null — chord выполняется локально через engine.reveal.
+     */
+    var externalChordListener: ((row: Int, col: Int) -> Unit)? = null
+
     /** Если false — тапы игнорируются (ход другого игрока в мультиплеере). */
     var inputEnabled: Boolean = true
 
@@ -562,10 +569,20 @@ class GameView : View {
                     abs(event.y - lastUpY) < 40f * resources.displayMetrics.density
 
                 if (isDoubleClick) {
-                    // Toggle zoom: 1.0 ↔ 2.0
-                    zoomFactor = if (zoomFactor > 1.5f) 1.0f else 2.0f
+                    // Если двойной тап по ОТКРЫТОЙ клетке с цифрой — chord (открыть
+                    // всех соседей, если число флагов вокруг == числу в клетке).
+                    // Иначе — toggle zoom (как раньше).
+                    val e = engine
+                    if (e != null && downRow >= 0 &&
+                        e.isRevealed(downRow, downCol) &&
+                        !e.isMine(downRow, downCol) &&
+                        e.adjacentMines(downRow, downCol) > 0) {
+                        doChord(downRow, downCol)
+                    } else {
+                        zoomFactor = if (zoomFactor > 1.5f) 1.0f else 2.0f
+                        performHaptic()
+                    }
                     lastUpTimeMs = 0L  // не даём тройной клик дать серию тоглов
-                    performHaptic()
                     downRow = -1
                     return true
                 }
@@ -621,6 +638,62 @@ class GameView : View {
             }
             GameEngine.RevealResult.REVEALED -> onRevealListener?.invoke(row, col, false, false)
             GameEngine.RevealResult.NO_CHANGE -> {}
+        }
+    }
+
+    /**
+     * Chord: открыть всех не-флагнутых соседей открытой клетки с числом N,
+     * если вокруг стоит ровно N флагов. Стандартное правило сапёра.
+     * Если среди открываемых окажется мина — взрыв (как обычно).
+     */
+    private fun doChord(row: Int, col: Int) {
+        if (!inputEnabled) return
+        if (SystemClock.uptimeMillis() < shiftCooldownUntilMs) {
+            performHaptic(false)
+            return
+        }
+        val e = engine ?: return
+        val n = e.adjacentMines(row, col)
+        if (n == 0) return
+
+        // Считаем флаги вокруг, собираем кандидатов на открытие
+        var flagCount = 0
+        val candidates = ArrayList<Pair<Int, Int>>()
+        for (dr in -1..1) for (dc in -1..1) {
+            if (dr == 0 && dc == 0) continue
+            val nr = row + dr
+            val nc = col + dc
+            if (nr !in 0 until e.rows || nc !in 0 until e.cols) continue
+            if (e.isFlagged(nr, nc)) flagCount++
+            else if (!e.isRevealed(nr, nc)) candidates.add(nr to nc)
+        }
+        if (flagCount != n) return  // не совпало — ничего не делаем
+
+        // External mode (MP) — отправляем CHORD хосту
+        externalChordListener?.let { it(row, col); return }
+
+        // Локальный режим — открываем всех кандидатов
+        val allRevealed = ArrayList<Pair<Int, Int>>()
+        var exploded = false
+        var won = false
+        for ((r, c) in candidates) {
+            val res = e.reveal(r, c)
+            if (res == GameEngine.RevealResult.EXPLODED) exploded = true
+            else if (res == GameEngine.RevealResult.WON) won = true
+            allRevealed.addAll(e.lastRevealed)
+            if (exploded) break
+        }
+        if (allRevealed.isNotEmpty()) {
+            animateRevealWave(allRevealed, row, col)
+        }
+        invalidate()
+        when {
+            exploded -> onRevealListener?.invoke(row, col, true, false)
+            won -> onRevealListener?.invoke(row, col, false, true)
+            allRevealed.isNotEmpty() -> {
+                onRevealListener?.invoke(row, col, false, false)
+                performHaptic(false)
+            }
         }
     }
 

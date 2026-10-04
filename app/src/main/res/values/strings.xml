@@ -64,8 +64,10 @@
     <string name="reset_stats">Сбросить статистику</string>
 
     <!-- Multiplayer -->
-    <string name="mp_host">Создать игру (хост)</string>
-    <string name="mp_join">Подключиться к игре</string>
+    <string name="mp_host">Создать игру (P2P)</string>
+    <string name="mp_join">Подключиться (P2P)</string>
+    <string name="mp_relay_host">Создать игру на сервере (кроссплат)</string>
+    <string name="mp_relay_join">Подключиться через сервер</string>
     <string name="mp_lobby_title">Лобби хоста</string>
     <string name="mp_join_title">Подключение</string>
     <string name="mp_nickname_hint">Твой ник</string>
