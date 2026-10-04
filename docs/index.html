@@ -1,0 +1,2280 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#101418">
+<title>Сапёр: Эволюция</title>
+<style>
+:root {
+  --bg-dark: #101418;
+  --bg-panel: #1A1F26;
+  --bg-panel-alt: #222831;
+  --cell-hidden: #2E3640;
+  --cell-hidden-top: #3D4651;
+  --cell-revealed: #1A1F26;
+  --text-primary: #ECEFF1;
+  --text-secondary: #B0BEC5;
+  --text-dim: #607D8B;
+  --accent: #00BCD4;
+  --accent-2: #26C6DA;
+  --warning: #FFB300;
+  --danger: #EF5350;
+  --success: #66BB6A;
+  --num1: #42A5F5;
+  --num2: #66BB6A;
+  --num3: #EF5350;
+  --num4: #AB47BC;
+  --num5: #FF7043;
+  --num6: #26C6DA;
+  --num7: #B0BEC5;
+  --num8: #607D8B;
+  --safe: env(safe-area-inset-top, 0px);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  overflow-x: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+body {
+  min-height: 100vh; min-height: 100dvh;
+  padding-top: var(--safe);
+}
+.screen {
+  display: none;
+  min-height: calc(100vh - var(--safe));
+  min-height: calc(100dvh - var(--safe));
+  padding: 16px;
+  flex-direction: column;
+}
+.screen.active { display: flex; }
+.scroll { overflow-y: auto; }
+h1 {
+  font-size: 28px; font-weight: 700; margin: 16px 0 4px; text-align: center;
+  color: var(--text-primary);
+}
+.subtitle { text-align: center; color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
+button {
+  font-family: inherit; font-size: 15px; color: var(--text-primary);
+  background: var(--bg-panel-alt); border: 1px solid var(--text-dim);
+  border-radius: 12px; padding: 14px 16px; cursor: pointer;
+  transition: transform 0.1s, background 0.2s, border-color 0.2s;
+  width: 100%; margin-bottom: 8px;
+  -webkit-appearance: none; appearance: none;
+}
+button:active { transform: scale(0.98); background: var(--bg-panel); }
+button.primary {
+  background: var(--accent); color: var(--bg-dark); border: none;
+  font-weight: 700; font-size: 16px; padding: 16px;
+}
+button.primary:active { background: var(--accent-2); }
+button.secondary { background: var(--bg-panel-alt); }
+button.selected { background: var(--accent); color: var(--bg-dark); border-color: var(--accent-2); }
+button.danger { background: var(--danger); color: white; border: none; }
+.field-label {
+  font-size: 13px; color: var(--text-secondary); font-weight: 600;
+  margin: 16px 0 8px 4px;
+}
+.input {
+  width: 100%; padding: 12px; font-size: 14px; font-family: inherit;
+  background: var(--bg-panel); color: var(--text-primary);
+  border: 1px solid var(--text-dim); border-radius: 8px;
+  margin-bottom: 12px;
+}
+.input.mono { font-family: "SF Mono", Menlo, monospace; }
+.row { display: flex; gap: 8px; }
+.row > * { flex: 1; }
+.spacer { flex: 1; }
+.muted { color: var(--text-secondary); font-size: 12px; }
+.log {
+  background: var(--bg-panel); padding: 12px; border-radius: 8px;
+  font-family: "SF Mono", Menlo, monospace; font-size: 12px;
+  color: var(--text-secondary); white-space: pre-wrap; word-break: break-word;
+  max-height: 200px; overflow-y: auto; margin-top: 12px;
+}
+.player-list { background: var(--bg-panel); padding: 12px; border-radius: 8px; margin-bottom: 12px; }
+.player-list-item { padding: 6px 0; font-size: 14px; }
+.player-list-item.host { color: var(--accent); }
+
+/* Top status bar */
+.topbar {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
+  background: var(--bg-panel); padding: 8px; border-radius: 12px; margin-bottom: 8px;
+}
+.topbar-cell { text-align: center; }
+.topbar-value {
+  font-family: "SF Mono", Menlo, monospace; font-size: 18px; font-weight: 700;
+}
+.topbar-value.mines { color: var(--danger); }
+.topbar-value.time { color: var(--accent); }
+.topbar-value.shift { color: var(--warning); }
+.topbar-label {
+  font-size: 9px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+.topbar-btn {
+  background: var(--bg-panel-alt); border: 1px solid var(--text-dim); border-radius: 8px;
+  padding: 6px; font-size: 18px; cursor: pointer; width: 100%; margin: 0;
+  -webkit-appearance: none; appearance: none; color: var(--text-primary); font-family: inherit;
+}
+.topbar-btn.flag-on { background: var(--accent); color: var(--bg-dark); border-color: var(--accent-2); }
+.turn-indicator {
+  text-align: center; padding: 10px; background: var(--bg-panel); border-radius: 12px;
+  margin-bottom: 8px; font-weight: 700; font-size: 16px; color: var(--text-secondary);
+}
+.turn-indicator.you { color: var(--accent); background: rgba(0, 188, 212, 0.1); }
+.mode-label { color: var(--text-secondary); font-size: 12px; padding: 0 4px 8px; }
+
+/* Board canvas wrapper — scrollable */
+.board-wrap {
+  flex: 1; overflow: auto; position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+canvas#board {
+  display: block; touch-action: none;
+  margin: 0 auto;
+}
+
+/* Mode cards */
+.mode-card {
+  background: var(--bg-panel); padding: 14px; border-radius: 12px;
+  margin-bottom: 8px; cursor: pointer; border: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+.mode-card.selected { border-color: var(--accent); }
+.mode-card .name { font-weight: 700; font-size: 16px; }
+.mode-card .desc { color: var(--text-secondary); font-size: 12px; margin-top: 4px; }
+
+/* Modal */
+.modal {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+  z-index: 100; align-items: center; justify-content: center; padding: 16px;
+}
+.modal.active { display: flex; }
+.modal-card {
+  background: var(--bg-panel); border-radius: 16px; padding: 20px;
+  max-width: 400px; width: 100%; max-height: 80vh; overflow-y: auto;
+}
+.modal-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+.modal-body { font-size: 14px; color: var(--text-secondary); }
+.modal-body p { margin: 4px 0; }
+
+/* Switch */
+.switch { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; }
+.switch-label { color: var(--text-primary); }
+.switch-track {
+  width: 44px; height: 24px; background: var(--text-dim); border-radius: 12px;
+  position: relative; cursor: pointer; transition: background 0.2s;
+}
+.switch-track.on { background: var(--accent); }
+.switch-thumb {
+  position: absolute; top: 2px; left: 2px; width: 20px; height: 20px;
+  background: white; border-radius: 50%; transition: transform 0.2s;
+}
+.switch-track.on .switch-thumb { transform: translateX(20px); }
+
+/* Range */
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-panel); color: var(--text-primary); padding: 12px 20px;
+  border-radius: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 200; opacity: 0; transition: opacity 0.3s, transform 0.3s;
+  font-size: 14px; max-width: 90vw; text-align: center;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(-8px); }
+
+/* Tiny QR / ID display */
+.peer-id-display {
+  background: var(--bg-panel); padding: 16px; border-radius: 12px;
+  text-align: center; margin-bottom: 12px;
+}
+.peer-id-display .label { color: var(--text-secondary); font-size: 12px; margin-bottom: 4px; }
+.peer-id-display .id {
+  font-family: "SF Mono", Menlo, monospace; font-size: 18px; color: var(--accent);
+  word-break: break-all; user-select: all;
+}
+.peer-id-display .hint { font-size: 11px; color: var(--text-dim); margin-top: 8px; }
+
+@media (min-width: 600px) {
+  .screen { max-width: 600px; margin: 0 auto; }
+}
+</style>
+</head>
+<body>
+
+<!-- =================== MENU SCREEN =================== -->
+<div id="screen-menu" class="screen active scroll">
+  <h1>Сапёр: Эволюция</h1>
+  <div class="subtitle">Веб-версия — работай с iPhone и Android</div>
+
+  <button id="btnContinue" class="primary" style="display:none">Продолжить</button>
+  <button id="btnNewGame" class="primary">Новая игра</button>
+  <button id="btnMpHost" class="secondary">Создать игру (хост)</button>
+  <button id="btnMpJoin" class="secondary">Подключиться к игре</button>
+
+  <div class="field-label">Режим</div>
+  <div id="modeCards"></div>
+
+  <div class="field-label" id="diffTitle" style="display:none">Сложность</div>
+  <div class="row" id="diffButtons"></div>
+
+  <div class="spacer"></div>
+  <button id="btnStats" class="secondary">Статистика</button>
+  <button id="btnSettings" class="secondary">Настройки</button>
+  <div class="muted" style="text-align:center; margin-top:16px">
+    v1.4-web · <a href="https://github.com/FunnyCrescent/MinesweeperEvolution" target="_blank" style="color:var(--accent)">GitHub</a>
+  </div>
+</div>
+
+<!-- =================== SINGLE-PLAYER GAME SCREEN =================== -->
+<div id="screen-game" class="screen">
+  <div class="topbar">
+    <div class="topbar-cell">
+      <div class="topbar-value mines" id="tvMines">0</div>
+      <div class="topbar-label">Мин</div>
+    </div>
+    <div class="topbar-cell">
+      <div class="topbar-value time" id="tvTime">0:00</div>
+      <div class="topbar-label">Время</div>
+    </div>
+    <div class="topbar-cell" id="llShift">
+      <div class="topbar-value shift" id="tvShift">—</div>
+      <div class="topbar-label">Сдвиг</div>
+    </div>
+    <div class="topbar-cell">
+      <button class="topbar-btn" id="btnFlagMode">🚩</button>
+      <div class="topbar-label">Флажок</div>
+    </div>
+    <div class="topbar-cell">
+      <button class="topbar-btn" id="btnMenu">≡</button>
+      <div class="topbar-label">Меню</div>
+    </div>
+  </div>
+  <div class="mode-label" id="tvModeLabel">—</div>
+  <div class="board-wrap">
+    <canvas id="board"></canvas>
+  </div>
+</div>
+
+<!-- =================== MP HOST LOBBY =================== -->
+<div id="screen-lobby-host" class="screen scroll">
+  <h1>Лобби хоста</h1>
+
+  <div class="peer-id-display">
+    <div class="label">Твой Peer ID (поделись с друзьями)</div>
+    <div class="id" id="tvPeerId">…</div>
+    <div class="hint">Скопируй ID и отправь другу. Он введёт его в «Подключиться к игре».</div>
+  </div>
+
+  <button class="secondary" id="btnHostNick">Ник: Хост</button>
+  <button class="secondary" id="btnPickMode">Режим: Классика</button>
+  <button class="secondary" id="btnPickDiff">Сложность: Новичок</button>
+  <button class="secondary" id="btnPickShift">Сдвиг: 10 сек</button>
+
+  <div class="field-label">Игроки в лобби:</div>
+  <div class="player-list" id="playersContainer"></div>
+
+  <div class="log" id="tvLobbyLog"></div>
+
+  <div class="spacer"></div>
+  <button class="primary" id="btnStartMp">Начать игру</button>
+  <button class="secondary" id="btnCloseLobby">Закрыть лобби</button>
+</div>
+
+<!-- =================== MP JOIN CLIENT =================== -->
+<div id="screen-join-client" class="screen scroll">
+  <h1>Подключиться</h1>
+
+  <div class="field-label">Peer ID хоста</div>
+  <input class="input mono" id="etHostId" placeholder="напр. abc123-def456" autocomplete="off">
+
+  <div class="field-label">Ник</div>
+  <input class="input" id="etNick" placeholder="Твой ник" maxlength="20" autocomplete="off">
+
+  <button class="primary" id="btnConnect">Подключиться</button>
+  <button class="secondary" id="btnDisconnect" style="display:none">Отключиться</button>
+
+  <div class="field-label">Игроки в лобби:</div>
+  <div class="player-list" id="tvLobbyPlayers"></div>
+
+  <div class="log" id="tvJoinLog"></div>
+
+  <div class="spacer"></div>
+  <button class="secondary" id="btnBackJoin">Назад</button>
+</div>
+
+<!-- =================== MP GAME =================== -->
+<div id="screen-mp-game" class="screen">
+  <div class="turn-indicator" id="tvTurnIndicator">ВАШ ХОД</div>
+  <div class="topbar">
+    <div class="topbar-cell">
+      <div class="topbar-value mines" id="tvMpMines">0</div>
+      <div class="topbar-label">Мин</div>
+    </div>
+    <div class="topbar-cell">
+      <div class="topbar-value time" id="tvMpTime">0:00</div>
+      <div class="topbar-label">Время</div>
+    </div>
+    <div class="topbar-cell" id="llMpShift">
+      <div class="topbar-value shift" id="tvMpShift">—</div>
+      <div class="topbar-label">Сдвиг</div>
+    </div>
+    <div class="topbar-cell">
+      <button class="topbar-btn" id="btnMpFlagMode">🚩</button>
+      <div class="topbar-label">Флажок</div>
+    </div>
+    <div class="topbar-cell">
+      <button class="topbar-btn" id="btnMpMenu">≡</button>
+      <div class="topbar-label">Меню</div>
+    </div>
+  </div>
+  <div class="mode-label" id="tvMpModeLabel">—</div>
+  <div class="board-wrap">
+    <canvas id="mpBoard"></canvas>
+  </div>
+</div>
+
+<!-- =================== MODALS =================== -->
+<div class="modal" id="modal">
+  <div class="modal-card">
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-body" id="modalBody"></div>
+    <div id="modalActions" style="margin-top:16px"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+// ============================ GAME ENGINE (JS port of Kotlin) ============================
+const GameMode = {
+  CLASSIC:  { key:'classic', display:'Классика',  shortDesc:'Классический сапёр. Мины стоят на месте.', hasMineLimit:true,  shifts:false, preservesFlags:true  },
+  DRIFT:    { key:'drift',   display:'Дрейф',     shortDesc:'Мины дрейфуют каждые N сек. Под флажком — остаются.', hasMineLimit:true,  shifts:true,  preservesFlags:true  },
+  CHAOS:    { key:'chaos',   display:'Хаос',      shortDesc:'Все мины перемещаются, флажки сбрасываются.', hasMineLimit:true,  shifts:true,  preservesFlags:false },
+  ANARCHY:  { key:'anarchy', display:'Анархия',    shortDesc:'Хаос + случайное число мин каждый сдвиг. Лимита нет!', hasMineLimit:false, shifts:true,  preservesFlags:false },
+};
+const Difficulty = {
+  BEGINNER: { key:'beginner', display:'Новичок', shortDesc:'8×8 · 10 мин',  rows:8,  cols:8,  mineCount:10 },
+  VETERAN:  { key:'veteran',  display:'Ветеран', shortDesc:'16×16 · 40 мин', rows:16, cols:16, mineCount:40 },
+  MASTER:   { key:'master',   display:'Мастер',  shortDesc:'16×30 · 99 мин', rows:16, cols:30, mineCount:99 },
+};
+
+class GameEngine {
+  constructor() {
+    this.rows = 0; this.cols = 0;
+    this.mode = GameMode.CLASSIC; this.difficulty = Difficulty.BEGINNER;
+    this.mineCount = 0; this.flaggedCount = 0;
+    this.gameOver = false; this.won = false;
+    this.firstClickDone = false; this.shiftsCount = 0; this.revealedCount = 0;
+    this.mines = []; this.revealed = []; this.flagged = [];
+    this.explodedAt = [-1, -1];
+    this._lastRevealed = [];
+    this.rng = Math;
+  }
+
+  initGame(mode, difficulty) {
+    this.mode = mode; this.difficulty = difficulty;
+    this.rows = difficulty.rows; this.cols = difficulty.cols;
+    this.firstClickDone = false; this.gameOver = false; this.won = false;
+    this.shiftsCount = 0; this.flaggedCount = 0; this.revealedCount = 0;
+    this.explodedAt = [-1, -1]; this._lastRevealed = [];
+    this.mines = []; this.revealed = []; this.flagged = [];
+    for (let r = 0; r < this.rows; r++) {
+      this.mines.push(new Array(this.cols).fill(false));
+      this.revealed.push(new Array(this.cols).fill(false));
+      this.flagged.push(new Array(this.cols).fill(false));
+    }
+    this.mineCount = this.mode.hasMineLimit ? this.difficulty.mineCount : 1 + this._randInt(this.rows * this.cols);
+    this.placeMinesRandomly([]);
+    if (this.mineCount === 0) this.forcePlaceOneMine();
+  }
+
+  _randInt(n) { return Math.floor(Math.random() * n); }
+
+  placeMinesRandomly(exclude, count = null) {
+    const target = count !== null ? count : this.mineCount;
+    for (let r = 0; r < this.rows; r++) this.mines[r].fill(false);
+    const available = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.revealed[r][c]) continue;
+        if (exclude.some(p => p[0] === r && p[1] === c)) continue;
+        available.push([r, c]);
+      }
+    }
+    // shuffle
+    for (let i = available.length - 1; i > 0; i--) {
+      const j = this._randInt(i + 1);
+      [available[i], available[j]] = [available[j], available[i]];
+    }
+    // Anarchy: ensure target >= 1
+    const effTarget = !this.mode.hasMineLimit ? Math.max(1, target) : target;
+    const actual = Math.min(effTarget, available.length);
+    for (let i = 0; i < actual; i++) {
+      const [r, c] = available[i]; this.mines[r][c] = true;
+    }
+    this.mineCount = actual;
+  }
+
+  forcePlaceOneMine() {
+    const available = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (!this.revealed[r][c] && !this.mines[r][c]) available.push([r, c]);
+      }
+    }
+    if (available.length > 0) {
+      const [r, c] = available[this._randInt(available.length)];
+      this.mines[r][c] = true; this.mineCount = 1;
+    }
+  }
+
+  shiftMines() {
+    if (this.gameOver || !this.mode.shifts) return;
+    const numberedRevealed = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.revealed[r][c] && !this.mines[r][c] && this.adjacentMines(r, c) > 0) {
+          numberedRevealed.push([r, c]);
+        }
+      }
+    }
+    const frozen = [];
+    if (this.mode.preservesFlags) {
+      for (let r = 0; r < this.rows; r++) {
+        for (let c = 0; c < this.cols; c++) {
+          if (this.flagged[r][c] && this.mines[r][c]) frozen.push([r, c]);
+        }
+      }
+    } else {
+      for (let r = 0; r < this.rows; r++) this.flagged[r].fill(false);
+      this.flaggedCount = 0;
+    }
+    const newCount = !this.mode.hasMineLimit
+      ? 1 + this._randInt(this.rows * this.cols)
+      : this.mineCount;
+    for (let r = 0; r < this.rows; r++) this.mines[r].fill(false);
+    for (const [r, c] of frozen) this.mines[r][c] = true;
+    const available = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.mines[r][c]) continue;
+        if (this.revealed[r][c]) continue;
+        available.push([r, c]);
+      }
+    }
+    for (let i = available.length - 1; i > 0; i--) {
+      const j = this._randInt(i + 1);
+      [available[i], available[j]] = [available[j], available[i]];
+    }
+    const remaining = Math.max(0, newCount - frozen.length);
+    const actual = Math.min(remaining, available.length);
+    for (let i = 0; i < actual; i++) {
+      const [r, c] = available[i]; this.mines[r][c] = true;
+    }
+    this.mineCount = frozen.length + actual;
+    this.shiftsCount++;
+    this.enforceNumberedInvariant(numberedRevealed);
+    if (this.mineCount === 0) this.forcePlaceOneMine();
+  }
+
+  enforceNumberedInvariant(guarded) {
+    for (const [r, c] of guarded) {
+      if (this.adjacentMines(r, c) > 0) continue;
+      const candidates = [];
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols) {
+            if (!this.revealed[nr][nc] && !this.flagged[nr][nc] && !this.mines[nr][nc]) {
+              candidates.push([nr, nc]);
+            }
+          }
+        }
+      }
+      if (candidates.length > 0) {
+        const [mr, mc] = candidates[this._randInt(candidates.length)];
+        this.mines[mr][mc] = true; this.mineCount++;
+      }
+    }
+  }
+
+  adjacentMines(row, col) {
+    let count = 0;
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        if (dr === 0 && dc === 0) continue;
+        const nr = row + dr, nc = col + dc;
+        if (nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols && this.mines[nr][nc]) count++;
+      }
+    }
+    return count;
+  }
+
+  reveal(row, col) {
+    if (this.gameOver || this.won) return 'NO_CHANGE';
+    if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) return 'NO_CHANGE';
+    if (this.revealed[row][col] || this.flagged[row][col]) return 'NO_CHANGE';
+    if (!this.firstClickDone) {
+      this.firstClickDone = true;
+      this.ensureSafeStart(row, col);
+    }
+    this._lastRevealed = [];
+    this.revealed[row][col] = true; this.revealedCount++;
+    this._lastRevealed.push([row, col]);
+
+    if (this.mines[row][col]) {
+      this.explodedAt = [row, col]; this.gameOver = true;
+      return 'EXPLODED';
+    }
+    if (this.adjacentMines(row, col) === 0) this.floodReveal(row, col);
+    if (this.checkWin()) {
+      this.won = true; this.gameOver = true;
+      return 'WON';
+    }
+    return 'REVEALED';
+  }
+
+  ensureSafeStart(row, col) {
+    const safe = [[row, col]];
+    for (let dr = -1; dr <= 1; dr++) {
+      for (let dc = -1; dc <= 1; dc++) {
+        const nr = row + dr, nc = col + dc;
+        if (nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols) safe.push([nr, nc]);
+      }
+    }
+    const taken = safe.slice();
+    const occupied = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.mines[r][c] && !taken.some(p => p[0] === r && p[1] === c)) {
+          occupied.push([r, c]);
+        }
+      }
+    }
+    for (const [r, c] of safe) this.mines[r][c] = false;
+    const available = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (taken.some(p => p[0] === r && p[1] === c)) continue;
+        if (occupied.some(p => p[0] === r && p[1] === c)) continue;
+        available.push([r, c]);
+      }
+    }
+    for (let i = available.length - 1; i > 0; i--) {
+      const j = this._randInt(i + 1);
+      [available[i], available[j]] = [available[j], available[i]];
+    }
+    const needed = this.mineCount - occupied.length;
+    for (let i = 0; i < Math.min(needed, available.length); i++) {
+      const [r, c] = available[i]; this.mines[r][c] = true;
+    }
+  }
+
+  floodReveal(row, col) {
+    const queue = [[row, col]];
+    const visited = new Set([`${row},${col}`]);
+    while (queue.length > 0) {
+      const [r, c] = queue.shift();
+      if (this.mines[r][c]) continue;
+      if (!this.revealed[r][c]) {
+        this.revealed[r][c] = true; this.revealedCount++;
+        this._lastRevealed.push([r, c]);
+      }
+      if (this.adjacentMines(r, c) === 0) {
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols) {
+              const key = `${nr},${nc}`;
+              if (!visited.has(key) && !this.revealed[nr][nc] && !this.flagged[nr][nc] && !this.mines[nr][nc]) {
+                visited.add(key); queue.push([nr, nc]);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  toggleFlag(row, col) {
+    if (this.gameOver || this.won) return false;
+    if (row < 0 || row >= this.rows || col < 0 || col >= this.cols) return false;
+    if (this.revealed[row][col]) return false;
+    this.flagged[row][col] = !this.flagged[row][col];
+    this.flaggedCount += this.flagged[row][col] ? 1 : -1;
+    return true;
+  }
+
+  checkWin() {
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (!this.mines[r][c] && !this.revealed[r][c]) return false;
+      }
+    }
+    return true;
+  }
+
+  isMine(r, c) { return this.mines[r][c]; }
+  isRevealed(r, c) { return this.revealed[r][c]; }
+  isFlagged(r, c) { return this.flagged[r][c]; }
+  explodedRow() { return this.explodedAt[0]; }
+  explodedCol() { return this.explodedAt[1]; }
+  minesLeft() { return this.mineCount - this.flaggedCount; }
+
+  serialize() {
+    let sb = '';
+    sb += this.mode.key + '\n';
+    sb += this.difficulty.key + '\n';
+    sb += this.rows + ',' + this.cols + '\n';
+    sb += this.mineCount + ',' + this.flaggedCount + ',';
+    sb += (this.gameOver ? 1 : 0) + ',' + (this.won ? 1 : 0) + ',';
+    sb += (this.firstClickDone ? 1 : 0) + ',' + this.shiftsCount + '\n';
+    for (let r = 0; r < this.rows; r++) {
+      let line = '';
+      for (let c = 0; c < this.cols; c++) {
+        const v = ((this.mines[r][c] ? 1 : 0) << 2) | ((this.revealed[r][c] ? 1 : 0) << 1) | (this.flagged[r][c] ? 1 : 0);
+        line += v;
+      }
+      sb += line + '\n';
+    }
+    return sb;
+  }
+
+  static deserialize(data) {
+    try {
+      const lines = data.split('\n');
+      const mode = Object.values(GameMode).find(m => m.key === lines[0]) || GameMode.CLASSIC;
+      const diff = Object.values(Difficulty).find(d => d.key === lines[1]) || Difficulty.BEGINNER;
+      const [r, c] = lines[2].split(',').map(Number);
+      const meta = lines[3].split(',').map(Number);
+      const e = new GameEngine();
+      e.mode = mode; e.difficulty = diff; e.rows = r; e.cols = c;
+      e.mineCount = meta[0]; e.flaggedCount = meta[1];
+      e.gameOver = meta[2] === 1; e.won = meta[3] === 1;
+      e.firstClickDone = meta[4] === 1; e.shiftsCount = meta[5];
+      e.mines = []; e.revealed = []; e.flagged = [];
+      for (let rr = 0; rr < r; rr++) {
+        e.mines.push(new Array(c).fill(false));
+        e.revealed.push(new Array(c).fill(false));
+        e.flagged.push(new Array(c).fill(false));
+        const line = lines[4 + rr];
+        for (let cc = 0; cc < c; cc++) {
+          const v = parseInt(line[cc], 10);
+          e.mines[rr][cc] = ((v >> 2) & 1) === 1;
+          e.revealed[rr][cc] = ((v >> 1) & 1) === 1;
+          e.flagged[rr][cc] = (v & 1) === 1;
+          if (e.revealed[rr][cc]) e.revealedCount++;
+        }
+      }
+      return e;
+    } catch (err) {
+      return null;
+    }
+  }
+}
+
+// ============================ SOUND MANAGER (Web Audio API) ============================
+class SoundManager {
+  constructor() {
+    this.enabled = true;
+    this.ctx = null;
+  }
+  _ensureCtx() {
+    if (!this.ctx) {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        this.ctx = new AC();
+      } catch (e) {}
+    }
+    // iOS: must resume on user gesture
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
+  }
+  play(type) {
+    if (!this.enabled) return;
+    this._ensureCtx();
+    if (!this.ctx) return;
+    switch (type) {
+      case 'REVEAL': this.beep(880, 0.06, 0.3, 'sine'); break;
+      case 'EXPLODE': this.noise(0.45, 0.8, 0.3); this.beep(80, 0.45, 0.4, 'sine'); break;
+      case 'FLAG':
+        this.beep(1200, 0.08, 0.3, 'sine');
+        this.beep(600, 0.08, 0.15, 'sine', 0);
+        break;
+      case 'WIN':
+        this.beep(523, 0.18, 0.4, 'sine', 0);
+        this.beep(659, 0.18, 0.4, 'sine', 0.18);
+        this.beep(784, 0.35, 0.45, 'sine', 0.36);
+        break;
+      case 'SHIFT':
+        this.sweep(800, 200, 0.28, 0.25);
+        this.noise(0.28, 0.15, 0.6);
+        break;
+      case 'CLICK': this.beep(1500, 0.035, 0.25, 'sine'); break;
+    }
+  }
+  beep(freq, dur, vol, wave='sine', delay=0) {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime + delay;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = wave; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol, t0 + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.05);
+  }
+  noise(dur, vol, lpAlpha=0.3) {
+    if (!this.ctx) return;
+    const bufferSize = Math.floor(this.ctx.sampleRate * dur);
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let prev = 0;
+    for (let i = 0; i < bufferSize; i++) {
+      const t = i / this.ctx.sampleRate;
+      const amp = t < 0.01 ? t / 0.01 : Math.exp(-(t - 0.01) * 6);
+      const w = Math.random() * 2 - 1;
+      prev = prev + lpAlpha * (w - prev);
+      data[i] = vol * amp * prev;
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+    const gain = this.ctx.createGain();
+    gain.gain.value = 1;
+    src.connect(gain).connect(this.ctx.destination);
+    src.start();
+  }
+  sweep(f0, f1, dur, vol) {
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(f0, t0);
+    osc.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + dur);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol, t0 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start(t0); osc.stop(t0 + dur + 0.05);
+  }
+}
+
+// ============================ SAVE MANAGER (localStorage) ============================
+const SaveManager = {
+  _k: (k) => `msev_${k}`,
+  getBool(k, def) {
+    const v = localStorage.getItem(this._k(k));
+    return v === null ? def : v === '1';
+  },
+  setBool(k, v) { localStorage.setItem(this._k(k), v ? '1' : '0'); },
+  getInt(k, def) {
+    const v = localStorage.getItem(this._k(k));
+    return v === null ? def : parseInt(v, 10);
+  },
+  setInt(k, v) { localStorage.setItem(this._k(k), String(v)); },
+  getStr(k, def) {
+    const v = localStorage.getItem(this._k(k));
+    return v === null ? def : v;
+  },
+  setStr(k, v) { localStorage.setItem(this._k(k), v); },
+
+  isVibration: function() { return this.getBool('vibration', true); },
+  setVibration: function(v) { this.setBool('vibration', v); },
+  isSound: function() { return this.getBool('sound', true); },
+  setSound: function(v) { this.setBool('sound', v); },
+  isLongPressFlag: function() { return this.getBool('longpress', true); },
+  setLongPressFlag: function(v) { this.setBool('longpress', v); },
+  shiftInterval: function() { return this.getInt('shift_interval', 10); },
+  setShiftInterval: function(v) { this.setInt('shift_interval', v); },
+  nickname: function() { return this.getStr('nickname', null); },
+  setNickname: function(n) {
+    if (!n) localStorage.removeItem(this._k('nickname'));
+    else localStorage.setItem(this._k('nickname'), n.trim().slice(0, 20));
+  },
+
+  saveGame: function(state) { localStorage.setItem(this._k('game'), state); },
+  loadGame: function() { return localStorage.getItem(this._k('game')); },
+  hasSavedGame: function() { return !!localStorage.getItem(this._k('game')); },
+  clearSavedGame: function() { localStorage.removeItem(this._k('game')); },
+
+  recordGame: function(mode, diff, won, timeSec) {
+    const played = this.getInt(`played_${mode.key}_${diff.key}`, 0) + 1;
+    const wonTotal = this.getInt(`won_${mode.key}_${diff.key}`, 0) + (won ? 1 : 0);
+    this.setInt(`played_${mode.key}_${diff.key}`, played);
+    this.setInt(`won_${mode.key}_${diff.key}`, wonTotal);
+    if (won) {
+      const cur = this.getInt(`best_${mode.key}_${diff.key}`, Number.MAX_SAFE_INTEGER);
+      if (timeSec < cur) this.setInt(`best_${mode.key}_${diff.key}`, timeSec);
+    }
+  },
+  getPlayed: function(mode, diff) { return this.getInt(`played_${mode.key}_${diff.key}`, 0); },
+  getWon: function(mode, diff) { return this.getInt(`won_${mode.key}_${diff.key}`, 0); },
+  getBestTime: function(mode, diff) {
+    const v = this.getInt(`best_${mode.key}_${diff.key}`, Number.MAX_SAFE_INTEGER);
+    return v === Number.MAX_SAFE_INTEGER ? null : v;
+  },
+  resetStats: function() {
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('msev_played_') || k.startsWith('msev_won_') || k.startsWith('msev_best_'));
+    keys.forEach(k => localStorage.removeItem(k));
+  },
+};
+
+function deduplicateNickname(nickname, existing) {
+  if (!nickname || !nickname.trim()) return 'Игрок';
+  const base = nickname.trim().slice(0, 20);
+  const taken = new Set(existing.map(n => n.trim().toLowerCase()));
+  if (!taken.has(base.toLowerCase())) return base;
+  let i = 2;
+  while (true) {
+    const candidate = `${base} (${i})`;
+    if (!taken.has(candidate.toLowerCase())) return candidate;
+    i++;
+  }
+}
+</script>
+
+<script>
+// ============================ RENDERER + INPUT ============================
+const COLORS = {
+  hidden: '#2E3640', hiddenTop: '#3D4651', revealed: '#1A1F26',
+  mine: '#FF5252', mineExploded: '#FF1744', mineIcon: '#ECEFF1',
+  flagPole: '#ECEFF1', flagCloth: '#FF5252', flagBase: '#607D8B',
+  shiftFlash: '#FFC107',
+};
+const NUMBER_COLORS = ['#000000','#42A5F5','#66BB6A','#EF5350','#AB47BC','#FF7043','#26C6DA','#B0BEC5','#607D8B'];
+
+class BoardRenderer {
+  constructor(canvas, getEngine) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.getEngine = getEngine;
+    this.cellSize = 30;
+    this.zoomFactor = 1.0;
+    this.dpr = window.devicePixelRatio || 1;
+
+    this.cellAnims = [];
+    this.shiftStart = 0;
+    this.animRunning = false;
+    this._animLoopBound = this._animLoop.bind(this);
+
+    this.flagMode = false;
+    this.inputEnabled = true;
+    this.externalClickListener = null;
+    this.onRevealListener = null;
+    this.onFlagListener = null;
+
+    this._downX = 0; this._downY = 0;
+    this._downRow = -1; this._downCol = -1;
+    this._hasMoved = false; this._longPressFired = false;
+    this._longPressTimer = null;
+    this._lastUpTime = 0; this._lastUpX = 0; this._lastUpY = 0;
+
+    this.LONG_PRESS_MS = 500;
+    this.TOUCH_SLOP = 12;
+    this.DOUBLE_TAP_MS = 300;
+    this.DOUBLE_TAP_DIST = 50;
+
+    this._initTouch();
+    this._pinchStartDist = 0;
+    this._pinchStartZoom = 1;
+    this._isPinching = false;
+  }
+
+  rebuildAnims() {
+    const e = this.getEngine();
+    if (!e) { this.cellAnims = []; return; }
+    this.cellAnims = [];
+    for (let r = 0; r < e.rows; r++) {
+      const row = [];
+      for (let c = 0; c < e.cols; c++) {
+        row.push({ revealStart: 0, revealDelay: 0, flagStart: 0 });
+      }
+      this.cellAnims.push(row);
+    }
+  }
+
+  measure() {
+    const e = this.getEngine();
+    if (!e) return;
+    const wrap = this.canvas.parentElement;
+    const availW = wrap.clientWidth - 4;
+    const availH = wrap.clientHeight - 4;
+    let baseCell = Math.max(24, Math.min(availW / e.cols, availH / e.rows));
+    baseCell = Math.min(baseCell, 80);
+    baseCell = Math.max(baseCell, 18);
+    this.cellSize = baseCell * this.zoomFactor;
+    const w = Math.floor(this.cellSize * e.cols);
+    const h = Math.floor(this.cellSize * e.rows);
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+    this.canvas.width = w * this.dpr;
+    this.canvas.height = h * this.dpr;
+    this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+    this.draw();
+  }
+
+  draw() {
+    const e = this.getEngine();
+    if (!e) return;
+    const ctx = this.ctx;
+    const cs = this.cellSize;
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    const pad = 1;
+    const flashAlpha = this._shiftFlashAlpha();
+
+    for (let r = 0; r < e.rows; r++) {
+      for (let c = 0; c < e.cols; c++) {
+        const left = c * cs + pad, top = r * cs + pad;
+        const right = (c + 1) * cs - pad, bottom = (r + 1) * cs - pad;
+        const isExploded = e.explodedRow() === r && e.explodedCol() === c;
+        const revealProg = this._revealProgress(r, c);
+        const flagScale = this._flagScale(r, c);
+
+        if (e.isRevealed(r, c) && e.isMine(r, c)) {
+          ctx.save();
+          const cx = (left + right) / 2, cy = (top + bottom) / 2;
+          const sc = 0.5 + 0.5 * revealProg;
+          ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
+          ctx.globalAlpha = revealProg;
+          ctx.fillStyle = isExploded ? COLORS.mineExploded : COLORS.mine;
+          this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
+          this._drawMine(left, top, right, bottom);
+          ctx.restore();
+        } else if (e.isRevealed(r, c)) {
+          ctx.save();
+          const cx = (left + right) / 2, cy = (top + bottom) / 2;
+          const sc = 0.4 + 0.6 * revealProg;
+          ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
+          ctx.globalAlpha = revealProg;
+          ctx.fillStyle = COLORS.revealed;
+          this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
+          const n = e.adjacentMines(r, c);
+          if (n > 0) this._drawNumber(n, left, top, right, bottom);
+          ctx.restore();
+        } else if (e.isFlagged(r, c)) {
+          ctx.save();
+          const cx = (left + right) / 2, cy = (top + bottom) / 2;
+          ctx.translate(cx, cy); ctx.scale(flagScale, flagScale); ctx.translate(-cx, -cy);
+          ctx.fillStyle = COLORS.hidden;
+          this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
+          ctx.fillStyle = COLORS.hiddenTop;
+          this._roundRect(left, top, right - left, (bottom - top) * 0.4, 4); ctx.fill();
+          this._drawFlag(left, top, right, bottom);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = COLORS.hidden;
+          this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
+          ctx.fillStyle = COLORS.hiddenTop;
+          this._roundRect(left, top, right - left, (bottom - top) * 0.4, 4); ctx.fill();
+          if (flashAlpha > 0) {
+            ctx.fillStyle = COLORS.shiftFlash;
+            ctx.globalAlpha = flashAlpha * 0.43;
+            this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
+            ctx.globalAlpha = 1;
+          }
+        }
+      }
+    }
+  }
+
+  _roundRect(x, y, w, h, r) {
+    const ctx = this.ctx;
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  _drawMine(left, top, right, bottom) {
+    const ctx = this.ctx;
+    const cx = (left + right) / 2, cy = (top + bottom) / 2;
+    const radius = (right - left) * 0.22;
+    ctx.fillStyle = COLORS.mineIcon;
+    ctx.beginPath(); ctx.arc(cx, cy, radius, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = COLORS.mineIcon;
+    ctx.lineWidth = radius * 0.25;
+    const len = radius * 1.5;
+    ctx.beginPath();
+    ctx.moveTo(cx - len, cy); ctx.lineTo(cx + len, cy);
+    ctx.moveTo(cx, cy - len); ctx.lineTo(cx, cy + len);
+    ctx.moveTo(cx - len * 0.7, cy - len * 0.7); ctx.lineTo(cx + len * 0.7, cy + len * 0.7);
+    ctx.moveTo(cx + len * 0.7, cy - len * 0.7); ctx.lineTo(cx - len * 0.7, cy + len * 0.7);
+    ctx.stroke();
+  }
+
+  _drawFlag(left, top, right, bottom) {
+    const ctx = this.ctx;
+    const cx = (left + right) / 2;
+    const w = right - left, h = bottom - top;
+    ctx.strokeStyle = COLORS.flagPole;
+    ctx.lineWidth = w * 0.06;
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.05, top + h * 0.18);
+    ctx.lineTo(cx - w * 0.05, bottom - h * 0.18);
+    ctx.stroke();
+    ctx.fillStyle = COLORS.flagCloth;
+    ctx.beginPath();
+    ctx.moveTo(cx - w * 0.05, top + h * 0.2);
+    ctx.lineTo(cx + w * 0.3, top + h * 0.32);
+    ctx.lineTo(cx - w * 0.05, top + h * 0.45);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = COLORS.flagBase;
+    ctx.fillRect(cx - w * 0.18, bottom - h * 0.22, w * 0.26, h * 0.1);
+  }
+
+  _drawNumber(n, left, top, right, bottom) {
+    const ctx = this.ctx;
+    const color = NUMBER_COLORS[n] || NUMBER_COLORS[8];
+    ctx.fillStyle = color;
+    ctx.font = `bold ${(right - left) * 0.6}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(n), (left + right) / 2, (top + bottom) / 2);
+  }
+
+  animateRevealWave(cells, originRow, originCol) {
+    const now = performance.now();
+    for (const [r, c] of cells) {
+      if (!this.cellAnims[r] || !this.cellAnims[r][c]) continue;
+      const dist = Math.max(Math.abs(r - originRow), Math.abs(c - originCol));
+      this.cellAnims[r][c].revealStart = now;
+      this.cellAnims[r][c].revealDelay = dist * 22;
+    }
+    this._startAnimLoop();
+  }
+  animateFlag(r, c) {
+    if (!this.cellAnims[r] || !this.cellAnims[r][c]) return;
+    this.cellAnims[r][c].flagStart = performance.now();
+    this._startAnimLoop();
+  }
+  animateShift() {
+    this.shiftStart = performance.now();
+    this._startAnimLoop();
+  }
+  _startAnimLoop() {
+    if (this.animRunning) return;
+    this.animRunning = true;
+    requestAnimationFrame(this._animLoopBound);
+  }
+  _animLoop() {
+    this.draw();
+    if (this._hasActiveAnims()) {
+      requestAnimationFrame(this._animLoopBound);
+    } else {
+      this.animRunning = false;
+    }
+  }
+  _hasActiveAnims() {
+    const now = performance.now();
+    if (this.shiftStart > 0 && now - this.shiftStart < 700) return true;
+    for (const row of this.cellAnims) {
+      for (const cell of row) {
+        if (cell.revealStart > 0 && now - cell.revealStart - cell.revealDelay < 300) return true;
+        if (cell.flagStart > 0 && now - cell.flagStart < 350) return true;
+      }
+    }
+    return false;
+  }
+  _revealProgress(r, c) {
+    if (!this.cellAnims[r] || !this.cellAnims[r][c]) return 1;
+    const start = this.cellAnims[r][c].revealStart;
+    if (start === 0) return 1;
+    const delay = this.cellAnims[r][c].revealDelay;
+    const elapsed = performance.now() - start - delay;
+    if (elapsed < 0) return 0;
+    const dur = 220;
+    if (elapsed >= dur) { this.cellAnims[r][c].revealStart = 0; return 1; }
+    const t = elapsed / dur;
+    return 1 - (1 - t) * (1 - t);
+  }
+  _flagScale(r, c) {
+    if (!this.cellAnims[r] || !this.cellAnims[r][c]) return 1;
+    const start = this.cellAnims[r][c].flagStart;
+    if (start === 0) return 1;
+    const elapsed = performance.now() - start;
+    const dur = 300;
+    if (elapsed >= dur) { this.cellAnims[r][c].flagStart = 0; return 1; }
+    const t = elapsed / dur;
+    const peak = 0.4;
+    return t < peak ? 1 + 0.3 * (t / peak) : 1 + 0.3 * (1 - (t - peak) / (1 - peak));
+  }
+  _shiftFlashAlpha() {
+    if (this.shiftStart === 0) return 0;
+    const elapsed = performance.now() - this.shiftStart;
+    const dur = 700;
+    if (elapsed >= dur) { this.shiftStart = 0; return 0; }
+    const t = elapsed / dur;
+    return t < 0.15 ? t / 0.15 : 1 - (t - 0.15) / 0.85;
+  }
+
+  _initTouch() {
+    const c = this.canvas;
+    c.addEventListener('touchstart', (e) => this._onTouchStart(e), { passive: false });
+    c.addEventListener('touchmove', (e) => this._onTouchMove(e), { passive: false });
+    c.addEventListener('touchend', (e) => this._onTouchEnd(e), { passive: false });
+    c.addEventListener('touchcancel', (e) => this._onTouchEnd(e), { passive: false });
+    c.addEventListener('mousedown', (e) => this._onMouseDown(e));
+    c.addEventListener('mousemove', (e) => this._onMouseMove(e));
+    c.addEventListener('mouseup', (e) => this._onMouseUp(e));
+    c.addEventListener('mouseleave', (e) => this._onMouseUp(e));
+    c.addEventListener('contextmenu', (e) => { e.preventDefault(); });
+  }
+  _getTouchPos(t) {
+    const rect = this.canvas.getBoundingClientRect();
+    return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+  }
+  _rowColFromXY(x, y) {
+    const e = this.getEngine();
+    if (!e) return { row: -1, col: -1 };
+    const col = Math.max(0, Math.min(e.cols - 1, Math.floor(x / this.cellSize)));
+    const row = Math.max(0, Math.min(e.rows - 1, Math.floor(y / this.cellSize)));
+    return { row, col };
+  }
+  _onTouchStart(e) {
+    e.preventDefault();
+    if (e.touches.length === 2) {
+      this._isPinching = true;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      this._pinchStartDist = Math.hypot(dx, dy);
+      this._pinchStartZoom = this.zoomFactor;
+      this._cancelLongPress();
+      this._hasMoved = true;
+      return;
+    }
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const p = this._getTouchPos(t);
+    this._downX = p.x; this._downY = p.y;
+    const rc = this._rowColFromXY(p.x, p.y);
+    this._downRow = rc.row; this._downCol = rc.col;
+    this._hasMoved = false; this._longPressFired = false;
+    const now = performance.now();
+    const isDoubleClick = (now - this._lastUpTime) < this.DOUBLE_TAP_MS &&
+      Math.abs(p.x - this._lastUpX) < this.DOUBLE_TAP_DIST &&
+      Math.abs(p.y - this._lastUpY) < this.DOUBLE_TAP_DIST;
+    if (!isDoubleClick) {
+      this._longPressTimer = setTimeout(() => this._fireLongPress(), this.LONG_PRESS_MS);
+    }
+  }
+  _onTouchMove(e) {
+    e.preventDefault();
+    if (this._isPinching && e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      if (this._pinchStartDist > 0) {
+        const factor = dist / this._pinchStartDist;
+        this.zoomFactor = Math.max(1.0, Math.min(3.0, this._pinchStartZoom * factor));
+        this.measure();
+      }
+      return;
+    }
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    const p = this._getTouchPos(t);
+    if (Math.abs(p.x - this._downX) > this.TOUCH_SLOP || Math.abs(p.y - this._downY) > this.TOUCH_SLOP) {
+      this._hasMoved = true;
+      this._cancelLongPress();
+    }
+  }
+  _onTouchEnd(e) {
+    e.preventDefault();
+    if (this._isPinching) {
+      if (e.touches.length < 2) {
+        this._isPinching = false;
+        this._pinchStartDist = 0;
+      }
+      return;
+    }
+    this._cancelLongPress();
+    const now = performance.now();
+    const isDoubleClick = !this._longPressFired && !this._hasMoved &&
+      (now - this._lastUpTime) < this.DOUBLE_TAP_MS &&
+      Math.abs(this._downX - this._lastUpX) < this.DOUBLE_TAP_DIST &&
+      Math.abs(this._downY - this._lastUpY) < this.DOUBLE_TAP_DIST;
+    if (isDoubleClick) {
+      this.zoomFactor = this.zoomFactor > 1.5 ? 1.0 : 2.0;
+      this.measure();
+      this._lastUpTime = 0;
+      this._downRow = -1;
+      return;
+    }
+    this._lastUpTime = now;
+    this._lastUpX = this._downX;
+    this._lastUpY = this._downY;
+    if (!this._hasMoved && !this._longPressFired && this._downRow >= 0) {
+      this._dispatchTap(false);
+    }
+    this._downRow = -1;
+  }
+  _fireLongPress() {
+    if (this._hasMoved || this._downRow < 0) return;
+    this._longPressFired = true;
+    this._dispatchTap(true);
+  }
+  _cancelLongPress() {
+    if (this._longPressTimer) {
+      clearTimeout(this._longPressTimer);
+      this._longPressTimer = null;
+    }
+  }
+  _dispatchTap(isLong) {
+    if (!this.inputEnabled) return;
+    if (this._downRow < 0) return;
+    const isFlagAction = isLong ? !this.flagMode : this.flagMode;
+    const ext = this.externalClickListener;
+    if (ext) {
+      ext(this._downRow, this._downCol, isFlagAction);
+    } else {
+      const e = this.getEngine();
+      if (!e) return;
+      if (isFlagAction) {
+        if (e.toggleFlag(this._downRow, this._downCol)) {
+          this.animateFlag(this._downRow, this._downCol);
+          this.onFlagListener && this.onFlagListener(this._downRow, this._downCol);
+        }
+      } else {
+        const res = e.reveal(this._downRow, this._downCol);
+        this._handleRevealResult(this._downRow, this._downCol, res);
+      }
+      this.draw();
+    }
+  }
+  _handleRevealResult(row, col, res) {
+    if (res === 'EXPLODED') this.onRevealListener && this.onRevealListener(row, col, true, false);
+    else if (res === 'WON') this.onRevealListener && this.onRevealListener(row, col, false, true);
+    else if (res === 'REVEALED') this.onRevealListener && this.onRevealListener(row, col, false, false);
+  }
+
+  _onMouseDown(e) {
+    if (e.button === 2) {
+      const rect = this.canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left, y = e.clientY - rect.top;
+      const rc = this._rowColFromXY(x, y);
+      this._downRow = rc.row; this._downCol = rc.col;
+      this._dispatchTap(true);
+      this._downRow = -1;
+      return;
+    }
+    const rect = this.canvas.getBoundingClientRect();
+    this._downX = e.clientX - rect.left; this._downY = e.clientY - rect.top;
+    const rc = this._rowColFromXY(this._downX, this._downY);
+    this._downRow = rc.row; this._downCol = rc.col;
+    this._hasMoved = false; this._longPressFired = false;
+    this._longPressTimer = setTimeout(() => this._fireLongPress(), this.LONG_PRESS_MS);
+  }
+  _onMouseMove(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left, y = e.clientY - rect.top;
+    if (Math.abs(x - this._downX) > this.TOUCH_SLOP || Math.abs(y - this._downY) > this.TOUCH_SLOP) {
+      this._hasMoved = true;
+      this._cancelLongPress();
+    }
+  }
+  _onMouseUp(e) {
+    this._cancelLongPress();
+    if (this._downRow < 0) return;
+    if (!this._hasMoved && !this._longPressFired) {
+      this._dispatchTap(false);
+    }
+    this._downRow = -1;
+  }
+}
+
+// ============================ MULTIPLAYER (PeerJS) ============================
+const MpProtocol = {
+  Join: (nickname) => ({ t: 'JOIN', nickname }),
+  JoinAck: (nickname, playerId) => ({ t: 'JOIN_ACK', nickname, playerId }),
+  Click: (row, col) => ({ t: 'CLICK', row, col }),
+  Flag: (row, col) => ({ t: 'FLAG', row, col }),
+  Leave: () => ({ t: 'LEAVE' }),
+  Lobby: (players) => ({ t: 'LOBBY', players }),
+  Start: (mode, difficulty, shiftInterval, players, hostSeed) => ({ t: 'START', mode, difficulty, shiftInterval, players, hostSeed }),
+  State: (engine, turn, elapsed) => ({ t: 'STATE', engine, turn, elapsed }),
+  Over: (reason, loserId, winnerId) => ({ t: 'OVER', reason, loserId, winnerId }),
+  Error: (msg) => ({ t: 'ERROR', message: msg }),
+  Goodbye: () => ({ t: 'GOODBYE' }),
+};
+
+class MpHost {
+  constructor(onClientMessage, onClientConnected, onClientDisconnected, onError) {
+    this.peer = null;
+    this.connections = new Map();
+    this.nextPlayerId = 1;
+    this.onClientMessage = onClientMessage;
+    this.onClientConnected = onClientConnected;
+    this.onClientDisconnected = onClientDisconnected;
+    this.onError = onError;
+  }
+  start() {
+    return new Promise((resolve, reject) => {
+      try {
+        this.peer = new Peer({ debug: 1 });
+      } catch (err) { reject(err); return; }
+      this.peer.on('open', (id) => resolve(id));
+      this.peer.on('error', (err) => this.onError(err.message || String(err)));
+      this.peer.on('connection', (conn) => this._acceptConnection(conn));
+    });
+  }
+  _acceptConnection(conn) {
+    const clientId = this.nextPlayerId++;
+    this.connections.set(clientId, conn);
+    conn.on('open', () => this.onClientConnected(clientId, conn.peer));
+    conn.on('data', (data) => this.onClientMessage(clientId, data));
+    conn.on('close', () => {
+      this.connections.delete(clientId);
+      this.onClientDisconnected(clientId);
+    });
+    conn.on('error', () => {
+      this.connections.delete(clientId);
+      this.onClientDisconnected(clientId);
+    });
+  }
+  broadcast(message) {
+    for (const conn of this.connections.values()) {
+      try { if (conn.open) conn.send(message); } catch (e) {}
+    }
+  }
+  sendTo(clientId, message) {
+    const conn = this.connections.get(clientId);
+    if (conn && conn.open) {
+      try { conn.send(message); } catch (e) {}
+    }
+  }
+  stop() {
+    this.broadcast(MpProtocol.Goodbye());
+    for (const conn of this.connections.values()) {
+      try { conn.close(); } catch (e) {}
+    }
+    this.connections.clear();
+    if (this.peer) {
+      try { this.peer.destroy(); } catch (e) {}
+      this.peer = null;
+    }
+  }
+}
+
+class MpClient {
+  constructor(onMessage, onDisconnect, onError) {
+    this.peer = null;
+    this.conn = null;
+    this.onMessage = onMessage;
+    this.onDisconnect = onDisconnect;
+    this.onError = onError;
+  }
+  connect(hostId, myNickname) {
+    return new Promise((resolve, reject) => {
+      try {
+        this.peer = new Peer({ debug: 1 });
+      } catch (err) { reject(err); return; }
+      this.peer.on('open', () => {
+        try {
+          this.conn = this.peer.connect(hostId, { reliable: true });
+          this.conn.on('open', () => {
+            this.conn.send(MpProtocol.Join(myNickname));
+            resolve();
+          });
+          this.conn.on('data', (data) => this.onMessage(data));
+          this.conn.on('close', () => this.onDisconnect());
+          this.conn.on('error', (err) => this.onError(err.message || String(err)));
+        } catch (err) {
+          this.onError('Не удалось подключиться: ' + (err.message || err));
+        }
+      });
+      this.peer.on('error', (err) => this.onError(err.message || String(err)));
+    });
+  }
+  send(message) {
+    if (this.conn && this.conn.open) {
+      try { this.conn.send(message); } catch (e) {}
+    }
+  }
+  disconnect() {
+    if (this.conn) {
+      try { this.conn.send(MpProtocol.Leave()); } catch (e) {}
+      try { this.conn.close(); } catch (e) {}
+      this.conn = null;
+    }
+    if (this.peer) {
+      try { this.peer.destroy(); } catch (e) {}
+      this.peer = null;
+    }
+    this.onDisconnect();
+  }
+}
+
+// ============================ APP NAVIGATION & UI ============================
+const App = {
+  engine: null,
+  renderer: null,
+  sound: new SoundManager(),
+  mpHost: null,
+  mpClient: null,
+  players: [],
+  myId: 0,
+  myNickname: 'Игрок',
+  currentTurnId: 0,
+  isMpHost: false,
+  isMpClient: false,
+  startTimeMs: 0,
+  elapsedSec: 0,
+  shiftRemainingSec: 10,
+  shiftInterval: 10,
+  mode: GameMode.CLASSIC,
+  difficulty: Difficulty.BEGINNER,
+  selectedMode: GameMode.CLASSIC,
+  selectedDiff: Difficulty.BEGINNER,
+  tickTimer: null,
+  shiftTimer: null,
+  savedFromLoaded: false,
+};
+
+function $(id) { return document.getElementById(id); }
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+function toast(msg, dur=2000) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => t.classList.remove('show'), dur);
+}
+function showModal(title, bodyHtml, actions=[]) {
+  $('modalTitle').textContent = title;
+  $('modalBody').innerHTML = bodyHtml;
+  const ac = $('modalActions');
+  ac.innerHTML = '';
+  actions.forEach(a => {
+    const btn = document.createElement('button');
+    btn.textContent = a.label;
+    btn.className = a.class || 'secondary';
+    btn.onclick = () => { if (a.onClick) a.onClick(); $('modal').classList.remove('active'); };
+    ac.appendChild(btn);
+  });
+  $('modal').classList.add('active');
+}
+function closeModal() { $('modal').classList.remove('active'); }
+function formatTime(sec) {
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+function haptic(heavy=false) {
+  if (!SaveManager.isVibration()) return;
+  if (navigator.vibrate) {
+    try { navigator.vibrate(heavy ? 120 : 30); } catch (e) {}
+  }
+}
+
+function initMenu() {
+  const mc = $('modeCards');
+  mc.innerHTML = '';
+  for (const m of Object.values(GameMode)) {
+    const card = document.createElement('div');
+    card.className = 'mode-card' + (m === App.selectedMode ? ' selected' : '');
+    card.innerHTML = `<div class="name">${m.display}</div><div class="desc">${m.shortDesc}</div>`;
+    card.onclick = () => {
+      App.selectedMode = m;
+      mc.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      $('diffTitle').style.display = 'block';
+      buildDiffButtons();
+    };
+    mc.appendChild(card);
+  }
+  $('btnNewGame').onclick = () => {
+    if (!App.selectedMode) { toast('Выбери режим'); return; }
+    if (!App.selectedDiff) { toast('Выбери сложность'); return; }
+    startSinglePlayer(App.selectedMode, App.selectedDiff);
+  };
+  $('btnContinue').onclick = () => {
+    if (SaveManager.hasSavedGame()) {
+      const state = SaveManager.loadGame();
+      const e = GameEngine.deserialize(state);
+      if (e) {
+        App.savedFromLoaded = true;
+        App.mode = e.mode; App.difficulty = e.difficulty;
+        App.engine = e;
+        showScreen('screen-game');
+        initGameScreen();
+      }
+    }
+  };
+  $('btnSettings').onclick = showSettings;
+  $('btnStats').onclick = showStats;
+  $('btnMpHost').onclick = () => ensureNickname(() => startMpHost());
+  $('btnMpJoin').onclick = () => ensureNickname(() => { showScreen('screen-join-client'); });
+  updateContinueButton();
+}
+function buildDiffButtons() {
+  const dc = $('diffButtons');
+  dc.innerHTML = '';
+  for (const d of Object.values(Difficulty)) {
+    const btn = document.createElement('button');
+    btn.className = 'secondary';
+    btn.innerHTML = `${d.display}<br><span class="muted">${d.shortDesc}</span>`;
+    btn.style.fontSize = '11px';
+    btn.onclick = () => {
+      App.selectedDiff = d;
+      dc.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      startSinglePlayer(App.selectedMode, App.selectedDiff);
+    };
+    dc.appendChild(btn);
+  }
+}
+function updateContinueButton() {
+  $('btnContinue').style.display = SaveManager.hasSavedGame() ? 'block' : 'none';
+}
+function ensureNickname(cb) {
+  const nick = SaveManager.nickname();
+  if (!nick) {
+    showModal('Ник для мультиплеера', '<p>Введи ник, под которым тебя увидят другие игроки.</p>', [
+      { label: 'OK', class: 'primary', onClick: () => {
+        const input = document.createElement('input');
+        input.className = 'input'; input.placeholder = 'Твой ник';
+        $('modalBody').innerHTML = ''; $('modalBody').appendChild(input);
+        input.focus();
+        const ok2 = document.createElement('button');
+        ok2.className = 'primary'; ok2.textContent = 'OK';
+        ok2.onclick = () => {
+          const n = input.value.trim() || 'Игрок';
+          SaveManager.setNickname(n);
+          closeModal();
+          cb();
+        };
+        $('modalActions').innerHTML = ''; $('modalActions').appendChild(ok2);
+        $('modal').classList.add('active');
+      }},
+      { label: 'Отмена' }
+    ]);
+  } else {
+    cb();
+  }
+}
+
+function showSettings() {
+  const body = `
+    <div class="switch"><span class="switch-label">Вибрация</span>
+      <div class="switch-track ${SaveManager.isVibration() ? 'on' : ''}" id="swVibration">
+        <div class="switch-thumb"></div>
+      </div></div>
+    <div class="switch"><span class="switch-label">Звук</span>
+      <div class="switch-track ${SaveManager.isSound() ? 'on' : ''}" id="swSound">
+        <div class="switch-thumb"></div>
+      </div></div>
+    <div class="switch"><span class="switch-label">Долгое нажатие = флажок</span>
+      <div class="switch-track ${SaveManager.isLongPressFlag() ? 'on' : ''}" id="swLongPress">
+        <div class="switch-thumb"></div>
+      </div></div>
+    <div style="margin-top:12px"><div class="muted">Интервал сдвига: <span id="tvShiftVal">${SaveManager.shiftInterval()} сек</span></div>
+      <input type="range" id="sliderShift" min="3" max="30" value="${SaveManager.shiftInterval()}"></div>
+  `;
+  showModal('Настройки', body, [
+    { label: 'OK', class: 'primary', onClick: () => {
+      SaveManager.setVibration($('swVibration').classList.contains('on'));
+      SaveManager.setSound($('swSound').classList.contains('on'));
+      SaveManager.setLongPressFlag($('swLongPress').classList.contains('on'));
+      SaveManager.setShiftInterval(parseInt($('sliderShift').value, 10));
+      App.sound.enabled = SaveManager.isSound();
+    }},
+    { label: 'Отмена' }
+  ]);
+  ['swVibration', 'swSound', 'swLongPress'].forEach(id => {
+    $(id).onclick = () => $(id).classList.toggle('on');
+  });
+  $('sliderShift').oninput = (e) => $('tvShiftVal').textContent = e.target.value + ' сек';
+}
+
+function showStats() {
+  let body = '';
+  for (const m of Object.values(GameMode)) {
+    body += `<div style="color:var(--accent);font-weight:700;margin-top:8px">${m.display}</div>`;
+    for (const d of Object.values(Difficulty)) {
+      const played = SaveManager.getPlayed(m, d);
+      const won = SaveManager.getWon(m, d);
+      const best = SaveManager.getBestTime(m, d);
+      const bestStr = best === null ? '—' : formatTime(best);
+      body += `<div class="muted" style="padding:4px 0">  ${d.display}: ${won}/${played}  |  Лучшее: ${bestStr}</div>`;
+    }
+  }
+  showModal('Статистика', body, [
+    { label: 'OK', class: 'primary' },
+    { label: 'Сбросить', class: 'danger', onClick: () => SaveManager.resetStats() }
+  ]);
+}
+
+function startSinglePlayer(mode, diff) {
+  SaveManager.clearSavedGame();
+  App.mode = mode; App.difficulty = diff;
+  App.engine = new GameEngine();
+  App.engine.initGame(mode, diff);
+  App.savedFromLoaded = false;
+  showScreen('screen-game');
+  initGameScreen();
+}
+function initGameScreen() {
+  const canvas = $('board');
+  App.renderer = new BoardRenderer(canvas, () => App.engine);
+  App.renderer.rebuildAnims();
+  App.renderer.onRevealListener = (row, col, exploded, won) => {
+    App.renderer.animateRevealWave(App.engine._lastRevealed, row, col);
+    if (exploded) App.sound.play('EXPLODE');
+    else if (won) App.sound.play('WIN');
+    else App.sound.play('REVEAL');
+    updateMinesLabel();
+    if (exploded || won) showGameOver(won);
+  };
+  App.renderer.onFlagListener = (r, c) => {
+    App.sound.play('FLAG');
+    updateMinesLabel();
+  };
+  setTimeout(() => App.renderer.measure(), 50);
+
+  const btnFlag = $('btnFlagMode');
+  btnFlag.classList.toggle('flag-on', App.renderer.flagMode);
+  btnFlag.textContent = App.renderer.flagMode ? '⛏' : '🚩';
+  btnFlag.onclick = () => {
+    App.renderer.flagMode = !App.renderer.flagMode;
+    btnFlag.classList.toggle('flag-on', App.renderer.flagMode);
+    btnFlag.textContent = App.renderer.flagMode ? '⛏' : '🚩';
+    App.sound.play('CLICK');
+  };
+  $('btnMenu').onclick = () => {
+    showModal('Выйти в меню?', '<p>Игра будет сохранена автоматически.</p>', [
+      { label: 'Выйти', class: 'danger', onClick: () => {
+        if (!App.engine.gameOver) SaveManager.saveGame(App.engine.serialize());
+        clearInterval(App.tickTimer); clearInterval(App.shiftTimer);
+        showScreen('screen-menu'); updateContinueButton();
+      }},
+      { label: 'Заново', onClick: () => restartGame() },
+      { label: 'Отмена' }
+    ]);
+  };
+
+  $('tvModeLabel').textContent = `${App.engine.mode.display} · ${App.engine.difficulty.display}`;
+  $('llShift').style.display = App.engine.mode.shifts ? '' : 'none';
+  $('tvShift').textContent = App.engine.mode.shifts ? `${SaveManager.shiftInterval()}с` : '—';
+  updateMinesLabel();
+
+  App.startTimeMs = Date.now();
+  App.elapsedSec = 0;
+  App.shiftInterval = SaveManager.shiftInterval();
+  App.shiftRemainingSec = App.shiftInterval;
+  $('tvTime').textContent = '0:00';
+  clearInterval(App.tickTimer); clearInterval(App.shiftTimer);
+  App.tickTimer = setInterval(() => {
+    App.elapsedSec = Math.floor((Date.now() - App.startTimeMs) / 1000);
+    $('tvTime').textContent = formatTime(App.elapsedSec);
+  }, 500);
+  if (App.engine.mode.shifts) {
+    App.shiftTimer = setInterval(() => {
+      if (!App.engine.gameOver && App.engine.mode.shifts && App.engine.firstClickDone) {
+        App.shiftRemainingSec--;
+        if (App.shiftRemainingSec <= 0) {
+          App.engine.shiftMines();
+          App.renderer.animateShift();
+          haptic(false);
+          App.sound.play('SHIFT');
+          App.shiftRemainingSec = App.shiftInterval;
+          updateMinesLabel();
+          App.renderer.draw();
+        }
+        $('tvShift').textContent = `${App.shiftRemainingSec}с`;
+      } else if (!App.engine.firstClickDone) {
+        $('tvShift').textContent = '—';
+      }
+    }, 1000);
+  }
+  document.body.addEventListener('touchstart', () => App.sound._ensureCtx(), { once: true });
+}
+function updateMinesLabel() {
+  if (!App.engine) return;
+  const mines = App.engine.mode.hasMineLimit ? App.engine.minesLeft() : `~${App.engine.mineCount}`;
+  if ($('screen-mp-game').classList.contains('active')) {
+    $('tvMpMines').textContent = mines;
+  } else {
+    $('tvMines').textContent = mines;
+  }
+}
+function restartGame() {
+  clearInterval(App.tickTimer); clearInterval(App.shiftTimer);
+  const mode = App.engine.mode, diff = App.engine.difficulty;
+  App.engine = new GameEngine();
+  App.engine.initGame(mode, diff);
+  App.renderer = new BoardRenderer($('board'), () => App.engine);
+  App.renderer.rebuildAnims();
+  App.renderer.onRevealListener = (row, col, exploded, won) => {
+    App.renderer.animateRevealWave(App.engine._lastRevealed, row, col);
+    if (exploded) App.sound.play('EXPLODE');
+    else if (won) App.sound.play('WIN');
+    else App.sound.play('REVEAL');
+    updateMinesLabel();
+    if (exploded || won) showGameOver(won);
+  };
+  App.renderer.onFlagListener = (r, c) => { App.sound.play('FLAG'); updateMinesLabel(); };
+  setTimeout(() => App.renderer.measure(), 50);
+
+  $('tvModeLabel').textContent = `${App.engine.mode.display} · ${App.engine.difficulty.display}`;
+  $('llShift').style.display = App.engine.mode.shifts ? '' : 'none';
+  $('tvShift').textContent = App.engine.mode.shifts ? `${SaveManager.shiftInterval()}с` : '—';
+  updateMinesLabel();
+  App.startTimeMs = Date.now(); App.elapsedSec = 0;
+  $('tvTime').textContent = '0:00';
+  App.shiftInterval = SaveManager.shiftInterval();
+  App.shiftRemainingSec = App.shiftInterval;
+  App.tickTimer = setInterval(() => {
+    App.elapsedSec = Math.floor((Date.now() - App.startTimeMs) / 1000);
+    $('tvTime').textContent = formatTime(App.elapsedSec);
+  }, 500);
+  if (App.engine.mode.shifts) {
+    App.shiftTimer = setInterval(() => {
+      if (!App.engine.gameOver && App.engine.mode.shifts && App.engine.firstClickDone) {
+        App.shiftRemainingSec--;
+        if (App.shiftRemainingSec <= 0) {
+          App.engine.shiftMines();
+          App.renderer.animateShift();
+          haptic(false); App.sound.play('SHIFT');
+          App.shiftRemainingSec = App.shiftInterval;
+          updateMinesLabel(); App.renderer.draw();
+        }
+        $('tvShift').textContent = `${App.shiftRemainingSec}с`;
+      } else if (!App.engine.firstClickDone) {
+        $('tvShift').textContent = '—';
+      }
+    }, 1000);
+  }
+  SaveManager.clearSavedGame();
+}
+function showGameOver(won) {
+  clearInterval(App.tickTimer); clearInterval(App.shiftTimer);
+  if (won) SaveManager.recordGame(App.engine.mode, App.engine.difficulty, true, App.elapsedSec);
+  else SaveManager.recordGame(App.engine.mode, App.engine.difficulty, false, 0);
+  SaveManager.clearSavedGame();
+  const shifts = App.engine.mode.shifts ? `<br>Сдвигов: ${App.engine.shiftsCount}` : '';
+  showModal(
+    won ? '🏆 Победа!' : '💥 Поражение',
+    `<p>Время: ${formatTime(App.elapsedSec)}${shifts}</p>`,
+    [
+      { label: 'Играть снова', class: 'primary', onClick: () => restartGame() },
+      { label: 'В меню', onClick: () => { showScreen('screen-menu'); updateContinueButton(); }}
+    ]
+  );
+}
+
+function startMpHost() {
+  showScreen('screen-lobby-host');
+  App.players = [{ id: 0, name: SaveManager.nickname() || 'Хост', isHost: true }];
+  App.myId = 0;
+  App.myNickname = SaveManager.nickname() || 'Хост';
+  $('tvLobbyLog').textContent = '';
+  appendLobbyLog('Создаём лобби…');
+
+  $('btnHostNick').textContent = `Ник: ${App.myNickname}`;
+  $('btnPickMode').textContent = `Режим: ${App.selectedMode.display}`;
+  $('btnPickDiff').textContent = `Сложность: ${App.selectedDiff.display}`;
+  $('btnPickShift').textContent = `Сдвиг: ${SaveManager.shiftInterval()} сек`;
+  refreshHostPlayers();
+
+  App.isMpHost = true;
+  App.mpHost = new MpHost(
+    (clientId, msg) => handleHostClientMessage(clientId, msg),
+    (clientId, addr) => appendLobbyLog(`Подключился клиент #${clientId}`),
+    (clientId) => {
+      const removed = App.players.find(p => p.id === clientId);
+      if (removed) {
+        App.players = App.players.filter(p => p.id !== clientId);
+        appendLobbyLog(`${removed.name} отключился`);
+        refreshHostPlayers();
+        broadcastLobby();
+      }
+    },
+    (msg) => appendLobbyLog(`Ошибка: ${msg}`)
+  );
+  App.mpHost.start().then((peerId) => {
+    $('tvPeerId').textContent = peerId;
+    appendLobbyLog('Лобби открыто. Поделись ID с друзьями.');
+  }).catch((err) => {
+    appendLobbyLog(`Не удалось создать лобби: ${err.message || err}`);
+  });
+
+  $('btnHostNick').onclick = promptHostNickname;
+  $('btnPickMode').onclick = pickMpMode;
+  $('btnPickDiff').onclick = pickMpDifficulty;
+  $('btnPickShift').onclick = pickMpShift;
+  $('btnStartMp').onclick = startMpGame;
+  $('btnCloseLobby').onclick = () => {
+    showModal('Закрыть лобби?', '<p>Игроки будут отключены.</p>', [
+      { label: 'Закрыть', class: 'danger', onClick: () => {
+        if (App.mpHost) App.mpHost.stop();
+        App.mpHost = null; App.isMpHost = false;
+        showScreen('screen-menu'); updateContinueButton();
+      }},
+      { label: 'Отмена' }
+    ]);
+  };
+}
+function appendLobbyLog(text) {
+  const el = $('tvLobbyLog');
+  el.textContent = el.textContent ? `${el.textContent}\n${text}` : text;
+}
+function refreshHostPlayers() {
+  const c = $('playersContainer');
+  c.innerHTML = '';
+  App.players.forEach((p, idx) => {
+    const item = document.createElement('div');
+    item.className = 'player-list-item' + (p.isHost ? ' host' : '');
+    item.textContent = `${idx + 1}. ${p.name}${p.isHost ? '  (хост)' : ''}`;
+    c.appendChild(item);
+  });
+}
+function promptHostNickname() {
+  const input = document.createElement('input');
+  input.className = 'input'; input.value = App.myNickname;
+  $('modalBody').innerHTML = ''; $('modalBody').appendChild(input);
+  $('modalActions').innerHTML = '';
+  const ok = document.createElement('button');
+  ok.className = 'primary'; ok.textContent = 'OK';
+  ok.onclick = () => {
+    const name = input.value.trim() || 'Хост';
+    const existing = App.players.filter(p => p.id !== App.myId).map(p => p.name);
+    App.myNickname = deduplicateNickname(name, existing);
+    const me = App.players.find(p => p.id === App.myId);
+    if (me) me.name = App.myNickname;
+    $('btnHostNick').textContent = `Ник: ${App.myNickname}`;
+    refreshHostPlayers();
+    broadcastLobby();
+    SaveManager.setNickname(App.myNickname);
+    closeModal();
+  };
+  const cancel = document.createElement('button');
+  cancel.className = 'secondary'; cancel.textContent = 'Отмена';
+  cancel.onclick = closeModal;
+  $('modalActions').appendChild(ok); $('modalActions').appendChild(cancel);
+  $('modalTitle').textContent = 'Ник хоста';
+  $('modal').classList.add('active');
+}
+function pickMpMode() {
+  const modes = Object.values(GameMode);
+  const body = modes.map((m, i) =>
+    `<button class="secondary" data-idx="${i}" style="margin-bottom:6px">${m.display} — ${m.shortDesc}</button>`
+  ).join('');
+  showModal('Режим игры', body, []);
+  $('modalActions').innerHTML = '';
+  $('modalBody').querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      App.selectedMode = modes[parseInt(btn.dataset.idx, 10)];
+      $('btnPickMode').textContent = `Режим: ${App.selectedMode.display}`;
+      closeModal();
+    };
+  });
+}
+function pickMpDifficulty() {
+  const diffs = Object.values(Difficulty);
+  const body = diffs.map((d, i) =>
+    `<button class="secondary" data-idx="${i}" style="margin-bottom:6px">${d.display} — ${d.shortDesc}</button>`
+  ).join('');
+  showModal('Сложность', body, []);
+  $('modalActions').innerHTML = '';
+  $('modalBody').querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      App.selectedDiff = diffs[parseInt(btn.dataset.idx, 10)];
+      $('btnPickDiff').textContent = `Сложность: ${App.selectedDiff.display}`;
+      closeModal();
+    };
+  });
+}
+function pickMpShift() {
+  const body = '<input type="range" id="shiftRange" min="3" max="30" value="' + SaveManager.shiftInterval() + '">' +
+    `<div class="muted" style="text-align:center;margin-top:8px"><span id="shiftVal">${SaveManager.shiftInterval()} сек</span></div>`;
+  showModal('Интервал сдвига', body, [
+    { label: 'OK', class: 'primary', onClick: () => {
+      SaveManager.setShiftInterval(parseInt($('shiftRange').value, 10));
+      $('btnPickShift').textContent = `Сдвиг: ${SaveManager.shiftInterval()} сек`;
+    }},
+    { label: 'Отмена' }
+  ]);
+  $('shiftRange').oninput = (e) => $('shiftVal').textContent = e.target.value + ' сек';
+}
+function broadcastLobby() {
+  if (App.mpHost) App.mpHost.broadcast(MpProtocol.Lobby(App.players));
+}
+function handleHostClientMessage(clientId, msg) {
+  if (!msg || !msg.t) return;
+  if (msg.t === 'JOIN') {
+    const existing = App.players.map(p => p.name);
+    const finalNick = deduplicateNickname(msg.nickname || 'Игрок', existing);
+    App.players.push({ id: clientId, name: finalNick, isHost: false });
+    if (App.mpHost) App.mpHost.sendTo(clientId, MpProtocol.JoinAck(finalNick, clientId));
+    broadcastLobby();
+    refreshHostPlayers();
+    appendLobbyLog(`${finalNick} присоединился`);
+  } else if (msg.t === 'CLICK' || msg.t === 'FLAG') {
+    handleMpClientAction(clientId, msg);
+  } else if (msg.t === 'LEAVE' || msg.t === 'GOODBYE') {
+    const removed = App.players.find(p => p.id === clientId);
+    App.players = App.players.filter(p => p.id !== clientId);
+    if (removed) appendLobbyLog(`${removed.name} вышел`);
+    refreshHostPlayers();
+    broadcastLobby();
+  }
+}
+
+function initJoinScreen() {
+  $('etNick').value = SaveManager.nickname() || '';
+  $('btnConnect').onclick = () => {
+    const hostId = $('etHostId').value.trim();
+    const nick = $('etNick').value.trim() || 'Игрок';
+    if (!hostId) { toast('Введи Peer ID хоста'); return; }
+    SaveManager.setNickname(nick);
+    App.myNickname = nick;
+    $('btnConnect').disabled = true;
+    $('btnDisconnect').style.display = 'block';
+    appendJoinLog(`Подключаемся к ${hostId}…`);
+
+    App.isMpClient = true;
+    App.mpClient = new MpClient(
+      (msg) => handleClientServerMessage(msg),
+      () => { appendJoinLog('Отключено от хоста'); resetJoinButtons(); },
+      (msg) => { appendJoinLog(`Ошибка: ${msg}`); resetJoinButtons(); }
+    );
+    App.mpClient.connect(hostId, nick);
+  };
+  $('btnDisconnect').onclick = () => {
+    if (App.mpClient) { App.mpClient.disconnect(); App.mpClient = null; }
+    resetJoinButtons();
+  };
+  $('btnBackJoin').onclick = () => {
+    if (App.mpClient) { App.mpClient.disconnect(); App.mpClient = null; }
+    showScreen('screen-menu'); updateContinueButton();
+  };
+}
+function resetJoinButtons() {
+  $('btnConnect').disabled = false;
+  $('btnDisconnect').style.display = 'none';
+}
+function appendJoinLog(text) {
+  const el = $('tvJoinLog');
+  el.textContent = el.textContent ? `${el.textContent}\n${text}` : text;
+}
+function handleClientServerMessage(msg) {
+  if (!msg || !msg.t) return;
+  if (msg.t === 'JOIN_ACK') {
+    App.myId = msg.playerId;
+    App.myNickname = msg.nickname;
+    appendJoinLog(`Подключён как ${msg.nickname} (#${msg.playerId})`);
+  } else if (msg.t === 'LOBBY') {
+    const list = msg.players.map((p, i) => `${i + 1}. ${p.name}${p.isHost ? '  (хост)' : ''}`).join('\n');
+    $('tvLobbyPlayers').textContent = list;
+  } else if (msg.t === 'START') {
+    App.players = msg.players;
+    App.mode = Object.values(GameMode).find(m => m.key === msg.mode) || GameMode.CLASSIC;
+    App.difficulty = Object.values(Difficulty).find(d => d.key === msg.difficulty) || Difficulty.BEGINNER;
+    App.shiftInterval = msg.shiftInterval;
+    appendJoinLog('Хост стартовал игру!');
+    startMpGameAsClient();
+  } else if (msg.t === 'STATE') {
+    handleMpStateMessage(msg);
+  } else if (msg.t === 'OVER') {
+    showMpGameOver(msg.reason, msg.loserId, msg.winnerId);
+  } else if (msg.t === 'GOODBYE') {
+    appendJoinLog('Хост закрыл игру');
+    if (App.mpClient) { App.mpClient.disconnect(); App.mpClient = null; }
+    showScreen('screen-menu'); updateContinueButton();
+  } else if (msg.t === 'ERROR') {
+    appendJoinLog(`Ошибка: ${msg.message}`);
+  }
+}
+
+function startMpGame() {
+  App.mode = App.selectedMode;
+  App.difficulty = App.selectedDiff;
+  App.engine = new GameEngine();
+  App.engine.initGame(App.mode, App.difficulty);
+  App.players = App.players.slice();
+  App.currentTurnId = 0;
+  broadcastStart();
+  showScreen('screen-mp-game');
+  initMpGameScreen(true);
+}
+function startMpGameAsClient() {
+  App.engine = null;
+  showScreen('screen-mp-game');
+  initMpGameScreen(false);
+}
+function broadcastStart() {
+  if (App.mpHost) App.mpHost.broadcast(MpProtocol.Start(
+    App.mode.key, App.difficulty.key, SaveManager.shiftInterval(),
+    App.players, Date.now()
+  ));
+}
+function initMpGameScreen(isHost) {
+  const canvas = $('mpBoard');
+  App.renderer = new BoardRenderer(canvas, () => App.engine);
+  App.renderer.rebuildAnims();
+  App.renderer.externalClickListener = (row, col, isFlag) => onMpLocalAction(row, col, isFlag);
+  App.renderer.onRevealListener = (row, col, exploded, won) => {
+    if (App.engine && App.engine._lastRevealed) {
+      App.renderer.animateRevealWave(App.engine._lastRevealed, row, col);
+    }
+    if (exploded) App.sound.play('EXPLODE');
+    else if (won) App.sound.play('WIN');
+    else App.sound.play('REVEAL');
+    updateMinesLabel();
+    updateTurnIndicator();
+  };
+  App.renderer.onFlagListener = (r, c) => { App.sound.play('FLAG'); updateMinesLabel(); };
+  setTimeout(() => App.renderer.measure(), 50);
+
+  const btnFlag = $('btnMpFlagMode');
+  btnFlag.classList.toggle('flag-on', App.renderer.flagMode);
+  btnFlag.textContent = App.renderer.flagMode ? '⛏' : '🚩';
+  btnFlag.onclick = () => {
+    App.renderer.flagMode = !App.renderer.flagMode;
+    btnFlag.classList.toggle('flag-on', App.renderer.flagMode);
+    btnFlag.textContent = App.renderer.flagMode ? '⛏' : '🚩';
+    App.sound.play('CLICK');
+  };
+  $('btnMpMenu').onclick = () => {
+    showModal('Выйти из игры?', '<p>Игра будет прервана для всех игроков.</p>', [
+      { label: 'Выйти', class: 'danger', onClick: () => {
+        if (App.isMpHost && App.mpHost) { App.mpHost.broadcast(MpProtocol.Goodbye()); App.mpHost.stop(); App.mpHost = null; }
+        if (App.isMpClient && App.mpClient) { App.mpClient.send(MpProtocol.Leave()); App.mpClient.disconnect(); App.mpClient = null; }
+        App.isMpHost = false; App.isMpClient = false;
+        clearInterval(App.tickTimer); clearInterval(App.shiftTimer);
+        showScreen('screen-menu'); updateContinueButton();
+      }},
+      { label: 'Отмена' }
+    ]);
+  };
+
+  if (App.engine) {
+    $('tvMpModeLabel').textContent = `${App.engine.mode.display} · ${App.engine.difficulty.display} · MP`;
+    $('llMpShift').style.display = App.engine.mode.shifts ? '' : 'none';
+    $('tvMpShift').textContent = App.engine.mode.shifts ? `${App.shiftInterval}с` : '—';
+  } else {
+    $('tvMpModeLabel').textContent = 'Загрузка…';
+    $('llMpShift').style.display = 'none';
+  }
+  updateMinesLabel();
+  updateTurnIndicator();
+
+  App.startTimeMs = Date.now();
+  App.elapsedSec = 0;
+  App.shiftRemainingSec = App.shiftInterval;
+  $('tvMpTime').textContent = '0:00';
+  clearInterval(App.tickTimer); clearInterval(App.shiftTimer);
+  if (isHost) {
+    App.tickTimer = setInterval(() => {
+      App.elapsedSec = Math.floor((Date.now() - App.startTimeMs) / 1000);
+      $('tvMpTime').textContent = formatTime(App.elapsedSec);
+    }, 500);
+    if (App.engine && App.engine.mode.shifts) {
+      App.shiftTimer = setInterval(() => {
+        if (!App.engine.gameOver && App.engine.mode.shifts && App.engine.firstClickDone) {
+          App.shiftRemainingSec--;
+          if (App.shiftRemainingSec <= 0) {
+            App.engine.shiftMines();
+            App.renderer.animateShift();
+            App.sound.play('SHIFT');
+            App.shiftRemainingSec = App.shiftInterval;
+            updateMinesLabel();
+            App.renderer.draw();
+            broadcastMpState();
+          }
+          $('tvMpShift').textContent = `${App.shiftRemainingSec}с`;
+        } else if (App.engine && !App.engine.firstClickDone) {
+          $('tvMpShift').textContent = '—';
+        }
+      }, 1000);
+    }
+  }
+  document.body.addEventListener('touchstart', () => App.sound._ensureCtx(), { once: true });
+}
+function onMpLocalAction(row, col, isFlag) {
+  if (App.currentTurnId !== App.myId) return;
+  if (App.isMpHost) {
+    const e = App.engine; if (!e) return;
+    if (isFlag) {
+      if (e.toggleFlag(row, col)) {
+        App.renderer.animateFlag(row, col);
+        App.sound.play('FLAG');
+        updateMinesLabel();
+      }
+    } else {
+      const res = e.reveal(row, col);
+      App.renderer.animateRevealWave(e._lastRevealed || [], row, col);
+      handleHostRevealResult(row, col, res);
+      updateMinesLabel();
+    }
+    App.renderer.draw();
+    advanceTurnIfNeeded();
+    broadcastMpState();
+  } else if (App.isMpClient && App.mpClient) {
+    const msg = isFlag ? MpProtocol.Flag(row, col) : MpProtocol.Click(row, col);
+    App.mpClient.send(msg);
+  }
+}
+function handleMpClientAction(clientId, msg) {
+  if (!App.isMpHost) return;
+  if (clientId !== App.currentTurnId) return;
+  const e = App.engine; if (!e) return;
+  if (msg.t === 'CLICK') {
+    const res = e.reveal(msg.row, msg.col);
+    App.renderer.animateRevealWave(e._lastRevealed || [], msg.row, msg.col);
+    handleHostRevealResult(msg.row, msg.col, res);
+    App.renderer.draw();
+    updateMinesLabel();
+    advanceTurnIfNeeded();
+    broadcastMpState();
+  } else if (msg.t === 'FLAG') {
+    if (e.toggleFlag(msg.row, msg.col)) {
+      App.renderer.animateFlag(msg.row, msg.col);
+      App.sound.play('FLAG');
+    }
+    App.renderer.draw();
+    updateMinesLabel();
+    broadcastMpState();
+  }
+}
+function handleHostRevealResult(row, col, res) {
+  if (res === 'EXPLODED') {
+    App.sound.play('EXPLODE');
+    endMpGame('exploded', App.myId, -1);
+  } else if (res === 'WON') {
+    App.sound.play('WIN');
+    endMpGame('won', -1, App.myId);
+  } else if (res === 'REVEALED') {
+    App.sound.play('REVEAL');
+  }
+}
+function advanceTurnIfNeeded() {
+  const e = App.engine; if (!e || e.gameOver) return;
+  if (App.players.length <= 1) return;
+  const idx = App.players.findIndex(p => p.id === App.currentTurnId);
+  if (idx < 0) return;
+  const next = App.players[(idx + 1) % App.players.length];
+  App.currentTurnId = next.id;
+  updateTurnIndicator();
+}
+function broadcastMpState() {
+  if (!App.isMpHost || !App.mpHost) return;
+  if (!App.engine) return;
+  App.mpHost.broadcast(MpProtocol.State(App.engine.serialize(), App.currentTurnId, App.elapsedSec));
+}
+function handleMpStateMessage(msg) {
+  if (msg.t !== 'STATE') return;
+  const e = GameEngine.deserialize(msg.engine);
+  if (!e) return;
+  App.engine = e;
+  if (App.renderer) {
+    App.renderer.rebuildAnims();
+    App.renderer.draw();
+  }
+  App.currentTurnId = msg.turn;
+  App.elapsedSec = msg.elapsed;
+  $('tvMpTime').textContent = formatTime(App.elapsedSec);
+  $('tvMpModeLabel').textContent = `${App.engine.mode.display} · ${App.engine.difficulty.display} · MP`;
+  $('llMpShift').style.display = App.engine.mode.shifts ? '' : 'none';
+  updateMinesLabel();
+  updateTurnIndicator();
+}
+function updateTurnIndicator() {
+  const tv = $('tvTurnIndicator');
+  if (App.currentTurnId === App.myId) {
+    tv.textContent = '▼ ВАШ ХОД ▼';
+    tv.classList.add('you');
+    if (App.renderer) App.renderer.inputEnabled = true;
+  } else {
+    const p = App.players.find(p => p.id === App.currentTurnId);
+    tv.textContent = `Ход: ${p ? p.name : '?'}`;
+    tv.classList.remove('you');
+    if (App.renderer) App.renderer.inputEnabled = false;
+  }
+}
+function endMpGame(reason, loserId, winnerId) {
+  clearInterval(App.shiftTimer); clearInterval(App.tickTimer);
+  if (App.mpHost) App.mpHost.broadcast(MpProtocol.Over(reason, loserId, winnerId));
+  showMpGameOver(reason, loserId, winnerId);
+}
+function showMpGameOver(reason, loserId, winnerId) {
+  clearInterval(App.shiftTimer); clearInterval(App.tickTimer);
+  const youWon = winnerId === App.myId;
+  const youLost = loserId === App.myId;
+  let title;
+  if (youWon) title = '🏆 Победа!';
+  else if (youLost) title = '💥 Ты проиграл';
+  else if (winnerId !== -1) {
+    const p = App.players.find(p => p.id === winnerId);
+    title = `🏆 Победил: ${p ? p.name : '?'}`;
+  } else if (loserId !== -1) {
+    const p = App.players.find(p => p.id === loserId);
+    title = `💥 Проиграл: ${p ? p.name : '?'}`;
+  } else {
+    title = 'Игра окончена';
+  }
+  showModal(title, `<p>Время: ${formatTime(App.elapsedSec)}</p><p>Причина: ${reason}</p>`, [
+    { label: 'В меню', class: 'primary', onClick: () => {
+      if (App.isMpHost && App.mpHost) { App.mpHost.stop(); App.mpHost = null; }
+      if (App.isMpClient && App.mpClient) { App.mpClient.disconnect(); App.mpClient = null; }
+      App.isMpHost = false; App.isMpClient = false;
+      showScreen('screen-menu'); updateContinueButton();
+    }}
+  ]);
+}
+
+window.addEventListener('load', () => {
+  App.sound.enabled = SaveManager.isSound();
+  initMenu();
+  initJoinScreen();
+  const unlock = () => {
+    App.sound._ensureCtx();
+    document.body.removeEventListener('touchstart', unlock);
+    document.body.removeEventListener('mousedown', unlock);
+  };
+  document.body.addEventListener('touchstart', unlock);
+  document.body.addEventListener('mousedown', unlock);
+});
+window.addEventListener('resize', () => {
+  if (App.renderer) App.renderer.measure();
+});
+window.addEventListener('beforeunload', () => {
+  if (App.isMpHost && App.mpHost) App.mpHost.stop();
+  if (App.isMpClient && App.mpClient) App.mpClient.disconnect();
+  if (App.engine && !App.engine.gameOver && !App.isMpHost && !App.isMpClient) {
+    SaveManager.saveGame(App.engine.serialize());
+  }
+});
+$('modal').addEventListener('click', (e) => {
+  if (e.target === $('modal')) closeModal();
+});
+</script>
+
+</body>
+</html>
+
