@@ -228,6 +228,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   <div class="subtitle">Веб-версия — работай с iPhone и Android</div>
 
   <button id="btnContinue" class="primary" style="display:none">Продолжить</button>
+  <button id="btnQuickGame" class="secondary">↻ Повтор</button>
   <button id="btnNewGame" class="primary">Новая игра</button>
   <button id="btnMpHost" class="secondary">Создать игру (P2P)</button>
   <button id="btnMpJoin" class="secondary">Подключиться (P2P)</button>
@@ -268,8 +269,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       <div class="topbar-label">Флажок</div>
     </div>
     <div class="topbar-cell">
-      <button class="topbar-btn" id="btnMenu">≡</button>
-      <div class="topbar-label">Меню</div>
+      <button class="topbar-btn" id="btnMenu">⏸</button>
+      <div class="topbar-label">Пауза</div>
     </div>
   </div>
   <div class="mode-label" id="tvModeLabel">—</div>
@@ -290,6 +291,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 
   <button class="secondary" id="btnHostNick">Ник: Хост</button>
   <button class="secondary" id="btnPickMode">Режим: Классика</button>
+  <button class="secondary" id="btnPickMpMode">Режим MP: Вместе</button>
   <button class="secondary" id="btnPickDiff">Сложность: Новичок</button>
   <button class="secondary" id="btnPickShift">Сдвиг: 10 сек</button>
 
@@ -322,6 +324,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 
     <button class="secondary" id="btnRelayHostNick">Ник: Хост</button>
     <button class="secondary" id="btnRelayPickMode">Режим: Классика</button>
+    <button class="secondary" id="btnRelayPickMpMode">Режим MP: Вместе</button>
     <button class="secondary" id="btnRelayPickDiff">Сложность: Новичок</button>
     <button class="secondary" id="btnRelayPickShift">Сдвиг: 10 сек</button>
 
@@ -439,6 +442,7 @@ const Difficulty = {
   BEGINNER: { key:'beginner', display:'Новичок', shortDesc:'8×8 · 10 мин',  rows:8,  cols:8,  mineCount:10 },
   VETERAN:  { key:'veteran',  display:'Ветеран', shortDesc:'16×16 · 40 мин', rows:16, cols:16, mineCount:40 },
   MASTER:   { key:'master',   display:'Мастер',  shortDesc:'16×30 · 99 мин', rows:16, cols:30, mineCount:99 },
+  CUSTOM:   { key:'custom',   display:'Своя',    shortDesc:'Свой размер',     rows:16, cols:30, mineCount:0 },
 };
 
 class GameEngine {
@@ -456,7 +460,12 @@ class GameEngine {
 
   initGame(mode, difficulty) {
     this.mode = mode; this.difficulty = difficulty;
-    this.rows = difficulty.rows; this.cols = difficulty.cols;
+    if (difficulty.key === 'custom') {
+      this.rows = SaveManager.customRows();
+      this.cols = SaveManager.customCols();
+    } else {
+      this.rows = difficulty.rows; this.cols = difficulty.cols;
+    }
     this.firstClickDone = false; this.gameOver = false; this.won = false;
     this.shiftsCount = 0; this.flaggedCount = 0; this.revealedCount = 0;
     this.explodedAt = [-1, -1]; this._lastRevealed = [];
@@ -466,7 +475,12 @@ class GameEngine {
       this.revealed.push(new Array(this.cols).fill(false));
       this.flagged.push(new Array(this.cols).fill(false));
     }
-    this.mineCount = this.mode.hasMineLimit ? this.difficulty.mineCount : 1 + this._randInt(this.rows * this.cols);
+    if (difficulty.key === 'custom') {
+      const total = this.rows * this.cols;
+      this.mineCount = Math.round(total * (total <= 256 ? 0.15 : 0.13));
+    } else {
+      this.mineCount = this.mode.hasMineLimit ? this.difficulty.mineCount : 1 + this._randInt(this.rows * this.cols);
+    }
     this.placeMinesRandomly([]);
     if (this.mineCount === 0) this.forcePlaceOneMine();
   }
@@ -1031,6 +1045,14 @@ const SaveManager = {
   hasSavedGame: function() { return !!localStorage.getItem(this._k('game')); },
   clearSavedGame: function() { localStorage.removeItem(this._k('game')); },
 
+  setLastMode: function(mode) { localStorage.setItem(this._k('last_mode'), mode); },
+  lastMode: function() { return localStorage.getItem(this._k('last_mode')) || 'classic'; },
+  setLastDifficulty: function(diff) { localStorage.setItem(this._k('last_diff'), diff); },
+  lastDifficulty: function() { return localStorage.getItem(this._k('last_diff')) || 'beginner'; },
+  setCustomSize: function(rows, cols) { localStorage.setItem(this._k('custom_rows'), rows); localStorage.setItem(this._k('custom_cols'), cols); },
+  customRows: function() { return parseInt(localStorage.getItem(this._k('custom_rows')) || '16'); },
+  customCols: function() { return parseInt(localStorage.getItem(this._k('custom_cols')) || '30'); },
+
   recordGame: function(mode, diff, won, timeSec) {
     const played = this.getInt(`played_${mode.key}_${diff.key}`, 0) + 1;
     const wonTotal = this.getInt(`won_${mode.key}_${diff.key}`, 0) + (won ? 1 : 0);
@@ -1090,6 +1112,9 @@ class BoardRenderer {
     this.shiftStart = 0;
     this.animRunning = false;
     this._animLoopBound = this._animLoop.bind(this);
+
+    this.panX = 0; this.panY = 0;
+    this._lastPanX = 0; this._lastPanY = 0;
 
     this.flagMode = false;
     this.inputEnabled = true;
@@ -1160,7 +1185,9 @@ class BoardRenderer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     const pad = 1;
     const flashAlpha = this._shiftFlashAlpha();
-
+    // Применяем pan-смещение ко всем клеткам.
+    ctx.save();
+    ctx.translate(this.panX, this.panY);
     for (let r = 0; r < e.rows; r++) {
       for (let c = 0; c < e.cols; c++) {
         const left = c * cs + pad, top = r * cs + pad;
@@ -1236,6 +1263,7 @@ class BoardRenderer {
         }
       }
     }
+    ctx.restore();
   }
 
   _roundRect(x, y, w, h, r) {
@@ -1391,8 +1419,11 @@ class BoardRenderer {
   _rowColFromXY(x, y) {
     const e = this.getEngine();
     if (!e) return { row: -1, col: -1 };
-    const col = Math.max(0, Math.min(e.cols - 1, Math.floor(x / this.cellSize)));
-    const row = Math.max(0, Math.min(e.rows - 1, Math.floor(y / this.cellSize)));
+    // Компенсируем pan-смещение, чтобы попадать в правильную клетку.
+    const xx = x - this.panX;
+    const yy = y - this.panY;
+    const col = Math.max(0, Math.min(e.cols - 1, Math.floor(xx / this.cellSize)));
+    const row = Math.max(0, Math.min(e.rows - 1, Math.floor(yy / this.cellSize)));
     return { row, col };
   }
   _onTouchStart(e) {
@@ -1411,6 +1442,7 @@ class BoardRenderer {
     const t = e.touches[0];
     const p = this._getTouchPos(t);
     this._downX = p.x; this._downY = p.y;
+    this._lastPanX = p.x; this._lastPanY = p.y;
     const rc = this._rowColFromXY(p.x, p.y);
     this._downRow = rc.row; this._downCol = rc.col;
     this._hasMoved = false; this._longPressFired = false;
@@ -1431,6 +1463,8 @@ class BoardRenderer {
       if (this._pinchStartDist > 0) {
         const factor = dist / this._pinchStartDist;
         this.zoomFactor = Math.max(1.0, Math.min(3.0, this._pinchStartZoom * factor));
+        // При возврате зума к 1.0 сбрасываем pan.
+        if (this.zoomFactor <= 1.05) { this.panX = 0; this.panY = 0; }
         this.measure();
       }
       return;
@@ -1438,9 +1472,19 @@ class BoardRenderer {
     if (e.touches.length !== 1) return;
     const t = e.touches[0];
     const p = this._getTouchPos(t);
+    // Панорама одним пальцем при увеличенном зуме.
+    const dx = p.x - this._lastPanX;
+    const dy = p.y - this._lastPanY;
+    this._lastPanX = p.x;
+    this._lastPanY = p.y;
     if (Math.abs(p.x - this._downX) > this.TOUCH_SLOP || Math.abs(p.y - this._downY) > this.TOUCH_SLOP) {
       this._hasMoved = true;
       this._cancelLongPress();
+    }
+    if (this._hasMoved && this.zoomFactor > 1.05 && (dx !== 0 || dy !== 0)) {
+      this.panX += dx;
+      this.panY += dy;
+      this.draw();
     }
   }
   _onTouchEnd(e) {
@@ -1632,6 +1676,10 @@ class BoardRenderer {
 }
 
 // ============================ MULTIPLAYER (PeerJS) ============================
+const MpMode = {
+  COOP:         { key:'coop',         display:'Вместе',  shortDesc:'Ходы по кругу' },
+  COMPETITIVE:  { key:'competitive',  display:'Гонка',   shortDesc:'Кто быстрее' },
+};
 const MpProtocol = {
   Join: (nickname) => ({ t: 'JOIN', nickname }),
   JoinAck: (nickname, playerId) => ({ t: 'JOIN_ACK', nickname, playerId }),
@@ -1640,9 +1688,10 @@ const MpProtocol = {
   Chord: (row, col) => ({ t: 'CHORD', row, col }),
   Leave: () => ({ t: 'LEAVE' }),
   Lobby: (players) => ({ t: 'LOBBY', players }),
-  Start: (mode, difficulty, shiftInterval, players, hostSeed) => ({ t: 'START', mode, difficulty, shiftInterval, players, hostSeed }),
+  Start: (mode, difficulty, shiftInterval, players, hostSeed, mpMode) => ({ t: 'START', mode, difficulty, shiftInterval, players, hostSeed, mpMode: mpMode || 'coop' }),
   State: (engine, turn, elapsed) => ({ t: 'STATE', engine, turn, elapsed }),
   Over: (reason, loserId, winnerId) => ({ t: 'OVER', reason, loserId, winnerId }),
+  Win: () => ({ t: 'WIN' }),
   Error: (msg) => ({ t: 'ERROR', message: msg }),
   Goodbye: () => ({ t: 'GOODBYE' }),
 };
@@ -1937,6 +1986,8 @@ const App = {
   difficulty: Difficulty.BEGINNER,
   selectedMode: GameMode.CLASSIC,
   selectedDiff: Difficulty.BEGINNER,
+  selectedMpMode: MpMode.COOP,
+  mpMode: 'coop',
   tickTimer: null,
   shiftTimer: null,
   savedFromLoaded: false,
@@ -2024,6 +2075,23 @@ function initMenu() {
   };
   $('btnSettings').onclick = showSettings;
   $('btnStats').onclick = showStats;
+  $('btnQuickGame').onclick = () => {
+    const modeKey = SaveManager.lastMode();
+    const diffKey = SaveManager.lastDifficulty();
+    const mode = Object.values(GameMode).find(m => m.key === modeKey) || GameMode.CLASSIC;
+    let diff = Object.values(Difficulty).find(d => d.key === diffKey) || Difficulty.BEGINNER;
+    if (diff.key === 'custom') {
+      // Для Своя — спросим размеры (или используем сохранённые)
+      promptCustomSize((rows, cols) => {
+        SaveManager.setCustomSize(rows, cols);
+        App.selectedMode = mode; App.selectedDiff = diff;
+        startSinglePlayer(mode, diff);
+      });
+    } else {
+      App.selectedMode = mode; App.selectedDiff = diff;
+      startSinglePlayer(mode, diff);
+    }
+  };
   $('btnMpHost').onclick = () => ensureNickname(() => startMpHost());
   $('btnMpJoin').onclick = () => ensureNickname(() => { showScreen('screen-join-client'); });
   $('btnMpRelayHost').onclick = () => ensureNickname(() => showScreen('screen-relay-host'));
@@ -2042,10 +2110,35 @@ function buildDiffButtons() {
       App.selectedDiff = d;
       dc.querySelectorAll('button').forEach(b => b.classList.remove('selected'));
       btn.classList.add('selected');
-      startSinglePlayer(App.selectedMode, App.selectedDiff);
+      if (d.key === 'custom') {
+        promptCustomSize((rows, cols) => {
+          SaveManager.setCustomSize(rows, cols);
+          startSinglePlayer(App.selectedMode, App.selectedDiff);
+        });
+      } else {
+        startSinglePlayer(App.selectedMode, App.selectedDiff);
+      }
     };
     dc.appendChild(btn);
   }
+}
+function promptCustomSize(cb) {
+  const curRows = SaveManager.customRows();
+  const curCols = SaveManager.customCols();
+  const body = `<div class="field-label">Строк (5–40)</div>` +
+    `<input class="input mono" id="etCustomRows" type="number" min="5" max="40" value="${curRows}">` +
+    `<div class="field-label">Столбцов (5–40)</div>` +
+    `<input class="input mono" id="etCustomCols" type="number" min="5" max="40" value="${curCols}">` +
+    `<div class="muted" style="margin-top:8px">Мины рассчитываются автоматически (~13-15% от поля).</div>`;
+  showModal('Свой размер', body, [
+    { label: 'OK', class: 'primary', onClick: () => {
+      const rows = Math.max(5, Math.min(40, parseInt($('etCustomRows').value, 10) || 16));
+      const cols = Math.max(5, Math.min(40, parseInt($('etCustomCols').value, 10) || 30));
+      SaveManager.setCustomSize(rows, cols);
+      cb(rows, cols);
+    }},
+    { label: 'Отмена' }
+  ]);
 }
 function updateContinueButton() {
   $('btnContinue').style.display = SaveManager.hasSavedGame() ? 'block' : 'none';
@@ -2131,6 +2224,9 @@ function showStats() {
 function startSinglePlayer(mode, diff) {
   SaveManager.clearSavedGame();
   App.mode = mode; App.difficulty = diff;
+  // Запоминаем последний режим/сложность для «↻ Повтор».
+  SaveManager.setLastMode(mode.key);
+  SaveManager.setLastDifficulty(diff.key);
   App.engine = new GameEngine();
   App.engine.initGame(mode, diff);
   App.savedFromLoaded = false;
@@ -2180,17 +2276,7 @@ function initGameScreen() {
     btnFlag.textContent = App.renderer.flagMode ? '⛏' : '🚩';
     App.sound.play('CLICK');
   };
-  $('btnMenu').onclick = () => {
-    showModal('Выйти в меню?', '<p>Игра будет сохранена автоматически.</p>', [
-      { label: 'Выйти', class: 'danger', onClick: () => {
-        if (!App.engine.gameOver) SaveManager.saveGame(App.engine.serialize());
-        clearInterval(App.tickTimer); clearInterval(App.shiftTimer);
-        showScreen('screen-menu'); updateContinueButton();
-      }},
-      { label: 'Заново', onClick: () => restartGame() },
-      { label: 'Отмена' }
-    ]);
-  };
+  $('btnMenu').onclick = pauseGame;
 
   $('tvModeLabel').textContent = `${App.engine.mode.display} · ${App.engine.difficulty.display}`;
   $('llShift').style.display = App.engine.mode.shifts ? '' : 'none';
@@ -2245,6 +2331,56 @@ function updateMinesLabel() {
     $('tvMpMines').textContent = mines;
   } else {
     $('tvMines').textContent = mines;
+  }
+}
+function pauseGame() {
+  if (App.engine && App.engine.gameOver) return;
+  // Приостанавливаем таймеры на время паузы.
+  const pauseStart = Date.now();
+  clearInterval(App.tickTimer); App.tickTimer = null;
+  clearInterval(App.shiftTimer); App.shiftTimer = null;
+  showModal('Пауза', '<p>Игра приостановлена. Таймер заморожен.</p>', [
+    { label: 'Продолжить', class: 'primary', onClick: () => resumeTimers(pauseStart) },
+    { label: 'Заново', onClick: () => restartGame() },
+    { label: 'Выйти', class: 'danger', onClick: () => {
+      if (App.engine && !App.engine.gameOver) SaveManager.saveGame(App.engine.serialize());
+      showScreen('screen-menu'); updateContinueButton();
+    }}
+  ]);
+}
+function resumeTimers(pauseStart) {
+  if (!App.engine) return;
+  const pausedMs = Date.now() - pauseStart;
+  // Сдвигаем startTimeMs вперёд на длительность паузы, чтобы elapsedSec остался прежним.
+  App.startTimeMs += pausedMs;
+  App.tickTimer = setInterval(() => {
+    App.elapsedSec = Math.floor((Date.now() - App.startTimeMs) / 1000);
+    $('tvTime').textContent = formatTime(App.elapsedSec);
+  }, 500);
+  if (App.engine.mode.shifts) {
+    App.shiftTimer = setInterval(() => {
+      if (!App.engine.gameOver && App.engine.mode.shifts && App.engine.firstClickDone) {
+        App.shiftRemainingSec--;
+        if (App.shiftRemainingSec <= 0) {
+          App.engine.shiftMines();
+          App.renderer.animateShift();
+          haptic(false); App.sound.play('SHIFT');
+          App.shiftRemainingSec = App.shiftInterval;
+          App.renderer.shiftCooldownUntil = performance.now() + 1000;
+          updateMinesLabel(); App.renderer.draw();
+          $('tvShift').classList.remove('urgent');
+        } else if (App.shiftRemainingSec <= 3) {
+          const vol = 0.3 + (3 - App.shiftRemainingSec) * 0.2;
+          App.sound.play('TICK', vol);
+          $('tvShift').classList.add('urgent');
+        } else {
+          $('tvShift').classList.remove('urgent');
+        }
+        $('tvShift').textContent = `${App.shiftRemainingSec}с`;
+      } else if (!App.engine.firstClickDone) {
+        $('tvShift').textContent = '—';
+      }
+    }, 1000);
   }
 }
 function restartGame() {
@@ -2338,6 +2474,7 @@ function startMpHost() {
 
   $('btnHostNick').textContent = `Ник: ${App.myNickname}`;
   $('btnPickMode').textContent = `Режим: ${App.selectedMode.display}`;
+  $('btnPickMpMode').textContent = `Режим MP: ${App.selectedMpMode.display}`;
   $('btnPickDiff').textContent = `Сложность: ${App.selectedDiff.display}`;
   $('btnPickShift').textContent = `Сдвиг: ${SaveManager.shiftInterval()} сек`;
   refreshHostPlayers();
@@ -2366,6 +2503,7 @@ function startMpHost() {
 
   $('btnHostNick').onclick = promptHostNickname;
   $('btnPickMode').onclick = pickMpMode;
+  $('btnPickMpMode').onclick = pickMpModeOption;
   $('btnPickDiff').onclick = pickMpDifficulty;
   $('btnPickShift').onclick = pickMpShift;
   $('btnStartMp').onclick = startMpGame;
@@ -2435,6 +2573,21 @@ function pickMpMode() {
     };
   });
 }
+function pickMpModeOption() {
+  const opts = Object.values(MpMode);
+  const body = opts.map((m, i) =>
+    `<button class="secondary" data-idx="${i}" style="margin-bottom:6px">${m.display} — ${m.shortDesc}</button>`
+  ).join('');
+  showModal('Режим мультиплеера', body, []);
+  $('modalActions').innerHTML = '';
+  $('modalBody').querySelectorAll('button').forEach(btn => {
+    btn.onclick = () => {
+      App.selectedMpMode = opts[parseInt(btn.dataset.idx, 10)];
+      $('btnPickMpMode').textContent = `Режим MP: ${App.selectedMpMode.display}`;
+      closeModal();
+    };
+  });
+}
 function pickMpDifficulty() {
   const diffs = Object.values(Difficulty);
   const body = diffs.map((d, i) =>
@@ -2467,6 +2620,13 @@ function broadcastLobby() {
 }
 function handleHostClientMessage(clientId, msg) {
   if (!msg || !msg.t) return;
+  if (msg.t === 'WIN') {
+    // Гонка: клиент первым очистил все не-минные клетки → он победитель.
+    if (App.mpMode === MpMode.COMPETITIVE.key) {
+      endMpGame('won', -1, clientId);
+    }
+    return;
+  }
   if (msg.t === 'JOIN') {
     const existing = App.players.map(p => p.name);
     const finalNick = deduplicateNickname(msg.nickname || 'Игрок', existing);
@@ -2538,6 +2698,7 @@ function initRelayScreens() {
   // HOST: никнейм, режим, сложность, сдвиг — те же диалоги что и для P2P
   $('btnRelayHostNick').onclick = promptRelayHostNickname;
   $('btnRelayPickMode').onclick = () => pickRelayOption('mode');
+  $('btnRelayPickMpMode').onclick = () => pickRelayOption('mpmode');
   $('btnRelayPickDiff').onclick = () => pickRelayOption('diff');
   $('btnRelayPickShift').onclick = () => pickRelayOption('shift');
   $('btnRelayStartMp').onclick = startRelayGame;
@@ -2605,6 +2766,7 @@ function startRelayHost(url, nick) {
     $('relayHostInfo').style.display = 'block';
     $('btnRelayHostNick').textContent = `Ник: ${nick}`;
     $('btnRelayPickMode').textContent = `Режим: ${App.selectedMode.display}`;
+    $('btnRelayPickMpMode').textContent = `Режим MP: ${App.selectedMpMode.display}`;
     $('btnRelayPickDiff').textContent = `Сложность: ${App.selectedDiff.display}`;
     $('btnRelayPickShift').textContent = `Сдвиг: ${SaveManager.shiftInterval()} сек`;
     refreshRelayHostPlayers();
@@ -2673,6 +2835,20 @@ function pickRelayOption(kind) {
         closeModal();
       };
     });
+  } else if (kind === 'mpmode') {
+    const opts = Object.values(MpMode);
+    const body = opts.map((m, i) =>
+      `<button class="secondary" data-idx="${i}" style="margin-bottom:6px">${m.display} — ${m.shortDesc}</button>`
+    ).join('');
+    showModal('Режим мультиплеера', body, []);
+    $('modalActions').innerHTML = '';
+    $('modalBody').querySelectorAll('button').forEach(btn => {
+      btn.onclick = () => {
+        App.selectedMpMode = opts[parseInt(btn.dataset.idx, 10)];
+        $('btnRelayPickMpMode').textContent = `Режим MP: ${App.selectedMpMode.display}`;
+        closeModal();
+      };
+    });
   } else if (kind === 'diff') {
     const diffs = Object.values(Difficulty);
     const body = diffs.map((d, i) =>
@@ -2704,6 +2880,7 @@ function pickRelayOption(kind) {
 function startRelayGame() {
   App.mode = App.selectedMode;
   App.difficulty = App.selectedDiff;
+  App.mpMode = App.selectedMpMode.key;
   App.engine = new GameEngine();
   App.engine.initGame(App.mode, App.difficulty);
   App.players = App.players.slice();
@@ -2711,7 +2888,7 @@ function startRelayGame() {
   // Шлём START через relay
   App.mpHost.broadcast(MpProtocol.Start(
     App.mode.key, App.difficulty.key, SaveManager.shiftInterval(),
-    App.players, Date.now()
+    App.players, Date.now(), App.mpMode
   ));
   showScreen('screen-mp-game');
   initMpGameScreen(true);
@@ -2763,6 +2940,7 @@ function handleClientServerMessage(msg) {
     App.mode = Object.values(GameMode).find(m => m.key === msg.mode) || GameMode.CLASSIC;
     App.difficulty = Object.values(Difficulty).find(d => d.key === msg.difficulty) || Difficulty.BEGINNER;
     App.shiftInterval = msg.shiftInterval;
+    App.mpMode = msg.mpMode || 'coop';
     appendJoinLog('Хост стартовал игру!');
     startMpGameAsClient();
   } else if (msg.t === 'STATE') {
@@ -2781,6 +2959,7 @@ function handleClientServerMessage(msg) {
 function startMpGame() {
   App.mode = App.selectedMode;
   App.difficulty = App.selectedDiff;
+  App.mpMode = App.selectedMpMode.key;
   App.engine = new GameEngine();
   App.engine.initGame(App.mode, App.difficulty);
   App.players = App.players.slice();
@@ -2790,35 +2969,82 @@ function startMpGame() {
   initMpGameScreen(true);
 }
 function startMpGameAsClient() {
-  App.engine = null;
+  if (App.mpMode === MpMode.COMPETITIVE.key) {
+    // В Гонке каждый клиент создаёт свой движок — не ждёт STATE от хоста.
+    App.engine = new GameEngine();
+    App.engine.initGame(App.mode, App.difficulty);
+  } else {
+    App.engine = null;
+  }
   showScreen('screen-mp-game');
   initMpGameScreen(false);
 }
 function broadcastStart() {
   if (App.mpHost) App.mpHost.broadcast(MpProtocol.Start(
     App.mode.key, App.difficulty.key, SaveManager.shiftInterval(),
-    App.players, Date.now()
+    App.players, Date.now(), App.mpMode
   ));
 }
 function initMpGameScreen(isHost) {
   const canvas = $('mpBoard');
   App.renderer = new BoardRenderer(canvas, () => App.engine);
   App.renderer.rebuildAnims();
-  App.renderer.externalClickListener = (row, col, isFlag) => onMpLocalAction(row, col, isFlag);
-  App.renderer.externalChordListener = (row, col) => onMpLocalChord(row, col);
-  App.renderer.onRevealListener = (row, col, exploded, won) => {
-    if (App.engine && App.engine._lastRevealed) {
-      App.renderer.animateRevealWave(App.engine._lastRevealed, row, col);
-    }
-    if (exploded) App.sound.play('EXPLODE');
-    else if (won) App.sound.play('WIN');
-    else App.sound.play('REVEAL');
-    updateMinesLabel();
-    updateTurnIndicator();
-  };
-  App.renderer.onFlagListener = (r, c) => {
-    App.sound.play('FLAG'); updateMinesLabel();
-  };
+  if (App.mpMode === MpMode.COMPETITIVE.key) {
+    // В Гонке каждый играет на своём поле. Локальный движок обрабатывает тапы.
+    // No externalClickListener — renderer._dispatchTap будет вызывать локальный движок,
+    // а onRevealListener обрабатывает взрыв (новый уровень) и победу (нотификация хоста).
+    App.renderer.onRevealListener = (row, col, exploded, won) => {
+      if (App.engine && App.engine._lastRevealed) {
+        App.renderer.animateRevealWave(App.engine._lastRevealed, row, col);
+      }
+      if (exploded) {
+        App.sound.play('EXPLODE');
+        // Взрыв = новый уровень. Движок реинитсяцируется, не поражение.
+        const mode = App.engine.mode, diff = App.engine.difficulty;
+        App.engine = new GameEngine();
+        App.engine.initGame(mode, diff);
+        App.renderer.rebuildAnims();
+        App.renderer.draw();
+        updateMinesLabel();
+        toast('💥 Новый уровень!');
+      } else if (won) {
+        App.sound.play('WIN');
+        handleCompetitiveWon();
+      } else {
+        App.sound.play('REVEAL');
+        // No-Guess Solver: проверить на софтлок после открытия.
+        if (App.engine) {
+          const state = App.engine.analyzeSoftlock();
+          if (state === 'Deadlock') {
+            App.engine.reshuffleMinesForLogicalMove();
+            App.renderer.draw();
+          }
+        }
+      }
+      updateMinesLabel();
+      updateTurnIndicator();
+    };
+    App.renderer.onFlagListener = (r, c) => {
+      App.sound.play('FLAG'); updateMinesLabel();
+    };
+  } else {
+    // COOP mode — host-authoritative. Локальные тапы отправляются на хост.
+    App.renderer.externalClickListener = (row, col, isFlag) => onMpLocalAction(row, col, isFlag);
+    App.renderer.externalChordListener = (row, col) => onMpLocalChord(row, col);
+    App.renderer.onRevealListener = (row, col, exploded, won) => {
+      if (App.engine && App.engine._lastRevealed) {
+        App.renderer.animateRevealWave(App.engine._lastRevealed, row, col);
+      }
+      if (exploded) App.sound.play('EXPLODE');
+      else if (won) App.sound.play('WIN');
+      else App.sound.play('REVEAL');
+      updateMinesLabel();
+      updateTurnIndicator();
+    };
+    App.renderer.onFlagListener = (r, c) => {
+      App.sound.play('FLAG'); updateMinesLabel();
+    };
+  }
   // Гарантируем, что canvas получит реальные размеры перед draw.
   // setTimeout + RAF fallback: экран должен был отрисоваться к этому моменту.
   setTimeout(() => {
@@ -2865,7 +3091,9 @@ function initMpGameScreen(isHost) {
   App.shiftRemainingSec = App.shiftInterval;
   $('tvMpTime').textContent = '0:00';
   clearInterval(App.tickTimer); clearInterval(App.shiftTimer);
-  if (isHost) {
+  // В COOP таймеры идут только на хосте. В Гонке — у всех.
+  const shouldRunTimers = isHost || App.mpMode === MpMode.COMPETITIVE.key;
+  if (shouldRunTimers) {
     App.tickTimer = setInterval(() => {
       App.elapsedSec = Math.floor((Date.now() - App.startTimeMs) / 1000);
       $('tvMpTime').textContent = formatTime(App.elapsedSec);
@@ -2882,7 +3110,9 @@ function initMpGameScreen(isHost) {
             App.renderer.shiftCooldownUntil = performance.now() + 1000;
             updateMinesLabel();
             App.renderer.draw();
-            broadcastMpState();
+            if (App.mpMode !== MpMode.COMPETITIVE.key) {
+              broadcastMpState();
+            }
             $('tvMpShift').classList.remove('urgent');
           } else if (App.shiftRemainingSec <= 3) {
             const vol = 0.3 + (3 - App.shiftRemainingSec) * 0.2;
@@ -2899,6 +3129,15 @@ function initMpGameScreen(isHost) {
     }
   }
   document.body.addEventListener('touchstart', () => App.sound._ensureCtx(), { once: true });
+}
+function handleCompetitiveWon() {
+  // Локальный игрок первым очистил все не-минные клетки — оповещаем остальных.
+  if (App.isMpHost && App.mpHost) {
+    endMpGame('won', -1, App.myId);
+  } else if (App.isMpClient && App.mpClient) {
+    App.mpClient.send(MpProtocol.Win());
+    toast('Победа отправлена. Ждем подтверждения...');
+  }
 }
 function onMpLocalAction(row, col, isFlag) {
   if (App.currentTurnId !== App.myId) return;
@@ -3042,6 +3281,12 @@ function handleMpStateMessage(msg) {
 }
 function updateTurnIndicator() {
   const tv = $('tvTurnIndicator');
+  if (App.mpMode === MpMode.COMPETITIVE.key) {
+    tv.textContent = '🏁 ГОНКА';
+    tv.classList.add('you');
+    if (App.renderer) App.renderer.inputEnabled = true;
+    return;
+  }
   if (App.currentTurnId === App.myId) {
     tv.textContent = '▼ ВАШ ХОД ▼';
     tv.classList.add('you');
