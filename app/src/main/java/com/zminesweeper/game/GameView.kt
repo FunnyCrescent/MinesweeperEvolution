@@ -375,18 +375,17 @@ class GameView : View {
         }
         val availW = MeasureSpec.getSize(widthMeasureSpec)
         val availH = MeasureSpec.getSize(heightMeasureSpec)
-        // Базовый размер клетки: вписываем поле в доступную область.
-        // Берём минимум из availW/cols и availH/rows, чтобы поле точно влезало
-        // по обоим измерениям. Раньше был max(), что для 16×30 давало слишком
-        // маленькие клетки и пустую область снизу.
-        var baseCell = minOf(
+        // Базовый размер клетки: MAX из availW/cols и availH/rows.
+        // Это гарантирует что поле ЗАПОЛНЯЕТ весь доступный экран по обеим осям.
+        // Если cols/rows не пропорциональны экрану — часть клеток будет обрезана,
+        // но игрок может проскроллить (ScrollView/HScrollView). Главное — нет
+        // пустых зон.
+        var baseCell = maxOf(
             availW.toFloat() / engine.cols,
             availH.toFloat() / engine.rows
         )
         val maxCell = 80f * resources.displayMetrics.density
         if (baseCell > maxCell) baseCell = maxCell
-        // minCell убран: для больших полей (16×30) на телефоне клетки могут быть
-        // маленькими, и это нормально — лучше заполнить экран, чем иметь дыры.
 
         // Применяем масштабирование (pinch-to-zoom).
         cellSize = baseCell * zoomFactor
@@ -585,13 +584,15 @@ class GameView : View {
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                // КРИТИЧНО: блокируем родительский ScrollView с самого начала.
+                // Без этого ScrollView перехватывает всю последовательность touch
+                // и пинч-детектор никогда не получит события.
+                parent?.requestDisallowInterceptTouchEvent(true)
                 downX = event.x; downY = event.y
                 downCol = (event.x / cellSize).toInt().coerceIn(0, engine.cols - 1)
                 downRow = (event.y / cellSize).toInt().coerceIn(0, engine.rows - 1)
                 hasMoved = false
                 longPressFired = false
-                // Если только что был UP в радиусе 40px и за <300мс — это двойной тап,
-                // игнорируем long-press, ждём UP для toggling zoom.
                 val now = SystemClock.uptimeMillis()
                 val isDoubleClick = (now - lastUpTimeMs) < 300 &&
                     abs(event.x - lastUpX) < 40f * resources.displayMetrics.density &&
@@ -607,8 +608,6 @@ class GameView : View {
                     handler.removeCallbacks(longPressRunnable)
                     // Если поле зумлено (zoom > 1) и двигаем одним пальцем —
                     // разрешаем родительскому ScrollView скроллить (pan).
-                    // parent.requestDisallowInterceptTouchEvent(false) отменит
-                    // блокировку, установленную в onScaleBegin.
                     if (zoomFactor > 1.05f && !scaleDetector.isInProgress) {
                         parent?.requestDisallowInterceptTouchEvent(false)
                     }
