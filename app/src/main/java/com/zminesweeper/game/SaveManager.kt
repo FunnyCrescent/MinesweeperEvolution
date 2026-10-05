@@ -63,6 +63,22 @@ class SaveManager(context: Context) {
         }.apply()
     fun lastHostIp(): String? = prefs.getString(KEY_LAST_HOST_IP, null)
 
+    // ---------- Последний режим/сложность для «Быстрой игры» ----------
+
+    fun setLastMode(mode: GameMode) = prefs.edit().putString(KEY_LAST_MODE, mode.key).apply()
+    fun lastMode(): GameMode =
+        GameMode.fromKey(prefs.getString(KEY_LAST_MODE, null))
+
+    fun setLastDifficulty(diff: Difficulty) = prefs.edit().putString(KEY_LAST_DIFF, diff.key).apply()
+    fun lastDifficulty(): Difficulty =
+        Difficulty.fromKey(prefs.getString(KEY_LAST_DIFF, null))
+
+    /** Кастомная сложность: rows × cols (mines вычисляются по формуле). */
+    fun setCustomSize(rows: Int, cols: Int) =
+        prefs.edit().putInt(KEY_CUSTOM_ROWS, rows).putInt(KEY_CUSTOM_COLS, cols).apply()
+    fun customRows(): Int = prefs.getInt(KEY_CUSTOM_ROWS, 16)
+    fun customCols(): Int = prefs.getInt(KEY_CUSTOM_COLS, 30)
+
     // ---------- URL relay-сервера для кроссплатформенного мультиплеера ----------
 
     fun setLastRelayUrl(url: String?) =
@@ -115,5 +131,9 @@ class SaveManager(context: Context) {
         private const val KEY_NICKNAME = "nickname"
         private const val KEY_LAST_HOST_IP = "last_host_ip"
         private const val KEY_LAST_RELAY_URL = "last_relay_url"
+        private const val KEY_LAST_MODE = "last_mode"
+        private const val KEY_LAST_DIFF = "last_diff"
+        private const val KEY_CUSTOM_ROWS = "custom_rows"
+        private const val KEY_CUSTOM_COLS = "custom_cols"
     }
 }

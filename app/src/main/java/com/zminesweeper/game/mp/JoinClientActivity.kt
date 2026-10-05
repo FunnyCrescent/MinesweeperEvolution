@@ -144,6 +144,11 @@ class JoinClientActivity : AppCompatActivity() {
             putExtra(MpGameActivity.EXTRA_MY_ID, myPlayerId)
             putExtra(MpGameActivity.EXTRA_NICKNAME, myNickname)
             putExtra(MpGameActivity.EXTRA_PLAYERS, playersJson.toString())
+            putExtra(MpGameActivity.EXTRA_MP_MODE, start.mpMode)
+            if (start.customRows > 0) {
+                putExtra(MpGameActivity.EXTRA_CUSTOM_ROWS, start.customRows)
+                putExtra(MpGameActivity.EXTRA_CUSTOM_COLS, start.customCols)
+            }
         }
         // Клиента НЕ отключаем — он нужен в игре. Перекладываем в контекст.
         MpContextHolder.client = client

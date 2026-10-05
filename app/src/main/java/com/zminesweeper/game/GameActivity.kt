@@ -200,17 +200,28 @@ class GameActivity : AppCompatActivity() {
     }
 
     private fun confirmExit() {
+        // Пауза: останавливаем таймеры пока диалог открыт.
+        handler.removeCallbacks(tickRunnable)
+        handler.removeCallbacks(shiftRunnable)
         AlertDialog.Builder(this)
-            .setTitle("Выйти в меню?")
-            .setMessage("Игра будет сохранена автоматически.")
+            .setTitle("Пауза")
+            .setMessage("Игра сохраняется автоматически.")
             .setPositiveButton("Выйти") { _, _ ->
                 if (!engine.gameOver) save.saveGame(engine.serialize())
                 finish()
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton("Продолжить") { _, _ ->
+                // Возобновляем таймеры с учётом паузы.
+                startTimeMs = System.currentTimeMillis() - elapsedSec * 1000L
+                handler.post(tickRunnable)
+                if (engine.mode.shifts && !engine.gameOver) {
+                    handler.post(shiftRunnable)
+                }
+            }
             .setNeutralButton("Заново") { _, _ ->
                 restartGame()
             }
+            .setCancelable(false)
             .show()
     }
 

@@ -67,10 +67,37 @@ class GameEngine {
 
     /** Полная (пере)инициализация партии. */
     fun initGame(mode: GameMode, difficulty: Difficulty) {
+        val actualRows: Int
+        val actualCols: Int
+        val actualMines: Int
+        if (difficulty == Difficulty.CUSTOM) {
+            actualRows = MinesweeperApp.customRows
+            actualCols = MinesweeperApp.customCols
+            actualMines = calcMineCount(actualRows, actualCols)
+        } else {
+            actualRows = difficulty.rows
+            actualCols = difficulty.cols
+            actualMines = difficulty.mineCount
+        }
+        initGameCustom(mode, actualRows, actualCols, actualMines, difficulty)
+    }
+
+    /**
+     * Количество мин для кастомного поля. Формула:
+     * ~15% для маленьких полей (до 64 клеток), ~13% для больших.
+     */
+    private fun calcMineCount(rows: Int, cols: Int): Int {
+        val total = rows * cols
+        val pct = if (total <= 256) 0.15 else 0.13
+        return (total * pct).toInt().coerceAtLeast(1)
+    }
+
+    /** Прямая инициализация с заданными параметрами (для custom и MP). */
+    fun initGameCustom(mode: GameMode, rows: Int, cols: Int, mineCount: Int, difficulty: Difficulty) {
         this.mode = mode
         this.difficulty = difficulty
-        this.rows = difficulty.rows
-        this.cols = difficulty.cols
+        this.rows = rows
+        this.cols = cols
         this.firstClickDone = false
         this.gameOver = false
         this.won = false
@@ -87,18 +114,14 @@ class GameEngine {
             flagged.add(BooleanArray(cols))
         }
 
-        // В классике и других режимах с лимитом — ставим стандартное число мин.
-        // В Анархии — случайное число (1..total). Минимум 1 — гарантировано.
-        mineCount = if (mode.hasMineLimit) {
-            difficulty.mineCount
+        this.mineCount = if (mode.hasMineLimit) {
+            mineCount
         } else {
             val total = rows * cols
             1 + rng.nextInt(total)   // 1..total включительно
         }
         placeMinesRandomly(emptyList())
-        // Защита: если somehow mineCount = 0 (например, на крошечном поле),
-        // принудительно ставим 1 мину в любую доступную клетку.
-        if (mineCount == 0) {
+        if (this.mineCount == 0) {
             forcePlaceOneMine()
         }
     }

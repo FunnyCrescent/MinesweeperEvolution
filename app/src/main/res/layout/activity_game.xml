@@ -122,7 +122,7 @@
                 android:minWidth="0dp"
                 android:minHeight="0dp"
                 android:padding="6dp"
-                android:text="≡"
+                android:text="⏸"
                 android:textSize="20sp" />
 
             <TextView

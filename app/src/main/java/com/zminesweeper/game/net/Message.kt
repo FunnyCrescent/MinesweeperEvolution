@@ -74,6 +74,9 @@ sealed class Message {
         val shiftInterval: Int,
         val players: List<PlayerInfo>,
         val hostSeed: Long,
+        val mpMode: String = "coop",
+        val customRows: Int = 0,
+        val customCols: Int = 0,
     ) : Message() {
         override fun toJson(): JSONObject {
             val arr = JSONArray()
@@ -85,6 +88,9 @@ sealed class Message {
                 .put("shiftInterval", shiftInterval)
                 .put("players", arr)
                 .put("seed", hostSeed)
+                .put("mpMode", mpMode)
+                .put("customRows", customRows)
+                .put("customCols", customCols)
         }
     }
 
@@ -139,6 +145,9 @@ sealed class Message {
                         (0 until arr.length()).map { PlayerInfo.fromJson(arr.getJSONObject(it)) }
                     } ?: emptyList(),
                     hostSeed = o.optLong("seed"),
+                    mpMode = o.optString("mpMode", "coop"),
+                    customRows = o.optInt("customRows", 0),
+                    customCols = o.optInt("customCols", 0),
                 )
                 "STATE"    -> State(
                     engine = o.optString("engine"),

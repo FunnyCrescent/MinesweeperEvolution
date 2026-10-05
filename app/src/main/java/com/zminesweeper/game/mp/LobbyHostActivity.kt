@@ -11,6 +11,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.zminesweeper.game.Difficulty
 import com.zminesweeper.game.GameMode
+import com.zminesweeper.game.MinesweeperApp
+import com.zminesweeper.game.MpMode
 import com.zminesweeper.game.R
 import com.zminesweeper.game.SaveManager
 import com.zminesweeper.game.net.Message
@@ -40,6 +42,7 @@ class LobbyHostActivity : AppCompatActivity() {
 
     private var selectedMode: GameMode = GameMode.CLASSIC
     private var selectedDiff: Difficulty = Difficulty.BEGINNER
+    private var selectedMpMode: MpMode = MpMode.COOP
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,6 +93,20 @@ class LobbyHostActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnPickShift).apply {
             text = "Сдвиг: ${save.shiftInterval()} сек"
             setOnClickListener { pickShiftInterval() }
+        }
+        // Кнопка выбора MP-режима: Вместе / Гонка
+        findViewById<Button>(R.id.btnPickMpMode)?.apply {
+            text = "Режим игры: ${selectedMpMode.display}"
+            setOnClickListener {
+                val labels = MpMode.entries.map { "${it.display} — ${it.shortDesc}" }.toTypedArray<String>()
+                AlertDialog.Builder(this@LobbyHostActivity)
+                    .setTitle("Сетевой режим")
+                    .setItems(labels) { _, which ->
+                        selectedMpMode = MpMode.entries[which]
+                        findViewById<Button>(R.id.btnPickMpMode).text = "Режим игры: ${selectedMpMode.display}"
+                    }
+                    .show()
+            }
         }
 
         findViewById<Button>(R.id.btnStartMp).setOnClickListener { startGame() }
@@ -206,12 +223,17 @@ class LobbyHostActivity : AppCompatActivity() {
         if (players.isEmpty()) return
         val playersList = players.values.toList()
         val seed = System.currentTimeMillis()
+        val customR = if (selectedDiff == Difficulty.CUSTOM) MinesweeperApp.customRows else 0
+        val customC = if (selectedDiff == Difficulty.CUSTOM) MinesweeperApp.customCols else 0
         val startMsg = Message.Start(
             mode = selectedMode.key,
             difficulty = selectedDiff.key,
             shiftInterval = save.shiftInterval(),
             players = playersList,
             hostSeed = seed,
+            mpMode = selectedMpMode.key,
+            customRows = customR,
+            customCols = customC,
         )
         server?.broadcast(startMsg)
 
@@ -235,6 +257,11 @@ class LobbyHostActivity : AppCompatActivity() {
             putExtra(MpGameActivity.EXTRA_MY_ID, hostId)
             putExtra(MpGameActivity.EXTRA_NICKNAME, hostNickname)
             putExtra(MpGameActivity.EXTRA_PLAYERS, playersJson.toString())
+            putExtra(MpGameActivity.EXTRA_MP_MODE, selectedMpMode.key)
+            if (selectedDiff == Difficulty.CUSTOM) {
+                putExtra(MpGameActivity.EXTRA_CUSTOM_ROWS, MinesweeperApp.customRows)
+                putExtra(MpGameActivity.EXTRA_CUSTOM_COLS, MinesweeperApp.customCols)
+            }
         }
         startActivity(intent)
         finish()  // лобби больше не нужно

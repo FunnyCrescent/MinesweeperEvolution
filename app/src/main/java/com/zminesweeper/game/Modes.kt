@@ -87,7 +87,8 @@ enum class Difficulty(
 ) {
     BEGINNER("beginner", "Новичок", "8 × 8 · 10 мин", 8, 8, 10),
     VETERAN("veteran", "Ветеран", "16 × 16 · 40 мин", 16, 16, 40),
-    MASTER("master", "Мастер", "16 × 30 · 99 мин", 16, 30, 99);
+    MASTER("master", "Мастер", "16 × 30 · 99 мин", 16, 30, 99),
+    CUSTOM("custom", "Своя", "Свой размер поля", 16, 30, 0);  // rows/cols берём из SaveManager
 
     companion object {
         fun fromKey(key: String?): Difficulty =

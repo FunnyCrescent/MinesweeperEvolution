@@ -12,6 +12,11 @@ import android.widget.Toast
 class MinesweeperApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        // Загружаем сохранённые размеры кастомного поля.
+        val save = SaveManager(this)
+        customRows = save.customRows()
+        customCols = save.customCols()
+
         // Установка глобального обработчика.
         val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
@@ -29,5 +34,11 @@ class MinesweeperApp : Application() {
             // Передаём системе для стандартной обработки.
             previousHandler?.uncaughtException(thread, throwable)
         }
+    }
+
+    companion object {
+        /** Кастомные размеры поля, загружаются из SaveManager при старте. */
+        @Volatile var customRows: Int = 16
+        @Volatile var customCols: Int = 30
     }
 }

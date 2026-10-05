@@ -192,6 +192,11 @@ class RelayJoinActivity : AppCompatActivity() {
             putExtra(MpGameActivity.EXTRA_NICKNAME, myNickname)
             putExtra(MpGameActivity.EXTRA_PLAYERS, playersJson.toString())
             putExtra(MpGameActivity.EXTRA_USE_RELAY, true)
+            putExtra(MpGameActivity.EXTRA_MP_MODE, startMsg.optString("mpMode", "coop"))
+            if (startMsg.optInt("customRows", 0) > 0) {
+                putExtra(MpGameActivity.EXTRA_CUSTOM_ROWS, startMsg.optInt("customRows", 0))
+                putExtra(MpGameActivity.EXTRA_CUSTOM_COLS, startMsg.optInt("customCols", 0))
+            }
         }
         startActivity(intent)
         finish()

@@ -50,6 +50,7 @@ class MpGameActivity : AppCompatActivity() {
     private var client: MultiplayerClient? = null
     private var relay: com.zminesweeper.game.net.WebSocketRelay? = null
     private var useRelay: Boolean = false
+    private var mpMode: com.zminesweeper.game.MpMode = com.zminesweeper.game.MpMode.COOP
 
     private val handler = Handler(Looper.getMainLooper())
 
@@ -140,11 +141,13 @@ class MpGameActivity : AppCompatActivity() {
 
         // relay flag — если true, используем WebSocket relay вместо TCP P2P
         useRelay = intent.getBooleanExtra(EXTRA_USE_RELAY, false)
+        mpMode = com.zminesweeper.game.MpMode.fromKey(intent.getStringExtra(EXTRA_MP_MODE))
 
         // Подхватываем сетевой объект из контекста
-        if (isHost) {
+        if (isHost || mpMode == com.zminesweeper.game.MpMode.COMPETITIVE) {
+            // Хост всегда создаёт engine. В COMPETITIVE клиенты тоже создают свой.
             engine = GameEngine().also { it.initGame(mode, difficulty) }
-            if (useRelay) {
+            if (useRelay && isHost) {
                 // WebSocket relay host
                 relay = MpContextHolder.relay
                 MpContextHolder.relay = null
@@ -245,18 +248,22 @@ class MpGameActivity : AppCompatActivity() {
     }
 
     private fun onLocalAction(row: Int, col: Int, isFlag: Boolean) {
-        if (currentTurnId != myId) {
-            // Не твой ход — тихо игнорируем
-            return
+        // В COMPETITIVE все играют одновременно на своих полях.
+        // Ходы не чередуются — каждый делает свой ход когда хочет.
+        if (mpMode != com.zminesweeper.game.MpMode.COMPETITIVE) {
+            if (currentTurnId != myId) {
+                // Не твой ход — тихо игнорируем
+                return
+            }
         }
-        if (isHost) {
+        if (isHost || mpMode == com.zminesweeper.game.MpMode.COMPETITIVE) {
+            // COOP host или COMPETITIVE (любой игрок) — играем локально.
             val e = engine ?: return
             if (isFlag) {
                 if (e.toggleFlag(row, col)) {
                     gameView.animateFlag(row, col)
                     sound?.play(SoundManager.Type.FLAG)
                     updateMinesLabel()
-                    // В Лавине победа может наступить при постановке флага
                     if (e.won) {
                         endGame("won", -1, myId)
                         return
@@ -269,7 +276,6 @@ class MpGameActivity : AppCompatActivity() {
                 updateMinesLabel()
             }
             gameView.invalidate()
-            // После успешного не-explode/won хода — передаём ход дальше.
             advanceTurnIfNeeded()
             broadcastState()
         } else {
@@ -342,7 +348,17 @@ class MpGameActivity : AppCompatActivity() {
         when (res) {
             GameEngine.RevealResult.EXPLODED -> {
                 sound?.play(SoundManager.Type.EXPLODE)
-                endGame(reason = "exploded", loserId = myId, winnerId = -1)
+                if (mpMode == com.zminesweeper.game.MpMode.COMPETITIVE) {
+                    // Гонка: взрыв = новый уровень, не проигрыш.
+                    haptic(true)
+                    engine?.initGame(mode, difficulty)
+                    gameView.engine = engine
+                    gameView.shiftCooldownUntilMs = android.os.SystemClock.uptimeMillis() + 1000
+                    gameView.invalidate()
+                    broadcastState()
+                } else {
+                    endGame(reason = "exploded", loserId = myId, winnerId = -1)
+                }
             }
             GameEngine.RevealResult.WON -> {
                 sound?.play(SoundManager.Type.WIN)
@@ -425,6 +441,8 @@ class MpGameActivity : AppCompatActivity() {
         val t = obj.optString("t")
         when (t) {
             "STATE" -> {
+                // В COMPETITIVE у каждого своё поле — STATE от хоста игнорируем.
+                if (mpMode == com.zminesweeper.game.MpMode.COMPETITIVE) return
                 val engineStr = obj.optString("engine")
                 val e = GameEngine.deserialize(engineStr)
                 if (e != null) {
@@ -461,6 +479,8 @@ class MpGameActivity : AppCompatActivity() {
     private fun handleServerMessage(msg: Message) {
         when (msg) {
             is Message.State -> {
+                // В COMPETITIVE у каждого своё поле — STATE от хоста игнорируем.
+                if (mpMode == com.zminesweeper.game.MpMode.COMPETITIVE) return
                 val e = GameEngine.deserialize(msg.engine)
                 if (e != null) {
                     // Если у хоста только что был сдвиг (shiftsCount вырос) — ставим кулдаун
@@ -588,8 +608,13 @@ class MpGameActivity : AppCompatActivity() {
 
     private fun updateTurnLabel() {
         val tv = findViewById<TextView>(R.id.tvTurnIndicator)
-        // Только хост знает текущий ход из currentTurnId; у клиента — currentTurnId
-        // обновляется из STATE.
+        // В COMPETITIVE все играют одновременно — всегда твой ход.
+        if (mpMode == com.zminesweeper.game.MpMode.COMPETITIVE) {
+            tv.text = "🏁 ГОНКА"
+            tv.setTextColor(getColor(R.color.warning))
+            gameView.inputEnabled = true
+            return
+        }
         if (currentTurnId == myId) {
             tv.text = "▼ ВАШ ХОД ▼"
             tv.setTextColor(getColor(R.color.accent))
@@ -706,5 +731,8 @@ class MpGameActivity : AppCompatActivity() {
         const val EXTRA_NICKNAME = "extra_nickname"
         const val EXTRA_PLAYERS = "extra_players_json"
         const val EXTRA_USE_RELAY = "extra_use_relay"
+        const val EXTRA_MP_MODE = "extra_mp_mode"
+        const val EXTRA_CUSTOM_ROWS = "extra_custom_rows"
+        const val EXTRA_CUSTOM_COLS = "extra_custom_cols"
     }
 }

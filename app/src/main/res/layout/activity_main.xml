@@ -46,6 +46,18 @@
             android:textStyle="bold"
             android:visibility="gone" />
 
+        <!-- Quick game: starts with last used mode+difficulty -->
+        <Button
+            android:id="@+id/btnQuickGame"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_button_secondary"
+            android:text="↻ Повтор"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
         <!-- New game -->
         <Button
             android:id="@+id/btnNewGame"

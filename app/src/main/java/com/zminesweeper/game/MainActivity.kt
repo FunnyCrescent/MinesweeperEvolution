@@ -28,6 +28,16 @@ class MainActivity : AppCompatActivity() {
 
         updateContinueButton()
 
+        // Quick Game — старт с последним режимом/сложностью.
+        findViewById<android.widget.Button>(R.id.btnQuickGame).setOnClickListener {
+            val mode = save.lastMode()
+            val diff = save.lastDifficulty()
+            save.clearSavedGame()
+            val intent = Intent(this, GameActivity::class.java)
+            intent.putExtra(GameActivity.EXTRA_MODE, mode.key)
+            intent.putExtra(GameActivity.EXTRA_DIFFICULTY, diff.key)
+            startActivity(intent)
+        }
         findViewById<android.widget.Button>(R.id.btnNewGame).setOnClickListener {
             showNewGameDialog()
         }
@@ -89,7 +99,11 @@ class MainActivity : AppCompatActivity() {
             val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             lp.setMargins(4, 0, 4, 0)
             btn.layoutParams = lp
-            btn.text = "${diff.display}\n${diff.shortDesc}"
+            btn.text = if (diff == Difficulty.CUSTOM) {
+                "Своя\n${MinesweeperApp.customRows}×${MinesweeperApp.customCols}"
+            } else {
+                "${diff.display}\n${diff.shortDesc}"
+            }
             btn.textSize = 11f
             btn.setBackgroundResource(R.drawable.bg_diff_button)
             btn.setTextColor(getColor(R.color.text_primary))
@@ -97,11 +111,23 @@ class MainActivity : AppCompatActivity() {
             btn.gravity = Gravity.CENTER
             btn.isAllCaps = false
             btn.setOnClickListener {
-                selectedDiff = diff
-                for (i in 0 until diffContainer.childCount) {
-                    (diffContainer.getChildAt(i) as android.widget.Button).isSelected = false
+                if (diff == Difficulty.CUSTOM) {
+                    // Показываем диалог ввода размеров.
+                    showCustomSizeDialog { _ ->
+                        selectedDiff = Difficulty.CUSTOM
+                        for (i in 0 until diffContainer.childCount) {
+                            (diffContainer.getChildAt(i) as android.widget.Button).isSelected = false
+                        }
+                        btn.isSelected = true
+                        btn.text = "Своя\n${MinesweeperApp.customRows}×${MinesweeperApp.customCols}"
+                    }
+                } else {
+                    selectedDiff = diff
+                    for (i in 0 until diffContainer.childCount) {
+                        (diffContainer.getChildAt(i) as android.widget.Button).isSelected = false
+                    }
+                    btn.isSelected = true
                 }
-                btn.isSelected = true
             }
             diffContainer.addView(btn)
         }
@@ -123,6 +149,9 @@ class MainActivity : AppCompatActivity() {
                 android.widget.Toast.makeText(this, "Выбери сложность", android.widget.Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
+            // Сохраняем последние выборы для кнопки «Повтор».
+            save.setLastMode(mode)
+            save.setLastDifficulty(diff)
             save.clearSavedGame()
             val intent = Intent(this, GameActivity::class.java)
             intent.putExtra(GameActivity.EXTRA_MODE, mode.key)
@@ -132,6 +161,44 @@ class MainActivity : AppCompatActivity() {
         }
 
         dialog.show()
+    }
+
+    /** Диалог ввода кастомного размера поля. */
+    private fun showCustomSizeDialog(onSelected: (Difficulty) -> Unit) {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(16, 16, 16, 16)
+        }
+        val etRows = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "Строки"
+            setText(MinesweeperApp.customRows.toString())
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val etCols = android.widget.EditText(this).apply {
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            hint = "Столбцы"
+            setText(MinesweeperApp.customCols.toString())
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        container.addView(etRows)
+        container.addView(etCols)
+        AlertDialog.Builder(this)
+            .setTitle("Свой размер поля")
+            .setMessage("Мины расставляются автоматически (~15% от площади).")
+            .setView(container)
+            .setPositiveButton("OK") { _, _ ->
+                val r = etRows.text.toString().toIntOrNull() ?: 16
+                val c = etCols.text.toString().toIntOrNull() ?: 30
+                val safeR = r.coerceIn(5, 30)
+                val safeC = c.coerceIn(5, 50)
+                MinesweeperApp.customRows = safeR
+                MinesweeperApp.customCols = safeC
+                save.setCustomSize(safeR, safeC)
+                onSelected(Difficulty.CUSTOM)
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     /** Если у пользователя ещё нет ника — спросим. Иначе — запускаем [action]. */

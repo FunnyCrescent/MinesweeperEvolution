@@ -112,6 +112,17 @@
             android:background="@drawable/bg_button_secondary"
             android:textColor="@color/text_primary"
             android:textSize="13sp"
+            android:layout_marginBottom="6dp"
+            android:gravity="start|center_vertical"
+            android:paddingStart="16dp" />
+
+        <Button
+            android:id="@+id/btnPickMpMode"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_button_secondary"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
             android:layout_marginBottom="16dp"
             android:gravity="start|center_vertical"
             android:paddingStart="16dp" />
