@@ -312,7 +312,8 @@ class GameView : View {
     }
     private val rect = RectF()
 
-    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    // Порог сдвига: 12dp — жёсткий, чтобы случайный дрожание пальца не отменяло флаг.
+    private val touchSlop = 12f * resources.displayMetrics.density
     private val longPressTimeout = ViewConfiguration.getLongPressTimeout().toLong()
     private val handler = Handler(Looper.getMainLooper())
 
@@ -591,20 +592,20 @@ class GameView : View {
     private var lastUpX: Float = 0f
     private var lastUpY: Float = 0f
 
+    /** Grace period: после мультитача клики блокируются на 180мс. */
+    private var gracePeriodUntilMs: Long = 0L
+    /** Флаг: был ли мультитач в текущей gesture sequence. */
+    private var wasMultitouch: Boolean = false
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         val engine = engine ?: return false
 
-        // Сначала отдаём событие пинч-детектору. Он сам поймёт, 1 палец или 2.
+        // Отдаём событие пинч-детектору.
         scaleDetector.onTouchEvent(event)
-        // Если пинч в процессе — НЕ обрабатываем как тап/долгое нажатие вообще.
-        if (scaleDetector.isInProgress) {
-            hasMoved = true
-            handler.removeCallbacks(longPressRunnable)
-            return true
-        }
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
+                wasMultitouch = false
                 downX = event.x; downY = event.y
                 val (r, c) = rowColFromXY(event.x, event.y)
                 downRow = r; downCol = c
@@ -619,11 +620,33 @@ class GameView : View {
                 }
                 return true
             }
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                // Второй палец на экране — мультитач! Блокируем все клеточные действия.
+                wasMultitouch = true
+                hasMoved = true
+                handler.removeCallbacks(longPressRunnable)
+                return true
+            }
             MotionEvent.ACTION_MOVE -> {
+                if (scaleDetector.isInProgress) {
+                    // Пинч активен — invalidate для плавной отрисовки зума.
+                    invalidate()
+                    return true
+                }
+                // Если был мультитач — это pan после пинча.
+                if (wasMultitouch && event.pointerCount == 1) {
+                    panX += event.x - downX
+                    panY += event.y - downY
+                    downX = event.x
+                    downY = event.y
+                    invalidate()
+                    return true
+                }
+                // Один палец, проверяем порог сдвига.
                 if (abs(event.x - downX) > touchSlop || abs(event.y - downY) > touchSlop) {
                     hasMoved = true
                     handler.removeCallbacks(longPressRunnable)
-                    // Pan: если поле зумлено (zoom > 1) — двигаем поле одним пальцем.
+                    // Pan: если поле зумлено — двигаем поле.
                     if (zoomFactor > 1.05f) {
                         panX += event.x - downX
                         panY += event.y - downY
@@ -634,20 +657,38 @@ class GameView : View {
                 }
                 return true
             }
+            MotionEvent.ACTION_POINTER_UP -> {
+                // Палец отпущен, но ещё есть другие — не заканчиваем gesture.
+                return true
+            }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 handler.removeCallbacks(longPressRunnable)
                 if (event.actionMasked == MotionEvent.ACTION_CANCEL) return true
 
+                // Grace period: если был мультитач — блокируем клик на 180мс.
+                if (wasMultitouch) {
+                    gracePeriodUntilMs = SystemClock.uptimeMillis() + 180L
+                    wasMultitouch = false
+                    lastUpTimeMs = 0L
+                    downRow = -1
+                    return true
+                }
+
                 val now = SystemClock.uptimeMillis()
+                // Проверяем grace period.
+                if (now < gracePeriodUntilMs) {
+                    lastUpTimeMs = 0L
+                    downRow = -1
+                    return true
+                }
+
                 val isDoubleClick = !longPressFired && !hasMoved &&
                     (now - lastUpTimeMs) < 300 &&
                     abs(event.x - lastUpX) < 40f * resources.displayMetrics.density &&
                     abs(event.y - lastUpY) < 40f * resources.displayMetrics.density
 
                 if (isDoubleClick) {
-                    // Двойной тап по ОТКРЫТОЙ клетке с цифрой — chord click
-                    // (открыть всех соседей, если число флагов вокруг == числу в клетке).
-                    // Зум по двойному тапу ОТКЛЮЧЁН — только pinch-to-zoom.
+                    // Двойной тап по ОТКРЫТОЙ клетке с цифрой — chord click.
                     val e = engine
                     if (e != null && downRow >= 0 &&
                         e.isRevealed(downRow, downCol) &&
@@ -655,34 +696,29 @@ class GameView : View {
                         e.adjacentMines(downRow, downCol) > 0) {
                         doChord(downRow, downCol)
                     }
-                    // Иначе — игнорируем двойной тап (не зумим).
                     lastUpTimeMs = 0L
                     downRow = -1
                     return true
                 }
 
-                // Запоминаем UP для возможного double-tap
                 lastUpTimeMs = now
                 lastUpX = event.x
                 lastUpY = event.y
 
                 if (!hasMoved && !longPressFired && downRow >= 0) {
                     if (!inputEnabled) return true
-                    // Кулдаун после сдвига — блокируем тапы
                     if (SystemClock.uptimeMillis() < shiftCooldownUntilMs) {
                         performHaptic(false)
                         return true
                     }
                     val ext = externalClickListener
                     if (ext != null) {
-                        // В external-режиме flag mode означает «короткий тап = флажок»
                         ext.invoke(downRow, downCol, flagMode)
                     } else {
                         if (flagMode) {
                             if (engine.toggleFlag(downRow, downCol)) {
                                 animateFlag(downRow, downCol)
                                 onFlagListener?.invoke(downRow, downCol)
-                                // В Лавине победа может наступить при постановке флага
                                 if (engine.won) {
                                     onRevealListener?.invoke(downRow, downCol, false, true)
                                 }
@@ -702,6 +738,14 @@ class GameView : View {
             }
         }
         return super.onTouchEvent(event)
+    }
+
+    /** Публичные методы для кнопок зума. */
+    fun zoomIn() {
+        zoomFactor = (zoomFactor + 0.3f).coerceIn(MIN_ZOOM, MAX_ZOOM)
+    }
+    fun zoomOut() {
+        zoomFactor = (zoomFactor - 0.3f).coerceIn(MIN_ZOOM, MAX_ZOOM)
     }
 
     private fun handleRevealResult(row: Int, col: Int, res: GameEngine.RevealResult) {

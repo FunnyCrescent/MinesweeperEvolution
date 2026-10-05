@@ -145,6 +145,12 @@ class GameActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnMenu).setOnClickListener {
             confirmExit()
         }
+        findViewById<Button>(R.id.btnZoomIn)?.setOnClickListener {
+            gameView.zoomIn()
+        }
+        findViewById<Button>(R.id.btnZoomOut)?.setOnClickListener {
+            gameView.zoomOut()
+        }
 
         updateModeLabel()
         updateMinesLabel()

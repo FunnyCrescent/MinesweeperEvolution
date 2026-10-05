@@ -149,13 +149,51 @@
             android:text="—" />
     </LinearLayout>
 
-    <!-- GameView БЕЗ ScrollView обёртки.
-         GameView сам управляет зумом и панорамированием через canvas transform.
-         Никаких родительских ScrollView, которые перехватывают touch events. -->
-    <com.zminesweeper.game.GameView
-        android:id="@+id/gameView"
+    <!-- FrameLayout: GameView + кнопки зума поверх -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_weight="1">
+
+        <com.zminesweeper.game.GameView
+            android:id="@+id/gameView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Кнопки зума (правый нижний угол, поверх поля) -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="12dp"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/btnZoomIn"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_button_secondary"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:text="🔍+"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:layout_marginBottom="6dp" />
+
+            <Button
+                android:id="@+id/btnZoomOut"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_button_secondary"
+                android:minWidth="0dp"
+                android:minHeight="0dp"
+                android:padding="0dp"
+                android:text="🔍−"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp" />
+        </LinearLayout>
+    </FrameLayout>
 
 </LinearLayout>
