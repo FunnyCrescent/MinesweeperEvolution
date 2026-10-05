@@ -368,18 +368,17 @@ class GameView : View {
             return
         }
         // GameView всегда занимает весь доступный размер (match_parent).
-        // Зум и панорамирование делаются через canvas transform в onDraw.
         val availW = MeasureSpec.getSize(widthMeasureSpec)
         val availH = MeasureSpec.getSize(heightMeasureSpec)
         viewW = availW.toFloat()
         viewH = availH.toFloat()
-        // Базовый размер клетки: заполняем весь экран (max, не min).
+        // Базовый размер клетки: MAX из availW/cols и availH/rows.
+        // Это гарантирует что поле ЗАПОЛНЯЕТ весь экран по крайней мере по одной оси.
+        // БЕЗ maxCell ограничения — пусть клетки будут большими если экран позволяет.
         baseCellSize = maxOf(
             availW.toFloat() / engine.cols,
             availH.toFloat() / engine.rows
         )
-        val maxCell = 80f * resources.displayMetrics.density
-        if (baseCellSize > maxCell) baseCellSize = maxCell
         cellSize = baseCellSize * zoomFactor
         setMeasuredDimension(availW, availH)
     }
