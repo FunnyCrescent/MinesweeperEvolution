@@ -11,10 +11,22 @@ android {
         applicationId "com.zminesweeper.game"
         minSdk 21
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode 10
+        versionName "2.2"
         // Ограничиваем языки, чтобы ускорить обработку ресурсов.
         resConfigs 'ru', 'en'
+    }
+
+    // Фиксированный debug keystore в репозитории.
+    // Без этого: каждый компьютер генерирует свой debug.keystore →
+    // Android блокирует обновление ("конфликт пакетов").
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
     }
 
     // aapt2 сильно тормозит на тысячах ресурсов в большом проекте.
@@ -23,6 +35,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            signingConfig signingConfigs.debug
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'

@@ -19,6 +19,8 @@ local.properties
 # Keystore (never commit)
 *.jks
 *.keystore
+# НО: debug.keystore ДОЛЖЕН быть в репо, чтобы обновления APK не конфликтовали
+!app/debug.keystore
 
 # Logs
 *.log
