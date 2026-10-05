@@ -1,13 +1,18 @@
 # Сапёр: Эволюция (MinesweeperEvolution)
 
-Android-игра «Сапёр» с 4 режимами и мультиплеером по IP.
+Android-игра «Сапёр» с 5 режимами и мультиплеером по IP.
 
 **📱 Android APK:** https://github.com/FunnyCrescent/MinesweeperEvolution/releases/latest
 
 **🌐 Веб-версия (iPhone + Android + desktop):** https://funnycrescent.github.io/MinesweeperEvolution/
 
 Веб-версия работает в любом современном браузере (iOS Safari 11+, Android Chrome, Firefox, Edge).
-Мультиплеер кроссплатформенный — iPhone может играть с Android через WebRTC (PeerJS broker).
+Мультиплеер кроссплатформенный — iPhone может играть с Android через WebRTC (PeerJS broker) или WebSocket relay server.
+
+## Версионирование
+
+- **Major** (`v1.0`, `v2.0`, `v3.0`) — только геймплейные изменения (новые режимы, новые механики, крупные фичи)
+- **Minor** (`v1.0.1`, `v1.0.2`, ...) — багфиксы, UI-полировка, зум, иконки, звук и т.д.
 
 ## Режимы
 
