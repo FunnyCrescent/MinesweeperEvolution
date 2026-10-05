@@ -88,26 +88,19 @@ class GameView : View {
     var zoomFactor: Float = 1.0f
         set(value) {
             field = value.coerceIn(MIN_ZOOM, MAX_ZOOM)
+            // При возврате к 1.0 — сбрасываем pan.
+            if (field <= 1.0f) { panX = 0f; panY = 0f }
             requestLayout()
             invalidate()
         }
 
     private val scaleDetector: ScaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
-        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
-            // Просим родительский ScrollView не перехватывать touch events во время пинча.
-            // Без этого зум может не работать (ScrollView "съедает" ACTION_MOVE для скролла).
-            parent?.requestDisallowInterceptTouchEvent(true)
-            return true
-        }
         override fun onScale(detector: ScaleGestureDetector): Boolean {
             zoomFactor *= detector.scaleFactor
+            invalidate()
             return true
         }
-        override fun onScaleEnd(detector: ScaleGestureDetector) {
-            parent?.requestDisallowInterceptTouchEvent(false)
-        }
     }).apply {
-        // Быстрый (low-latency) режим на новых API.
         try {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.KITKAT) {
                 isQuickScaleEnabled = true
@@ -373,34 +366,38 @@ class GameView : View {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec)
             return
         }
+        // GameView всегда занимает весь доступный размер (match_parent).
+        // Зум и панорамирование делаются через canvas transform в onDraw.
         val availW = MeasureSpec.getSize(widthMeasureSpec)
         val availH = MeasureSpec.getSize(heightMeasureSpec)
-        // Базовый размер клетки: MAX из availW/cols и availH/rows.
-        // Это гарантирует что поле ЗАПОЛНЯЕТ весь доступный экран по обеим осям.
-        // Если cols/rows не пропорциональны экрану — часть клеток будет обрезана,
-        // но игрок может проскроллить (ScrollView/HScrollView). Главное — нет
-        // пустых зон.
-        var baseCell = maxOf(
+        viewW = availW.toFloat()
+        viewH = availH.toFloat()
+        // Базовый размер клетки: заполняем весь экран (max, не min).
+        baseCellSize = maxOf(
             availW.toFloat() / engine.cols,
             availH.toFloat() / engine.rows
         )
         val maxCell = 80f * resources.displayMetrics.density
-        if (baseCell > maxCell) baseCell = maxCell
-
-        // Применяем масштабирование (pinch-to-zoom).
-        cellSize = baseCell * zoomFactor
-
-        val w = (cellSize * engine.cols).toInt()
-        val h = (cellSize * engine.rows).toInt()
-        setMeasuredDimension(w, h)
+        if (baseCellSize > maxCell) baseCellSize = maxCell
+        cellSize = baseCellSize * zoomFactor
+        setMeasuredDimension(availW, availH)
     }
+
+    /** Размер View для центрирования поля и pan. */
+    private var viewW: Float = 0f
+    private var viewH: Float = 0f
+    private var baseCellSize: Float = 0f
+    /** Смещение поля для pan (в пикселях). */
+    private var panX: Float = 0f
+    private var panY: Float = 0f
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        // View получила реальные размеры — invalidate, чтобы onDraw вызывался
-        // с корректными cellSize (важно после Continue, когда onMeasure ещё
-        // не отработал в момент engine = engine).
         if (w > 0 && h > 0) {
+            viewW = w.toFloat()
+            viewH = h.toFloat()
+            // Сбрасываем pan при изменении размера.
+            panX = 0f; panY = 0f
             invalidate()
         }
     }
@@ -408,8 +405,19 @@ class GameView : View {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val engine = engine ?: return
+        // Очищаем фон.
+        canvas.drawColor(Color.parseColor("#101418"))
         val pad = 1f
         val flashAlpha = shiftFlashAlpha()
+
+        // Применяем pan (смещение поля) и центрирование.
+        val fieldW = cellSize * engine.cols
+        val fieldH = cellSize * engine.rows
+        // Центрируем поле в View, плюс pan.
+        val offsetX = (viewW - fieldW) / 2f + panX
+        val offsetY = (viewH - fieldH) / 2f + panY
+        canvas.save()
+        canvas.translate(offsetX, offsetY)
 
         for (r in 0 until engine.rows) {
             for (c in 0 until engine.cols) {
@@ -508,6 +516,7 @@ class GameView : View {
                 }
             }
         }
+        canvas.restore()  // снимаем canvas.translate(offsetX, offsetY)
     }
 
     private fun drawMine(canvas: Canvas, r: RectF, alpha: Int) {
@@ -565,7 +574,19 @@ class GameView : View {
         paintNumber.alpha = 255
     }
 
-    /** Время последнего «UP» — для двойного тапа (toggle zoom). */
+    /** Конвертация координат экрана → (row, col) с учётом pan и центрирования. */
+    private fun rowColFromXY(x: Float, y: Float): Pair<Int, Int> {
+        val e = engine ?: return -1 to -1
+        val fieldW = cellSize * e.cols
+        val fieldH = cellSize * e.rows
+        val offsetX = (viewW - fieldW) / 2f + panX
+        val offsetY = (viewH - fieldH) / 2f + panY
+        val col = ((x - offsetX) / cellSize).toInt().coerceIn(0, e.cols - 1)
+        val row = ((y - offsetY) / cellSize).toInt().coerceIn(0, e.rows - 1)
+        return row to col
+    }
+
+    /** Время последнего «UP» — для двойного тапа (chord). */
     private var lastUpTimeMs: Long = 0L
     private var lastUpX: Float = 0f
     private var lastUpY: Float = 0f
@@ -584,13 +605,9 @@ class GameView : View {
 
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                // КРИТИЧНО: блокируем родительский ScrollView с самого начала.
-                // Без этого ScrollView перехватывает всю последовательность touch
-                // и пинч-детектор никогда не получит события.
-                parent?.requestDisallowInterceptTouchEvent(true)
                 downX = event.x; downY = event.y
-                downCol = (event.x / cellSize).toInt().coerceIn(0, engine.cols - 1)
-                downRow = (event.y / cellSize).toInt().coerceIn(0, engine.rows - 1)
+                val (r, c) = rowColFromXY(event.x, event.y)
+                downRow = r; downCol = c
                 hasMoved = false
                 longPressFired = false
                 val now = SystemClock.uptimeMillis()
@@ -606,10 +623,13 @@ class GameView : View {
                 if (abs(event.x - downX) > touchSlop || abs(event.y - downY) > touchSlop) {
                     hasMoved = true
                     handler.removeCallbacks(longPressRunnable)
-                    // Если поле зумлено (zoom > 1) и двигаем одним пальцем —
-                    // разрешаем родительскому ScrollView скроллить (pan).
-                    if (zoomFactor > 1.05f && !scaleDetector.isInProgress) {
-                        parent?.requestDisallowInterceptTouchEvent(false)
+                    // Pan: если поле зумлено (zoom > 1) — двигаем поле одним пальцем.
+                    if (zoomFactor > 1.05f) {
+                        panX += event.x - downX
+                        panY += event.y - downY
+                        downX = event.x
+                        downY = event.y
+                        invalidate()
                     }
                 }
                 return true

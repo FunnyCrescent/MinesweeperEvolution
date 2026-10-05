@@ -149,35 +149,13 @@
             android:text="—" />
     </LinearLayout>
 
-    <!-- Game grid container -->
-    <HorizontalScrollView
-        android:id="@+id/hScrollView"
+    <!-- GameView БЕЗ ScrollView обёртки.
+         GameView сам управляет зумом и панорамированием через canvas transform.
+         Никаких родительских ScrollView, которые перехватывают touch events. -->
+    <com.zminesweeper.game.GameView
+        android:id="@+id/gameView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:fillViewport="true"
-        android:scrollbars="none">
-
-        <ScrollView
-            android:id="@+id/vScrollView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:fillViewport="true"
-            android:scrollbars="none">
-
-            <FrameLayout
-                android:id="@+id/gridContainer"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center">
-
-                <com.zminesweeper.game.GameView
-                    android:id="@+id/gameView"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center" />
-            </FrameLayout>
-        </ScrollView>
-    </HorizontalScrollView>
+        android:layout_weight="1" />
 
 </LinearLayout>
