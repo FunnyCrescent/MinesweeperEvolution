@@ -88,13 +88,23 @@ class GameActivity : AppCompatActivity() {
         }
 
         gameView.engine = engine
-        // Принудительная перерисовка: при загрузке сохранения cellAnims создаются
-        // с revealStartedAt = 0 (что значит «прогресс = 1, анимации нет»), но
-        // иногда invalidate() не успевает сработать до показа экрана. Дополнительный
-        // invalidate + requestLayout гарантируют, что onDraw вызовется с реальными
-        // размерами canvas.
-        gameView.requestLayout()
-        gameView.invalidate()
+        // Принудительная перерисовка. Ключевая проблема: после setContentView() View
+        // ещё не имеет реальных размеров (layout не прошёл). Если вызвать invalidate()
+        // сразу, onDraw сработает с width=height=0 и canvas останется пустым.
+        // Решение: отложенный post + onGlobalLayout — гарантия что canvas измерен.
+        gameView.viewTreeObserver.addOnGlobalLayoutListener(object : android.view.ViewTreeObserver.OnGlobalLayoutListener {
+            override fun onGlobalLayout() {
+                gameView.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                gameView.engine = engine  // перепривязываем — это вызовет invalidate()
+                gameView.invalidate()
+            }
+        })
+        // Дополнительный фолбэк через 200мс — на случай если onGlobalLayout не вызвался
+        gameView.postDelayed({
+            if (gameView.width > 0 && gameView.height > 0) {
+                gameView.invalidate()
+            }
+        }, 200)
         gameView.onRevealListener = { row, col, exploded, won ->
             // Анимация волной от точки клика по всем открытым в этом ходе клеткам
             gameView.animateRevealWave(engine.lastRevealed, row, col)

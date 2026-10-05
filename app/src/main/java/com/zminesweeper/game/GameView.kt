@@ -398,6 +398,16 @@ class GameView : View {
         setMeasuredDimension(w, h)
     }
 
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        // View получила реальные размеры — invalidate, чтобы onDraw вызывался
+        // с корректными cellSize (важно после Continue, когда onMeasure ещё
+        // не отработал в момент engine = engine).
+        if (w > 0 && h > 0) {
+            invalidate()
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val engine = engine ?: return
