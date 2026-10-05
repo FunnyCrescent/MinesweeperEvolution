@@ -94,7 +94,8 @@ class GameView : View {
 
     private val scaleDetector: ScaleGestureDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
-            // Пока пользователь пинчит — просим родительский ScrollView не перехватывать.
+            // Просим родительский ScrollView не перехватывать touch events во время пинча.
+            // Без этого зум может не работать (ScrollView "съедает" ACTION_MOVE для скролла).
             parent?.requestDisallowInterceptTouchEvent(true)
             return true
         }

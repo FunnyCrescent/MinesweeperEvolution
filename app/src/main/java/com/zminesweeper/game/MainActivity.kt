@@ -18,8 +18,6 @@ import com.zminesweeper.game.mp.RelayJoinActivity
 class MainActivity : AppCompatActivity() {
 
     private lateinit var save: SaveManager
-    private var selectedMode: GameMode? = null
-    private var selectedDiff: Difficulty? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -31,7 +29,7 @@ class MainActivity : AppCompatActivity() {
         updateContinueButton()
 
         findViewById<android.widget.Button>(R.id.btnNewGame).setOnClickListener {
-            showModeSelection()
+            showNewGameDialog()
         }
         findViewById<android.widget.Button>(R.id.btnSettings).setOnClickListener {
             showSettingsDialog()
@@ -51,8 +49,89 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.widget.Button>(R.id.btnMpRelayJoin).setOnClickListener {
             ensureNicknameThen { startActivity(Intent(this, RelayJoinActivity::class.java)) }
         }
+    }
 
-        buildModeCards()
+    /** Диалог выбора режима и сложности с подтверждением «Начать игру». */
+    private fun showNewGameDialog() {
+        val view = layoutInflater.inflate(R.layout.dialog_new_game, null)
+        val modesContainer = view.findViewById<LinearLayout>(R.id.newGameModesContainer)
+        val diffContainer = view.findViewById<LinearLayout>(R.id.newGameDiffContainer)
+        val btnStart = view.findViewById<android.widget.Button>(R.id.btnStartGame)
+
+        var selectedMode: GameMode? = null
+        var selectedDiff: Difficulty? = null
+
+        // Строим карточки режимов
+        modesContainer.removeAllViews()
+        for (mode in GameMode.entries) {
+            val card = layoutInflater.inflate(R.layout.item_mode_card, modesContainer, false)
+            val params = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            params.bottomMargin = 12
+            card.layoutParams = params
+            card.findViewById<TextView>(R.id.tvModeName).text = mode.display
+            card.findViewById<TextView>(R.id.tvModeDesc).text = mode.shortDesc
+            card.setOnClickListener {
+                selectedMode = mode
+                for (i in 0 until modesContainer.childCount) {
+                    modesContainer.getChildAt(i).isSelected = (modesContainer.getChildAt(i) === card)
+                }
+            }
+            modesContainer.addView(card)
+        }
+
+        // Строим кнопки сложности
+        diffContainer.removeAllViews()
+        for (diff in Difficulty.entries) {
+            val btn = android.widget.Button(this)
+            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            lp.setMargins(4, 0, 4, 0)
+            btn.layoutParams = lp
+            btn.text = "${diff.display}\n${diff.shortDesc}"
+            btn.textSize = 11f
+            btn.setBackgroundResource(R.drawable.bg_diff_button)
+            btn.setTextColor(getColor(R.color.text_primary))
+            btn.setPadding(4, 12, 4, 12)
+            btn.gravity = Gravity.CENTER
+            btn.isAllCaps = false
+            btn.setOnClickListener {
+                selectedDiff = diff
+                for (i in 0 until diffContainer.childCount) {
+                    (diffContainer.getChildAt(i) as android.widget.Button).isSelected = false
+                }
+                btn.isSelected = true
+            }
+            diffContainer.addView(btn)
+        }
+
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(R.string.new_game)
+            .setView(view)
+            .setNegativeButton("Отмена", null)
+            .create()
+
+        btnStart.setOnClickListener {
+            val mode = selectedMode
+            val diff = selectedDiff
+            if (mode == null) {
+                android.widget.Toast.makeText(this, "Выбери режим", android.widget.Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (diff == null) {
+                android.widget.Toast.makeText(this, "Выбери сложность", android.widget.Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            save.clearSavedGame()
+            val intent = Intent(this, GameActivity::class.java)
+            intent.putExtra(GameActivity.EXTRA_MODE, mode.key)
+            intent.putExtra(GameActivity.EXTRA_DIFFICULTY, diff.key)
+            startActivity(intent)
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 
     /** Если у пользователя ещё нет ника — спросим. Иначе — запускаем [action]. */
@@ -96,74 +175,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             btn.visibility = View.GONE
         }
-    }
-
-    private fun showModeSelection() {
-        findViewById<TextView>(R.id.diffTitle).visibility = View.VISIBLE
-        if (findViewById<LinearLayout>(R.id.diffContainer).childCount == 0) {
-            buildDifficultyButtons()
-        }
-    }
-
-    private fun buildModeCards() {
-        val container = findViewById<LinearLayout>(R.id.modesContainer)
-        container.removeAllViews()
-        for (mode in GameMode.entries) {
-            val card = layoutInflater.inflate(R.layout.item_mode_card, container, false)
-            val params = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            params.bottomMargin = 12
-            card.layoutParams = params
-            card.findViewById<TextView>(R.id.tvModeName).text = mode.display
-            card.findViewById<TextView>(R.id.tvModeDesc).text = mode.shortDesc
-            card.setOnClickListener {
-                selectedMode = mode
-                for (i in 0 until container.childCount) {
-                    container.getChildAt(i).isSelected = (container.getChildAt(i) === card)
-                }
-                showModeSelection()
-            }
-            container.addView(card)
-        }
-    }
-
-    private fun buildDifficultyButtons() {
-        val container = findViewById<LinearLayout>(R.id.diffContainer)
-        container.removeAllViews()
-        for (diff in Difficulty.entries) {
-            val btn = android.widget.Button(this)
-            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            lp.setMargins(4, 0, 4, 0)
-            btn.layoutParams = lp
-            btn.text = "${diff.display}\n${diff.shortDesc}"
-            btn.textSize = 11f
-            btn.setBackgroundResource(R.drawable.bg_diff_button)
-            btn.setTextColor(getColor(R.color.text_primary))
-            btn.setPadding(4, 12, 4, 12)
-            btn.gravity = Gravity.CENTER
-            btn.isAllCaps = false
-            btn.setOnClickListener {
-                selectedDiff = diff
-                for (i in 0 until container.childCount) {
-                    (container.getChildAt(i) as android.widget.Button).isSelected = false
-                }
-                btn.isSelected = true
-                startNewGame()
-            }
-            container.addView(btn)
-        }
-    }
-
-    private fun startNewGame() {
-        val mode = selectedMode ?: return
-        val diff = selectedDiff ?: return
-        save.clearSavedGame()
-        val intent = Intent(this, GameActivity::class.java)
-        intent.putExtra(GameActivity.EXTRA_MODE, mode.key)
-        intent.putExtra(GameActivity.EXTRA_DIFFICULTY, diff.key)
-        startActivity(intent)
     }
 
     private fun showSettingsDialog() {
