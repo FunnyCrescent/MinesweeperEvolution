@@ -375,22 +375,20 @@ class GameView : View {
         }
         val availW = MeasureSpec.getSize(widthMeasureSpec)
         val availH = MeasureSpec.getSize(heightMeasureSpec)
-        val desiredCell = max(24f, minOf(
+        // Базовый размер клетки: вписываем поле в доступную область.
+        // Берём минимум из availW/cols и availH/rows, чтобы поле точно влезало
+        // по обоим измерениям. Раньше был max(), что для 16×30 давало слишком
+        // маленькие клетки и пустую область снизу.
+        var baseCell = minOf(
             availW.toFloat() / engine.cols,
             availH.toFloat() / engine.rows
-        ))
-        var baseCell = minOf(
-            desiredCell,
-            maxOf(availW.toFloat() / engine.cols, availH.toFloat() / engine.rows)
         )
         val maxCell = 80f * resources.displayMetrics.density
         if (baseCell > maxCell) baseCell = maxCell
-        val minCell = 18f * resources.displayMetrics.density
-        if (baseCell < minCell) baseCell = minCell
+        // minCell убран: для больших полей (16×30) на телефоне клетки могут быть
+        // маленькими, и это нормально — лучше заполнить экран, чем иметь дыры.
 
         // Применяем масштабирование (pinch-to-zoom).
-        // Базовый размер — это «как влезло в экран», zoomFactor > 1 увеличивает клетки,
-        // и тогда родительский ScrollView позволяет прокручивать увеличенное поле.
         cellSize = baseCell * zoomFactor
 
         val w = (cellSize * engine.cols).toInt()
@@ -476,10 +474,8 @@ class GameView : View {
                         rect.set(left, top, right, top + (bottom - top) * 0.4f)
                         canvas.drawRoundRect(rect, 4f, 4f, paintHiddenTop)
                         drawFlag(canvas, RectF(left, top, right, bottom))
-                        // Если поражение ИЛИ софтлок и флаг стоит НЕ на мине —
-                        // перечёркиваем оранжевым крестом. Софтлок = игрок замуровал
-                        // всё флагами, но победы нет — значит какие-то флаги неверные.
-                        if ((engine.gameOver || engine.softlocked) && !engine.isMine(r, c)) {
+                        // Если поражение и флаг стоит НЕ на мине — перечёркиваем оранжевым крестом
+                        if (engine.gameOver && !engine.isMine(r, c)) {
                             paintFlagWrong.strokeWidth = (right - left) * 0.12f
                             rect.set(left, top, right, bottom)
                             canvas.drawLine(
@@ -609,6 +605,13 @@ class GameView : View {
                 if (abs(event.x - downX) > touchSlop || abs(event.y - downY) > touchSlop) {
                     hasMoved = true
                     handler.removeCallbacks(longPressRunnable)
+                    // Если поле зумлено (zoom > 1) и двигаем одним пальцем —
+                    // разрешаем родительскому ScrollView скроллить (pan).
+                    // parent.requestDisallowInterceptTouchEvent(false) отменит
+                    // блокировку, установленную в onScaleBegin.
+                    if (zoomFactor > 1.05f && !scaleDetector.isInProgress) {
+                        parent?.requestDisallowInterceptTouchEvent(false)
+                    }
                 }
                 return true
             }
@@ -623,20 +626,18 @@ class GameView : View {
                     abs(event.y - lastUpY) < 40f * resources.displayMetrics.density
 
                 if (isDoubleClick) {
-                    // Если двойной тап по ОТКРЫТОЙ клетке с цифрой — chord (открыть
-                    // всех соседей, если число флагов вокруг == числу в клетке).
-                    // Иначе — toggle zoom (как раньше).
+                    // Двойной тап по ОТКРЫТОЙ клетке с цифрой — chord click
+                    // (открыть всех соседей, если число флагов вокруг == числу в клетке).
+                    // Зум по двойному тапу ОТКЛЮЧЁН — только pinch-to-zoom.
                     val e = engine
                     if (e != null && downRow >= 0 &&
                         e.isRevealed(downRow, downCol) &&
                         !e.isMine(downRow, downCol) &&
                         e.adjacentMines(downRow, downCol) > 0) {
                         doChord(downRow, downCol)
-                    } else {
-                        zoomFactor = if (zoomFactor > 1.5f) 1.0f else 2.0f
-                        performHaptic()
                     }
-                    lastUpTimeMs = 0L  // не даём тройной клик дать серию тоглов
+                    // Иначе — игнорируем двойной тап (не зумим).
+                    lastUpTimeMs = 0L
                     downRow = -1
                     return true
                 }

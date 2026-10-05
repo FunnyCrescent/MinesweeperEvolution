@@ -77,6 +77,12 @@ class GameActivity : AppCompatActivity() {
         if (loadSave && save.hasSavedGame()) {
             val state = save.loadGame()!!
             engine = GameEngine.deserialize(state) ?: run {
+                // Сохранение повреждено или невалидно — начнём новую игру.
+                android.widget.Toast.makeText(this,
+                    "Сохранение повреждено. Начинаем новую игру.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+                save.clearSavedGame()
                 initNewGame(GameMode.CLASSIC, Difficulty.BEGINNER)
                 engine
             }
@@ -114,6 +120,13 @@ class GameActivity : AppCompatActivity() {
                 sound?.play(SoundManager.Type.WIN)
             } else {
                 sound?.play(SoundManager.Type.REVEAL)
+                // No-Guess Solver: проверить на софтлок после открытия.
+                val state = engine.analyzeSoftlock()
+                if (state is com.zminesweeper.game.NoGuessSolver.SoftlockState.Deadlock) {
+                    // Чистый софтлок генерации — перетасовываем мины.
+                    engine.reshuffleMinesForLogicalMove()
+                    gameView.invalidate()
+                }
             }
             if (exploded || won) showGameOver(won)
             updateMinesLabel()
@@ -121,14 +134,6 @@ class GameActivity : AppCompatActivity() {
         gameView.onFlagListener = { _, _ ->
             sound?.play(SoundManager.Type.FLAG)
             updateMinesLabel()
-            // Антисофтлок: если игрок замуровал всё флагами, но победы нет —
-            // подсказываем ему, что флаги неверные (они подсвечены крестом).
-            if (engine.softlocked) {
-                android.widget.Toast.makeText(this,
-                    "Кажется, ты застрял. Оранжевые крестики — неверные флаги.",
-                    android.widget.Toast.LENGTH_LONG
-                ).show()
-            }
         }
 
         findViewById<Button>(R.id.btnFlagMode).setOnClickListener {

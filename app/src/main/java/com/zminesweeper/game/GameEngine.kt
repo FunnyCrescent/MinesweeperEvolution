@@ -42,15 +42,6 @@ class GameEngine {
     var won: Boolean = false
         private set
 
-    /**
-     * Софтлок: все закрытые клетки помечены флагами, но игра не окончена.
-     * Это значит, что какие-то флаги стоят НЕ на минах — игрок застрял.
-     * Renderer при softlock = true рисует оранжевый крест на неверных флагах,
-     * чтобы игрок увидел, какие флаги снять.
-     */
-    var softlocked: Boolean = false
-        private set
-
     /** Первый клик ещё не сделан — мины будут размещены после него (безопасный старт). */
     var firstClickDone: Boolean = false
         private set
@@ -83,7 +74,6 @@ class GameEngine {
         this.firstClickDone = false
         this.gameOver = false
         this.won = false
-        this.softlocked = false
         this.shiftsCount = 0
         this.flaggedCount = 0
         this.revealedCount = 0
@@ -242,6 +232,20 @@ class GameEngine {
         // Флажки остаются (они защищают мины от перемещения и клетки от закрытия).
         // Первый клик после покрытия безопасен.
         if (mode.coversAllAfterShift) {
+            // ПРОВЕРКА НЕПРАВИЛЬНЫХ ФЛАГОВ: если у игрока есть флаги НЕ на минах,
+            // после сдвига это поражение. Логика: Лавина наказывает за ошибки.
+            for (r in 0 until rows) {
+                for (c in 0 until cols) {
+                    if (flagged[r][c] && !mines[r][c]) {
+                        // Найден неверный флаг → поражение.
+                        // explodedAt указывает на неверный флаг (для renderer).
+                        explodedAt[0] = r; explodedAt[1] = c
+                        gameOver = true
+                        return  // не закрываем поле, показываем финальное состояние
+                    }
+                }
+            }
+            // Все флаги корректны — закрываем поле.
             for (r in 0 until rows) {
                 for (c in 0 until cols) {
                     revealed[r][c] = false
@@ -250,14 +254,6 @@ class GameEngine {
             firstClickDone = false
             revealedCount = 0
             _lastRevealed.clear()
-            // После закрытия поля софтлока быть не может — все клетки закрыты,
-            // значит игрок может тапнуть куда угодно (правило 1-го клика).
-            softlocked = false
-        }
-        // В остальных режимах — проверяем softlocked: после сдвига мины переместились,
-        // мог остаться только флагнутые клетки без хода.
-        if (!mode.coversAllAfterShift) {
-            softlocked = detectSoftlock()
         }
     }
 
@@ -332,7 +328,6 @@ class GameEngine {
                 RevealResult.WON
             } else {
                 // После открытия клетки софтлок мог исчезнуть — обновим.
-                softlocked = detectSoftlock()
                 RevealResult.REVEALED
             }
         }
@@ -414,33 +409,16 @@ class GameEngine {
             gameOver = true
         }
         // Проверяем софтлок: все закрытые клетки помечены флагами, но победы нет.
-        softlocked = detectSoftlock()
-        return true
-    }
-
-    /**
-     * Софтлок: ни одной закрытой клетки БЕЗ флага не осталось, но игра не окончена.
-     * Это значит, что какие-то флаги стоят НЕ на минах (иначе была бы победа в Лавине,
-     * либо все не-минные клетки были бы уже открыты в обычном режиме).
-     *
-     * Возвращает true если игрок застрял — не может сделать ход.
-     */
-    private fun detectSoftlock(): Boolean {
-        if (gameOver || won) return false
-        if (!firstClickDone) return false
-        // Ищем хотя бы одну закрытую клетку без флага — если есть, софтлока нет.
-        for (r in 0 until rows) for (c in 0 until cols) {
-            if (!revealed[r][c] && !flagged[r][c]) return false
-        }
-        // Все закрытые клетки помечены флагами. Но игра не окончена → софтлок.
         return true
     }
 
     private fun checkWin(): Boolean {
         if (mode.coversAllAfterShift) {
-            // Лавина: победа, когда все мины помечены флажками.
+            // Лавина: победа, когда ВСЕ мины помечены флажками И нет неверных флагов.
+            // Если игрок замуровал всё флагами, но часть флагов НЕ на минах — НЕ победа.
             for (r in 0 until rows) for (c in 0 until cols) {
-                if (mines[r][c] && !flagged[r][c]) return false
+                if (mines[r][c] && !flagged[r][c]) return false  // есть мина без флага
+                if (!mines[r][c] && flagged[r][c]) return false  // есть флаг не на мине
             }
             return true
         }
@@ -459,6 +437,69 @@ class GameEngine {
 
     /** Сколько мин ещё не помечено флажком (для счётчика в UI). */
     fun minesLeft(): Int = mineCount - flaggedCount
+
+    /**
+     * No-Guess Solver: проверить состояние поля на софтлок.
+     * Возвращает состояние: None / PlayerError / Deadlock.
+     */
+    fun analyzeSoftlock(): NoGuessSolver.SoftlockState {
+        return NoGuessSolver(this).analyze()
+    }
+
+    /**
+     * Перетасовать скрытые мины (не под флагами, не открытые) так, чтобы
+     * создать хотя бы один логический ход на границе.
+     *
+     * Алгоритм:
+     *  1. Собрать все скрытые клетки без флага (кандидаты для перемещения мин).
+     *  2. Убрать все мины из этих клеток.
+     *  3. Пытаться случайно расставить мины обратно так, чтобы NoGuessSolver
+     *     нашёл логический ход. Максимум 50 попыток.
+     *
+     * Если не получилось за 50 попыток — оставить как есть (крайне редкий случай).
+     *
+     * ВНИМАНИЕ: вызывается только если analyzeSoftlock() == Deadlock.
+     * При PlayerError перетасовка НЕ делается.
+     */
+    fun reshuffleMinesForLogicalMove() {
+        if (gameOver || won) return
+        // Собираем скрытые клетки без флага.
+        val candidates = ArrayList<Pair<Int, Int>>()
+        for (r in 0 until rows) {
+            for (c in 0 until cols) {
+                if (!revealed[r][c] && !flagged[r][c]) candidates.add(r to c)
+            }
+        }
+        if (candidates.isEmpty()) return
+
+        // Считаем текущие мины, которые не под флагами и не открыты.
+        var currentMines = 0
+        for ((r, c) in candidates) if (mines[r][c]) currentMines++
+
+        // Снимаем все мины с кандидатов.
+        for ((r, c) in candidates) mines[r][c] = false
+
+        // Пытаемся расставить currentMines мин случайно, проверяя логический ход.
+        for (attempt in 0 until 50) {
+            // Перетасовываем кандидатов.
+            candidates.shuffle(rng)
+            for (i in 0 until currentMines) {
+                val (r, c) = candidates[i]
+                mines[r][c] = true
+            }
+            // Проверяем, есть ли логический ход.
+            if (NoGuessSolver(this).findLogicalMove() != null) {
+                return  // успех
+            }
+            // Сбрасываем мины для следующей попытки.
+            for ((r, c) in candidates) mines[r][c] = false
+        }
+        // Не получилось за 50 попыток — расставляем последние мины как есть.
+        for (i in 0 until currentMines) {
+            val (r, c) = candidates[i]
+            mines[r][c] = true
+        }
+    }
 
     enum class RevealResult {
         NO_CHANGE, REVEALED, EXPLODED, WON
@@ -490,10 +531,13 @@ class GameEngine {
         fun deserialize(data: String): GameEngine? {
             return try {
                 val lines = data.split('\n')
+                if (lines.size < 5) return null
                 val mode = GameMode.fromKey(lines[0])
                 val diff = Difficulty.fromKey(lines[1])
                 val (r, c) = lines[2].split(',').let { it[0].toInt() to it[1].toInt() }
+                if (r <= 0 || c <= 0 || r > 100 || c > 100) return null
                 val meta = lines[3].split(',')
+                if (meta.size < 6) return null
                 val engine = GameEngine()
                 engine.mode = mode
                 engine.difficulty = diff
@@ -505,19 +549,32 @@ class GameEngine {
                 engine.won = meta[3].toInt() == 1
                 engine.firstClickDone = meta[4].toInt() == 1
                 engine.shiftsCount = meta[5].toInt()
+                // Валидация: если mineCount <= 0 — невалидное состояние (например,
+                // сохранение из старой версии с багом Анархии). Сбрасываем.
+                if (engine.mineCount <= 0) return null
                 engine.mines.clear(); engine.revealed.clear(); engine.flagged.clear()
+                var actualMineCount = 0
                 for (rr in 0 until r) {
                     engine.mines.add(BooleanArray(c))
                     engine.revealed.add(BooleanArray(c))
                     engine.flagged.add(BooleanArray(c))
                     val line = lines[4 + rr]
+                    if (line.length < c) return null  // строка короче ожидаемой
                     for (cc in 0 until c) {
                         val v = line[cc].digitToInt()
                         engine.mines[rr][cc] = (v shr 2) and 1 == 1
                         engine.revealed[rr][cc] = (v shr 1) and 1 == 1
                         engine.flagged[rr][cc] = v and 1 == 1
+                        if (engine.mines[rr][cc]) actualMineCount++
                         if (engine.revealed[rr][cc]) engine.revealedCount++
                     }
+                }
+                // Валидация: фактическое число мин должно совпадать с mineCount.
+                // Если нет — сохранение повреждено, начнём новую игру.
+                if (actualMineCount != engine.mineCount) {
+                    // Лавина могла переместить мины, но mineCount должен совпадать с фактом.
+                    // Если рассинхрон — сбрасываем.
+                    return null
                 }
                 engine
             } catch (e: Exception) {

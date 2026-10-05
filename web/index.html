@@ -447,7 +447,6 @@ class GameEngine {
     this.mode = GameMode.CLASSIC; this.difficulty = Difficulty.BEGINNER;
     this.mineCount = 0; this.flaggedCount = 0;
     this.gameOver = false; this.won = false;
-    this.softlocked = false;
     this.firstClickDone = false; this.shiftsCount = 0; this.revealedCount = 0;
     this.mines = []; this.revealed = []; this.flagged = [];
     this.explodedAt = [-1, -1];
@@ -459,7 +458,6 @@ class GameEngine {
     this.mode = mode; this.difficulty = difficulty;
     this.rows = difficulty.rows; this.cols = difficulty.cols;
     this.firstClickDone = false; this.gameOver = false; this.won = false;
-    this.softlocked = false;
     this.shiftsCount = 0; this.flaggedCount = 0; this.revealedCount = 0;
     this.explodedAt = [-1, -1]; this._lastRevealed = [];
     this.mines = []; this.revealed = []; this.flagged = [];
@@ -565,8 +563,18 @@ class GameEngine {
     }
     if (this.mineCount === 0) this.forcePlaceOneMine();
 
-    // ЛАВИНА: после сдвига все не-флагнутые открытые клетки закрываются заново.
+    // ЛАВИНА: после сдвига проверяем неверные флаги → поражение.
+    // Если все флаги корректны — закрываем поле.
     if (this.mode.coversAllAfterShift) {
+      for (let r = 0; r < this.rows; r++) {
+        for (let c = 0; c < this.cols; c++) {
+          if (this.flagged[r][c] && !this.mines[r][c]) {
+            this.explodedAt = [r, c];
+            this.gameOver = true;
+            return;
+          }
+        }
+      }
       let covered = 0;
       for (let r = 0; r < this.rows; r++) {
         for (let c = 0; c < this.cols; c++) {
@@ -577,11 +585,6 @@ class GameEngine {
         }
       }
       this.revealedCount -= covered;
-      // После закрытия поля софтлока быть не может — игрок может тапнуть куда угодно.
-      this.softlocked = false;
-    } else {
-      // В остальных режимах — после сдвига мины переместились, проверяем софтлок.
-      this.softlocked = this.detectSoftlock();
     }
   }
 
@@ -641,7 +644,6 @@ class GameEngine {
       return 'WON';
     }
     // После открытия клетки софтлок мог исчезнуть.
-    this.softlocked = this.detectSoftlock();
     return 'REVEALED';
   }
 
@@ -720,37 +722,21 @@ class GameEngine {
       this.gameOver = true;
       return 'WON';
     }
-    // Антисофтлок: проверяем, не замуровал ли игрок всё флагами.
-    this.softlocked = this.detectSoftlock();
-    return true;
-  }
-
-  /**
-   * Софтлок: ни одной закрытой клетки БЕЗ флага не осталось, но игра не окончена.
-   * Это значит, что какие-то флаги стоят НЕ на минах — игрок застрял.
-   */
-  detectSoftlock() {
-    if (this.gameOver || this.won) return false;
-    if (!this.firstClickDone) return false;
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
-        if (!this.revealed[r][c] && !this.flagged[r][c]) return false;
-      }
-    }
     return true;
   }
 
   checkWin() {
-    // В Лавине цель — поставить флаги на ВСЕ мины.
-    // В остальных режимах — открыть все не-минные клетки.
+    // В Лавине цель — поставить флаги на ВСЕ мины И нет неверных флагов.
     if (this.mode.coversAllAfterShift) {
       for (let r = 0; r < this.rows; r++) {
         for (let c = 0; c < this.cols; c++) {
-          if (this.mines[r][c] && !this.flagged[r][c]) return false;
+          if (this.mines[r][c] && !this.flagged[r][c]) return false;  // мина без флага
+          if (!this.mines[r][c] && this.flagged[r][c]) return false;  // флаг не на мине
         }
       }
       return true;
     }
+    // В остальных режимах — открыть все не-минные клетки.
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         if (!this.mines[r][c] && !this.revealed[r][c]) return false;
@@ -765,6 +751,95 @@ class GameEngine {
   explodedRow() { return this.explodedAt[0]; }
   explodedCol() { return this.explodedAt[1]; }
   minesLeft() { return this.mineCount - this.flaggedCount; }
+
+  // ===== No-Guess Solver: антисофтлок =====
+
+  /**
+   * Найти любой логический ход на границе поля.
+   * Возвращает {row, col, isFlag} или null.
+   */
+  findLogicalMove() {
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (!this.isRevealed(r, c) || this.isMine(r, c)) continue;
+        const n = this.adjacentMines(r, c);
+        if (n === 0) continue;
+        let flagged = 0;
+        const hidden = [];
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr < 0 || nr >= this.rows || nc < 0 || nc >= this.cols) continue;
+          if (this.isFlagged(nr, nc)) flagged++;
+          else if (!this.isRevealed(nr, nc)) hidden.push([nr, nc]);
+        }
+        if (flagged === n && hidden.length > 0) {
+          return { row: hidden[0][0], col: hidden[0][1], isFlag: false };
+        }
+        if (flagged + hidden.length === n && hidden.length > 0) {
+          return { row: hidden[0][0], col: hidden[0][1], isFlag: true };
+        }
+      }
+    }
+    return null;
+  }
+
+  hasPlayerErrors() {
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.isFlagged(r, c) && !this.isMine(r, c)) return true;
+      }
+    }
+    return false;
+  }
+
+  hasHiddenUnflagged() {
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (!this.isRevealed(r, c) && !this.isFlagged(r, c)) return true;
+      }
+    }
+    return false;
+  }
+
+  analyzeSoftlock() {
+    if (this.findLogicalMove() !== null) return 'None';
+    if (!this.hasHiddenUnflagged()) {
+      return this.hasPlayerErrors() ? 'PlayerError' : 'None';
+    }
+    if (this.hasPlayerErrors()) return 'PlayerError';
+    return 'Deadlock';
+  }
+
+  reshuffleMinesForLogicalMove() {
+    if (this.gameOver || this.won) return;
+    const candidates = [];
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (!this.revealed[r][c] && !this.flagged[r][c]) candidates.push([r, c]);
+      }
+    }
+    if (candidates.length === 0) return;
+    let currentMines = 0;
+    for (const [r, c] of candidates) if (this.mines[r][c]) currentMines++;
+    for (const [r, c] of candidates) this.mines[r][c] = false;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      for (let i = candidates.length - 1; i > 0; i--) {
+        const j = this._randInt(i + 1);
+        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+      }
+      for (let i = 0; i < currentMines; i++) {
+        const [r, c] = candidates[i];
+        this.mines[r][c] = true;
+      }
+      if (this.findLogicalMove() !== null) return;
+      for (const [r, c] of candidates) this.mines[r][c] = false;
+    }
+    for (let i = 0; i < currentMines; i++) {
+      const [r, c] = candidates[i];
+      this.mines[r][c] = true;
+    }
+  }
 
   serialize() {
     let sb = '';
@@ -788,29 +863,39 @@ class GameEngine {
   static deserialize(data) {
     try {
       const lines = data.split('\n');
+      if (lines.length < 5) return null;
       const mode = Object.values(GameMode).find(m => m.key === lines[0]) || GameMode.CLASSIC;
       const diff = Object.values(Difficulty).find(d => d.key === lines[1]) || Difficulty.BEGINNER;
       const [r, c] = lines[2].split(',').map(Number);
+      if (r <= 0 || c <= 0 || r > 100 || c > 100) return null;
       const meta = lines[3].split(',').map(Number);
+      if (meta.length < 6) return null;
       const e = new GameEngine();
       e.mode = mode; e.difficulty = diff; e.rows = r; e.cols = c;
       e.mineCount = meta[0]; e.flaggedCount = meta[1];
       e.gameOver = meta[2] === 1; e.won = meta[3] === 1;
       e.firstClickDone = meta[4] === 1; e.shiftsCount = meta[5];
+      // Валидация: mineCount должен быть > 0.
+      if (e.mineCount <= 0) return null;
       e.mines = []; e.revealed = []; e.flagged = [];
+      let actualMineCount = 0;
       for (let rr = 0; rr < r; rr++) {
         e.mines.push(new Array(c).fill(false));
         e.revealed.push(new Array(c).fill(false));
         e.flagged.push(new Array(c).fill(false));
         const line = lines[4 + rr];
+        if (!line || line.length < c) return null;
         for (let cc = 0; cc < c; cc++) {
           const v = parseInt(line[cc], 10);
           e.mines[rr][cc] = ((v >> 2) & 1) === 1;
           e.revealed[rr][cc] = ((v >> 1) & 1) === 1;
           e.flagged[rr][cc] = (v & 1) === 1;
+          if (e.mines[rr][cc]) actualMineCount++;
           if (e.revealed[rr][cc]) e.revealedCount++;
         }
       }
+      // Валидация: фактическое число мин должно совпадать с mineCount.
+      if (actualMineCount !== e.mineCount) return null;
       return e;
     } catch (err) {
       return null;
@@ -1052,9 +1137,10 @@ class BoardRenderer {
     const wrap = this.canvas.parentElement;
     const availW = wrap.clientWidth - 4;
     const availH = wrap.clientHeight - 4;
-    let baseCell = Math.max(24, Math.min(availW / e.cols, availH / e.rows));
+    // Базовый размер клетки: вписываем поле в доступную область.
+    // Берём минимум из availW/cols и availH/rows, чтобы поле точно влезало.
+    let baseCell = Math.min(availW / e.cols, availH / e.rows);
     baseCell = Math.min(baseCell, 80);
-    baseCell = Math.max(baseCell, 18);
     this.cellSize = baseCell * this.zoomFactor;
     const w = Math.floor(this.cellSize * e.cols);
     const h = Math.floor(this.cellSize * e.rows);
@@ -1124,7 +1210,7 @@ class BoardRenderer {
           // Если поражение ИЛИ софтлок и флаг стоит НЕ на мине —
           // перечёркиваем оранжевым крестом. Софтлок = игрок замуровал всё
           // флагами, но победы нет — значит какие-то флаги неверные.
-          if ((e.gameOver || e.softlocked) && !e.isMine(r, c)) {
+          if (e.gameOver && !e.isMine(r, c)) {
             ctx.strokeStyle = COLORS.flagWrong;
             ctx.lineWidth = (right - left) * 0.12;
             ctx.lineCap = 'round';
@@ -1373,18 +1459,16 @@ class BoardRenderer {
       Math.abs(this._downX - this._lastUpX) < this.DOUBLE_TAP_DIST &&
       Math.abs(this._downY - this._lastUpY) < this.DOUBLE_TAP_DIST;
     if (isDoubleClick) {
-      // Если двойной тап по ОТКРЫТОЙ клетке с цифрой — chord (открыть всех соседей,
-      // если число флагов вокруг == числу в клетке). Иначе — toggle zoom.
+      // Двойной тап по ОТКРЫТОЙ клетке с цифрой — chord click.
+      // Зум по двойному тапу ОТКЛЮЧЁН — только pinch-to-zoom.
       const e = this.getEngine();
       if (e && this._downRow >= 0 &&
           e.isRevealed(this._downRow, this._downCol) &&
           !e.isMine(this._downRow, this._downCol) &&
           e.adjacentMines(this._downRow, this._downCol) > 0) {
         this._doChord(this._downRow, this._downCol);
-      } else {
-        this.zoomFactor = this.zoomFactor > 1.5 ? 1.0 : 2.0;
-        this.measure();
       }
+      // Иначе — игнорируем двойной тап (не зумим).
       this._lastUpTime = 0;
       this._downRow = -1;
       return;
@@ -1927,12 +2011,14 @@ function initMenu() {
         App.engine = e;
         showScreen('screen-game');
         initGameScreen();
-        // Дополнительный фолбэк через 300мс — если по какой-то причине
-        // предыдущие measure/draw не отрисовали цифры (например, canvas
-        // был нулевого размера в момент первого вызова).
         setTimeout(() => {
           if (App.renderer && App.engine) { App.renderer.measure(); App.renderer.draw(); }
         }, 300);
+      } else {
+        // Сохранение повреждено — начнём новую игру.
+        toast('Сохранение повреждено. Начинаем новую игру.', 4000);
+        SaveManager.clearSavedGame();
+        updateContinueButton();
       }
     }
   };
@@ -2059,17 +2145,23 @@ function initGameScreen() {
     App.renderer.animateRevealWave(App.engine._lastRevealed, row, col);
     if (exploded) App.sound.play('EXPLODE');
     else if (won) App.sound.play('WIN');
-    else App.sound.play('REVEAL');
+    else {
+      App.sound.play('REVEAL');
+      // No-Guess Solver: проверить на софтлок после открытия.
+      if (App.engine) {
+        const state = App.engine.analyzeSoftlock();
+        if (state === 'Deadlock') {
+          App.engine.reshuffleMinesForLogicalMove();
+          App.renderer.draw();
+        }
+      }
+    }
     updateMinesLabel();
     if (exploded || won) showGameOver(won);
   };
   App.renderer.onFlagListener = (r, c) => {
     App.sound.play('FLAG');
     updateMinesLabel();
-    // Антисофтлок: подсказка игроку, что он застрял.
-    if (App.engine && App.engine.softlocked) {
-      toast('Кажется, ты застрял. Оранжевые крестики — неверные флаги.', 4000);
-    }
   };
   // Гарантируем, что canvas получит реальные размеры перед draw.
   // setTimeout + RAF fallback: экран должен был отрисоваться к этому моменту.
@@ -2172,9 +2264,6 @@ function restartGame() {
   };
   App.renderer.onFlagListener = (r, c) => {
     App.sound.play('FLAG'); updateMinesLabel();
-    if (App.engine && App.engine.softlocked) {
-      toast('Кажется, ты застрял. Оранжевые крестики — неверные флаги.', 4000);
-    }
   };
   // Гарантируем, что canvas получит реальные размеры перед draw.
   // setTimeout + RAF fallback: экран должен был отрисоваться к этому моменту.
@@ -2729,9 +2818,6 @@ function initMpGameScreen(isHost) {
   };
   App.renderer.onFlagListener = (r, c) => {
     App.sound.play('FLAG'); updateMinesLabel();
-    if (App.engine && App.engine.softlocked) {
-      toast('Кажется, ты застрял. Оранжевые крестики — неверные флаги.', 4000);
-    }
   };
   // Гарантируем, что canvas получит реальные размеры перед draw.
   // setTimeout + RAF fallback: экран должен был отрисоваться к этому моменту.
