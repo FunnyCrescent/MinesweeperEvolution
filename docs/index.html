@@ -447,6 +447,7 @@ class GameEngine {
     this.mode = GameMode.CLASSIC; this.difficulty = Difficulty.BEGINNER;
     this.mineCount = 0; this.flaggedCount = 0;
     this.gameOver = false; this.won = false;
+    this.softlocked = false;
     this.firstClickDone = false; this.shiftsCount = 0; this.revealedCount = 0;
     this.mines = []; this.revealed = []; this.flagged = [];
     this.explodedAt = [-1, -1];
@@ -458,6 +459,7 @@ class GameEngine {
     this.mode = mode; this.difficulty = difficulty;
     this.rows = difficulty.rows; this.cols = difficulty.cols;
     this.firstClickDone = false; this.gameOver = false; this.won = false;
+    this.softlocked = false;
     this.shiftsCount = 0; this.flaggedCount = 0; this.revealedCount = 0;
     this.explodedAt = [-1, -1]; this._lastRevealed = [];
     this.mines = []; this.revealed = []; this.flagged = [];
@@ -575,6 +577,11 @@ class GameEngine {
         }
       }
       this.revealedCount -= covered;
+      // После закрытия поля софтлока быть не может — игрок может тапнуть куда угодно.
+      this.softlocked = false;
+    } else {
+      // В остальных режимах — после сдвига мины переместились, проверяем софтлок.
+      this.softlocked = this.detectSoftlock();
     }
   }
 
@@ -633,6 +640,8 @@ class GameEngine {
       this.won = true; this.gameOver = true;
       return 'WON';
     }
+    // После открытия клетки софтлок мог исчезнуть.
+    this.softlocked = this.detectSoftlock();
     return 'REVEALED';
   }
 
@@ -710,6 +719,23 @@ class GameEngine {
       this.won = true;
       this.gameOver = true;
       return 'WON';
+    }
+    // Антисофтлок: проверяем, не замуровал ли игрок всё флагами.
+    this.softlocked = this.detectSoftlock();
+    return true;
+  }
+
+  /**
+   * Софтлок: ни одной закрытой клетки БЕЗ флага не осталось, но игра не окончена.
+   * Это значит, что какие-то флаги стоят НЕ на минах — игрок застрял.
+   */
+  detectSoftlock() {
+    if (this.gameOver || this.won) return false;
+    if (!this.firstClickDone) return false;
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (!this.revealed[r][c] && !this.flagged[r][c]) return false;
+      }
     }
     return true;
   }
@@ -1095,8 +1121,10 @@ class BoardRenderer {
           ctx.fillStyle = COLORS.hiddenTop;
           this._roundRect(left, top, right - left, (bottom - top) * 0.4, 4); ctx.fill();
           this._drawFlag(left, top, right, bottom);
-          // Если поражение и флаг стоит НЕ на мине — перечёркиваем оранжевым крестом
-          if (e.gameOver && !e.isMine(r, c)) {
+          // Если поражение ИЛИ софтлок и флаг стоит НЕ на мине —
+          // перечёркиваем оранжевым крестом. Софтлок = игрок замуровал всё
+          // флагами, но победы нет — значит какие-то флаги неверные.
+          if ((e.gameOver || e.softlocked) && !e.isMine(r, c)) {
             ctx.strokeStyle = COLORS.flagWrong;
             ctx.lineWidth = (right - left) * 0.12;
             ctx.lineCap = 'round';
@@ -2038,6 +2066,10 @@ function initGameScreen() {
   App.renderer.onFlagListener = (r, c) => {
     App.sound.play('FLAG');
     updateMinesLabel();
+    // Антисофтлок: подсказка игроку, что он застрял.
+    if (App.engine && App.engine.softlocked) {
+      toast('Кажется, ты застрял. Оранжевые крестики — неверные флаги.', 4000);
+    }
   };
   // Гарантируем, что canvas получит реальные размеры перед draw.
   // setTimeout + RAF fallback: экран должен был отрисоваться к этому моменту.
@@ -2138,7 +2170,12 @@ function restartGame() {
     updateMinesLabel();
     if (exploded || won) showGameOver(won);
   };
-  App.renderer.onFlagListener = (r, c) => { App.sound.play('FLAG'); updateMinesLabel(); };
+  App.renderer.onFlagListener = (r, c) => {
+    App.sound.play('FLAG'); updateMinesLabel();
+    if (App.engine && App.engine.softlocked) {
+      toast('Кажется, ты застрял. Оранжевые крестики — неверные флаги.', 4000);
+    }
+  };
   // Гарантируем, что canvas получит реальные размеры перед draw.
   // setTimeout + RAF fallback: экран должен был отрисоваться к этому моменту.
   setTimeout(() => {
@@ -2690,7 +2727,12 @@ function initMpGameScreen(isHost) {
     updateMinesLabel();
     updateTurnIndicator();
   };
-  App.renderer.onFlagListener = (r, c) => { App.sound.play('FLAG'); updateMinesLabel(); };
+  App.renderer.onFlagListener = (r, c) => {
+    App.sound.play('FLAG'); updateMinesLabel();
+    if (App.engine && App.engine.softlocked) {
+      toast('Кажется, ты застрял. Оранжевые крестики — неверные флаги.', 4000);
+    }
+  };
   // Гарантируем, что canvas получит реальные размеры перед draw.
   // setTimeout + RAF fallback: экран должен был отрисоваться к этому моменту.
   setTimeout(() => {

@@ -121,6 +121,14 @@ class GameActivity : AppCompatActivity() {
         gameView.onFlagListener = { _, _ ->
             sound?.play(SoundManager.Type.FLAG)
             updateMinesLabel()
+            // Антисофтлок: если игрок замуровал всё флагами, но победы нет —
+            // подсказываем ему, что флаги неверные (они подсвечены крестом).
+            if (engine.softlocked) {
+                android.widget.Toast.makeText(this,
+                    "Кажется, ты застрял. Оранжевые крестики — неверные флаги.",
+                    android.widget.Toast.LENGTH_LONG
+                ).show()
+            }
         }
 
         findViewById<Button>(R.id.btnFlagMode).setOnClickListener {

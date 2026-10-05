@@ -476,8 +476,10 @@ class GameView : View {
                         rect.set(left, top, right, top + (bottom - top) * 0.4f)
                         canvas.drawRoundRect(rect, 4f, 4f, paintHiddenTop)
                         drawFlag(canvas, RectF(left, top, right, bottom))
-                        // Если поражение и флаг стоит НЕ на мине — перечёркиваем оранжевым крестом
-                        if (engine.gameOver && !engine.isMine(r, c)) {
+                        // Если поражение ИЛИ софтлок и флаг стоит НЕ на мине —
+                        // перечёркиваем оранжевым крестом. Софтлок = игрок замуровал
+                        // всё флагами, но победы нет — значит какие-то флаги неверные.
+                        if ((engine.gameOver || engine.softlocked) && !engine.isMine(r, c)) {
                             paintFlagWrong.strokeWidth = (right - left) * 0.12f
                             rect.set(left, top, right, bottom)
                             canvas.drawLine(

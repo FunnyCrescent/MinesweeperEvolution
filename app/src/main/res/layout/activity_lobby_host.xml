@@ -21,7 +21,17 @@
             android:layout_marginTop="16dp"
             android:layout_marginBottom="16dp" />
 
-        <!-- IP / Port -->
+        <!-- ============ Секция: Подключение ============ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ПОДКЛЮЧЕНИЕ"
+            android:textColor="@color/accent"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="8dp" />
+
         <TextView
             android:id="@+id/tvHostIp"
             android:layout_width="match_parent"
@@ -42,9 +52,26 @@
             android:padding="12dp"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
-            android:layout_marginBottom="12dp" />
+            android:layout_marginBottom="16dp" />
 
-        <!-- Кнопки выбора -->
+        <!-- Разделитель -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/text_dim"
+            android:layout_marginBottom="16dp" />
+
+        <!-- ============ Секция: Настройки игры ============ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="НАСТРОЙКИ ИГРЫ"
+            android:textColor="@color/accent"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="8dp" />
+
         <Button
             android:id="@+id/btnHostNick"
             android:layout_width="match_parent"
@@ -85,19 +112,27 @@
             android:background="@drawable/bg_button_secondary"
             android:textColor="@color/text_primary"
             android:textSize="13sp"
-            android:layout_marginBottom="12dp"
+            android:layout_marginBottom="16dp"
             android:gravity="start|center_vertical"
             android:paddingStart="16dp" />
 
-        <!-- Игроки -->
+        <!-- Разделитель -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/text_dim"
+            android:layout_marginBottom="16dp" />
+
+        <!-- ============ Секция: Игроки ============ -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Игроки в лобби:"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
+            android:text="ИГРОКИ В ЛОББИ"
+            android:textColor="@color/accent"
+            android:textSize="11sp"
             android:textStyle="bold"
-            android:layout_marginBottom="6dp" />
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="8dp" />
 
         <LinearLayout
             android:id="@+id/playersContainer"
@@ -106,9 +141,26 @@
             android:background="@color/bg_panel"
             android:orientation="vertical"
             android:padding="12dp"
-            android:layout_marginBottom="12dp" />
+            android:layout_marginBottom="16dp" />
 
-        <!-- Лог -->
+        <!-- Разделитель -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/text_dim"
+            android:layout_marginBottom="16dp" />
+
+        <!-- ============ Секция: Лог ============ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="ЛОГ"
+            android:textColor="@color/accent"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.1"
+            android:layout_marginBottom="8dp" />
+
         <TextView
             android:id="@+id/tvLobbyLog"
             android:layout_width="match_parent"

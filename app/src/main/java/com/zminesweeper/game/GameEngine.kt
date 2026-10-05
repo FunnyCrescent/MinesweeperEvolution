@@ -42,6 +42,15 @@ class GameEngine {
     var won: Boolean = false
         private set
 
+    /**
+     * Софтлок: все закрытые клетки помечены флагами, но игра не окончена.
+     * Это значит, что какие-то флаги стоят НЕ на минах — игрок застрял.
+     * Renderer при softlock = true рисует оранжевый крест на неверных флагах,
+     * чтобы игрок увидел, какие флаги снять.
+     */
+    var softlocked: Boolean = false
+        private set
+
     /** Первый клик ещё не сделан — мины будут размещены после него (безопасный старт). */
     var firstClickDone: Boolean = false
         private set
@@ -74,6 +83,7 @@ class GameEngine {
         this.firstClickDone = false
         this.gameOver = false
         this.won = false
+        this.softlocked = false
         this.shiftsCount = 0
         this.flaggedCount = 0
         this.revealedCount = 0
@@ -240,6 +250,14 @@ class GameEngine {
             firstClickDone = false
             revealedCount = 0
             _lastRevealed.clear()
+            // После закрытия поля софтлока быть не может — все клетки закрыты,
+            // значит игрок может тапнуть куда угодно (правило 1-го клика).
+            softlocked = false
+        }
+        // В остальных режимах — проверяем softlocked: после сдвига мины переместились,
+        // мог остаться только флагнутые клетки без хода.
+        if (!mode.coversAllAfterShift) {
+            softlocked = detectSoftlock()
         }
     }
 
@@ -313,6 +331,8 @@ class GameEngine {
                 gameOver = true
                 RevealResult.WON
             } else {
+                // После открытия клетки софтлок мог исчезнуть — обновим.
+                softlocked = detectSoftlock()
                 RevealResult.REVEALED
             }
         }
@@ -393,6 +413,26 @@ class GameEngine {
             won = true
             gameOver = true
         }
+        // Проверяем софтлок: все закрытые клетки помечены флагами, но победы нет.
+        softlocked = detectSoftlock()
+        return true
+    }
+
+    /**
+     * Софтлок: ни одной закрытой клетки БЕЗ флага не осталось, но игра не окончена.
+     * Это значит, что какие-то флаги стоят НЕ на минах (иначе была бы победа в Лавине,
+     * либо все не-минные клетки были бы уже открыты в обычном режиме).
+     *
+     * Возвращает true если игрок застрял — не может сделать ход.
+     */
+    private fun detectSoftlock(): Boolean {
+        if (gameOver || won) return false
+        if (!firstClickDone) return false
+        // Ищем хотя бы одну закрытую клетку без флага — если есть, софтлока нет.
+        for (r in 0 until rows) for (c in 0 until cols) {
+            if (!revealed[r][c] && !flagged[r][c]) return false
+        }
+        // Все закрытые клетки помечены флагами. Но игра не окончена → софтлок.
         return true
     }
 
