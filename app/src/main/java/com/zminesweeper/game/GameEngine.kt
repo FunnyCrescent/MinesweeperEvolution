@@ -217,12 +217,29 @@ class GameEngine {
         shiftsCount++
 
         // Финальный проход: защищаем «цифры» от обнуления.
-        enforceNumberedInvariant(numberedRevealed)
+        // В Лавине не применяется — клетки всё равно закроются.
+        if (!mode.coversAllAfterShift) {
+            enforceNumberedInvariant(numberedRevealed)
+        }
 
         // Защита от 0 мин в Анархии: если после всех вычислений mineCount = 0,
         // но есть доступные закрытые клетки — принудительно ставим 1 мину.
         if (mineCount == 0) {
             forcePlaceOneMine()
+        }
+
+        // Лавина: после сдвига всё поле закрывается заново.
+        // Флажки остаются (они защищают мины от перемещения и клетки от закрытия).
+        // Первый клик после покрытия безопасен.
+        if (mode.coversAllAfterShift) {
+            for (r in 0 until rows) {
+                for (c in 0 until cols) {
+                    revealed[r][c] = false
+                }
+            }
+            firstClickDone = false
+            revealedCount = 0
+            _lastRevealed.clear()
         }
     }
 
@@ -364,17 +381,29 @@ class GameEngine {
         }
     }
 
-    /** Переключить флаг. */
+    /** Переключить флаг. Возвращает true если флаг изменён, false если нельзя. */
     fun toggleFlag(row: Int, col: Int): Boolean {
         if (gameOver || won) return false
         if (row !in 0 until rows || col !in 0 until cols) return false
         if (revealed[row][col]) return false
         flagged[row][col] = !flagged[row][col]
         flaggedCount += if (flagged[row][col]) 1 else -1
+        // В Лавине победа — когда все мины флагнуты. Проверяем после каждого флага.
+        if (flagged[row][col] && mode.coversAllAfterShift && checkWin()) {
+            won = true
+            gameOver = true
+        }
         return true
     }
 
     private fun checkWin(): Boolean {
+        if (mode.coversAllAfterShift) {
+            // Лавина: победа, когда все мины помечены флажками.
+            for (r in 0 until rows) for (c in 0 until cols) {
+                if (mines[r][c] && !flagged[r][c]) return false
+            }
+            return true
+        }
         // Победа, если все НЕ-минные клетки открыты.
         for (r in 0 until rows) for (c in 0 until cols) {
             if (!mines[r][c] && !revealed[r][c]) return false

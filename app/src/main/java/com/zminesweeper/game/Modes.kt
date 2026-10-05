@@ -9,6 +9,10 @@ package com.zminesweeper.game
  *              все флажки сбрасываются.
  *  ANARCHY   — «Анархия»: как Хаос, но количество мин каждый сдвиг случайно
  *              (от 1 до размера поля). Лимита мин нет.
+ *  AVALANCHE — «Лавина»: как Дрейф (мины под флажком остаются, остальные
+ *              перемещаются), но каждые 25 секунд ВСЁ поле закрывается заново.
+ *              Цель — поставить флажки на все мины. Первый клик после
+ *              каждого покрытия безопасен.
  */
 enum class GameMode(
     val key: String,
@@ -17,6 +21,7 @@ enum class GameMode(
     val hasMineLimit: Boolean,
     val shifts: Boolean,
     val preservesFlags: Boolean,
+    val coversAllAfterShift: Boolean = false,
 ) {
     CLASSIC(
         key = "classic",
@@ -49,6 +54,15 @@ enum class GameMode(
         hasMineLimit = false,
         shifts = true,
         preservesFlags = false,
+    ),
+    AVALANCHE(
+        key = "avalanche",
+        display = "Лавина",
+        shortDesc = "Каждые 25 сек всё поле закрывается. Мины под флажком остаются. Цель — флажки на все мины.",
+        hasMineLimit = true,
+        shifts = true,
+        preservesFlags = true,
+        coversAllAfterShift = true,
     );
 
     companion object {

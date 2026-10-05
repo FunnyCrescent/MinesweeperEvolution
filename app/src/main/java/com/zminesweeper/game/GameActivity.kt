@@ -45,7 +45,7 @@ class GameActivity : AppCompatActivity() {
                     gameView.animateShift()
                     haptic(heavy = false)
                     sound?.play(SoundManager.Type.SHIFT)
-                    shiftRemainingSec = save.shiftInterval()
+                    shiftRemainingSec = if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()
                     // Защита от клика в течение 1 секунды после сдвига
                     gameView.shiftCooldownUntilMs = SystemClock.uptimeMillis() + 1000
                     updateMinesLabel()
@@ -125,7 +125,7 @@ class GameActivity : AppCompatActivity() {
 
         updateModeLabel()
         updateMinesLabel()
-        findViewById<TextView>(R.id.tvShift).text = if (engine.mode.shifts) "${save.shiftInterval()}с" else "—"
+        findViewById<TextView>(R.id.tvShift).text = if (engine.mode.shifts) "${if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()}с" else "—"
         findViewById<View>(R.id.llShift).visibility = if (engine.mode.shifts) View.VISIBLE else View.INVISIBLE
 
         startTimeMs = System.currentTimeMillis()
@@ -146,7 +146,7 @@ class GameActivity : AppCompatActivity() {
         handler.removeCallbacks(shiftRunnable)
         handler.post(tickRunnable)
         if (engine.mode.shifts) {
-            shiftRemainingSec = save.shiftInterval()
+            shiftRemainingSec = if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()
             handler.post(shiftRunnable)
         }
     }
@@ -203,7 +203,7 @@ class GameActivity : AppCompatActivity() {
 
         updateModeLabel()
         updateMinesLabel()
-        findViewById<TextView>(R.id.tvShift).text = if (mode.shifts) "${save.shiftInterval()}с" else "—"
+        findViewById<TextView>(R.id.tvShift).text = if (mode.shifts) "${if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()}с" else "—"
         findViewById<View>(R.id.llShift).visibility = if (mode.shifts) View.VISIBLE else View.INVISIBLE
 
         // Сброс таймера
@@ -213,7 +213,7 @@ class GameActivity : AppCompatActivity() {
 
         // Сброс счётчика сдвига
         if (mode.shifts) {
-            shiftRemainingSec = save.shiftInterval()
+            shiftRemainingSec = if (mode.coversAllAfterShift) 25 else save.shiftInterval()
         }
 
         // Перезапуск handlers — КЛЮЧЕВОЙ ФИКС: ранее shiftRunnable не перезапускался

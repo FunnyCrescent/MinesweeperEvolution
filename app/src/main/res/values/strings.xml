@@ -8,11 +8,13 @@
     <string name="mode_drift">Дрейф</string>
     <string name="mode_chaos">Хаос</string>
     <string name="mode_anarchy">Анархия</string>
+    <string name="mode_avalanche">Лавина</string>
 
     <string name="mode_classic_desc">Классический сапёр. Мины стоят на месте.</string>
     <string name="mode_drift_desc">Каждые 10 сек мины дрейфуют. Мины под флажком остаются.</string>
     <string name="mode_chaos_desc">Каждые 10 сек все мины перемещаются. Флажки сбрасываются.</string>
     <string name="mode_anarchy_desc">Хаос + случайное число мин каждый сдвиг. Лимита нет!</string>
+    <string name="mode_avalanche_desc">Каждые 25 сек всё поле закрывается. Успей закопать все мины!</string>
 
     <!-- Difficulties -->
     <string name="diff_beginner">Новичок</string>

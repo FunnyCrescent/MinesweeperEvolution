@@ -7,6 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#101418">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="icon.png">
 <title>Сапёр: Эволюция</title>
 <style>
 :root {
@@ -427,10 +429,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 <script>
 // ============================ GAME ENGINE (JS port of Kotlin) ============================
 const GameMode = {
-  CLASSIC:  { key:'classic', display:'Классика',  shortDesc:'Классический сапёр. Мины стоят на месте.', hasMineLimit:true,  shifts:false, preservesFlags:true  },
-  DRIFT:    { key:'drift',   display:'Дрейф',     shortDesc:'Мины дрейфуют каждые N сек. Под флажком — остаются.', hasMineLimit:true,  shifts:true,  preservesFlags:true  },
-  CHAOS:    { key:'chaos',   display:'Хаос',      shortDesc:'Все мины перемещаются, флажки сбрасываются.', hasMineLimit:true,  shifts:true,  preservesFlags:false },
-  ANARCHY:  { key:'anarchy', display:'Анархия',    shortDesc:'Хаос + случайное число мин каждый сдвиг. Лимита нет!', hasMineLimit:false, shifts:true,  preservesFlags:false },
+  CLASSIC:  { key:'classic', display:'Классика',  shortDesc:'Классический сапёр. Мины стоят на месте.', hasMineLimit:true,  shifts:false, preservesFlags:true,  coversAllAfterShift:false },
+  DRIFT:    { key:'drift',   display:'Дрейф',     shortDesc:'Мины дрейфуют каждые N сек. Под флажком — остаются.', hasMineLimit:true,  shifts:true,  preservesFlags:true,  coversAllAfterShift:false },
+  CHAOS:    { key:'chaos',   display:'Хаос',      shortDesc:'Все мины перемещаются, флажки сбрасываются.', hasMineLimit:true,  shifts:true,  preservesFlags:false, coversAllAfterShift:false },
+  ANARCHY:  { key:'anarchy', display:'Анархия',    shortDesc:'Хаос + случайное число мин каждый сдвиг. Лимита нет!', hasMineLimit:false, shifts:true,  preservesFlags:false, coversAllAfterShift:false },
+  AVALANCHE:{ key:'avalanche',display:'Лавина',    shortDesc:'Каждые 25 сек всё поле закрывается. Мины под флажком остаются. Цель — флажки на все мины.', hasMineLimit:true, shifts:true, preservesFlags:true, coversAllAfterShift:true },
 };
 const Difficulty = {
   BEGINNER: { key:'beginner', display:'Новичок', shortDesc:'8×8 · 10 мин',  rows:8,  cols:8,  mineCount:10 },
@@ -553,8 +556,26 @@ class GameEngine {
     }
     this.mineCount = frozen.length + actual;
     this.shiftsCount++;
-    this.enforceNumberedInvariant(numberedRevealed);
+    // В Лавине enforceNumberedInvariant не нужен — все клетки закрываются,
+    // «цифр» после сдвига нет. Пропускаем, иначе он добавит лишние мины.
+    if (!this.mode.coversAllAfterShift) {
+      this.enforceNumberedInvariant(numberedRevealed);
+    }
     if (this.mineCount === 0) this.forcePlaceOneMine();
+
+    // ЛАВИНА: после сдвига все не-флагнутые открытые клетки закрываются заново.
+    if (this.mode.coversAllAfterShift) {
+      let covered = 0;
+      for (let r = 0; r < this.rows; r++) {
+        for (let c = 0; c < this.cols; c++) {
+          if (this.revealed[r][c] && !this.flagged[r][c]) {
+            this.revealed[r][c] = false;
+            covered++;
+          }
+        }
+      }
+      this.revealedCount -= covered;
+    }
   }
 
   enforceNumberedInvariant(guarded) {
@@ -684,10 +705,26 @@ class GameEngine {
     if (this.revealed[row][col]) return false;
     this.flagged[row][col] = !this.flagged[row][col];
     this.flaggedCount += this.flagged[row][col] ? 1 : -1;
+    // В Лавине цель — флаги на все мины. Проверяем после каждого toggling.
+    if (this.flagged[row][col] && this.mode.coversAllAfterShift && this.checkWin()) {
+      this.won = true;
+      this.gameOver = true;
+      return 'WON';
+    }
     return true;
   }
 
   checkWin() {
+    // В Лавине цель — поставить флаги на ВСЕ мины.
+    // В остальных режимах — открыть все не-минные клетки.
+    if (this.mode.coversAllAfterShift) {
+      for (let r = 0; r < this.rows; r++) {
+        for (let c = 0; c < this.cols; c++) {
+          if (this.mines[r][c] && !this.flagged[r][c]) return false;
+        }
+      }
+      return true;
+    }
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         if (!this.mines[r][c] && !this.revealed[r][c]) return false;
@@ -1361,9 +1398,14 @@ class BoardRenderer {
       const e = this.getEngine();
       if (!e) return;
       if (isFlagAction) {
-        if (e.toggleFlag(this._downRow, this._downCol)) {
+        const flagRes = e.toggleFlag(this._downRow, this._downCol);
+        if (flagRes) {
           this.animateFlag(this._downRow, this._downCol);
           this.onFlagListener && this.onFlagListener(this._downRow, this._downCol);
+          // В Лавине постановка флага может привести к победе
+          if (flagRes === 'WON') {
+            this.onRevealListener && this.onRevealListener(this._downRow, this._downCol, false, true);
+          }
         }
       } else {
         const res = e.reveal(this._downRow, this._downCol);
@@ -2735,10 +2777,15 @@ function onMpLocalAction(row, col, isFlag) {
   if (App.isMpHost) {
     const e = App.engine; if (!e) return;
     if (isFlag) {
-      if (e.toggleFlag(row, col)) {
+      const flagRes = e.toggleFlag(row, col);
+      if (flagRes) {
         App.renderer.animateFlag(row, col);
         App.sound.play('FLAG');
         updateMinesLabel();
+        // В Лавине постановка флага может привести к победе
+        if (flagRes === 'WON') {
+          handleHostRevealResult(row, col, 'WON');
+        }
       }
     } else {
       const res = e.reveal(row, col);
@@ -2802,9 +2849,14 @@ function handleMpClientAction(clientId, msg) {
     advanceTurnIfNeeded();
     broadcastMpState();
   } else if (msg.t === 'FLAG') {
-    if (e.toggleFlag(msg.row, msg.col)) {
+    const flagRes = e.toggleFlag(msg.row, msg.col);
+    if (flagRes) {
       App.renderer.animateFlag(msg.row, msg.col);
       App.sound.play('FLAG');
+      // В Лавине постановка флага может привести к победе
+      if (flagRes === 'WON') {
+        handleHostRevealResult(msg.row, msg.col, 'WON');
+      }
     }
     App.renderer.draw();
     updateMinesLabel();

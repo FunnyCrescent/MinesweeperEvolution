@@ -352,6 +352,10 @@ class GameView : View {
                         animateFlag(downRow, downCol)
                         onFlagListener?.invoke(downRow, downCol)
                         performHaptic()
+                        // В Лавине победа может наступить при постановке флага
+                        if (engine.won) {
+                            onRevealListener?.invoke(downRow, downCol, false, true)
+                        }
                     }
                 } else {
                     val res = engine.reveal(downRow, downCol)
@@ -645,6 +649,10 @@ class GameView : View {
                             if (engine.toggleFlag(downRow, downCol)) {
                                 animateFlag(downRow, downCol)
                                 onFlagListener?.invoke(downRow, downCol)
+                                // В Лавине победа может наступить при постановке флага
+                                if (engine.won) {
+                                    onRevealListener?.invoke(downRow, downCol, false, true)
+                                }
                             }
                         } else {
                             val res = engine.reveal(downRow, downCol)

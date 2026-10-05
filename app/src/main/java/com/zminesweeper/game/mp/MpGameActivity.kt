@@ -127,7 +127,7 @@ class MpGameActivity : AppCompatActivity() {
         val isHost = intent.getBooleanExtra(EXTRA_IS_HOST, false)
         mode = GameMode.fromKey(intent.getStringExtra(EXTRA_MODE))
         difficulty = Difficulty.fromKey(intent.getStringExtra(EXTRA_DIFFICULTY))
-        shiftInterval = intent.getIntExtra(EXTRA_SHIFT_INTERVAL, 10)
+        shiftInterval = if (mode.coversAllAfterShift) 25 else intent.getIntExtra(EXTRA_SHIFT_INTERVAL, 10)
         myId = intent.getIntExtra(EXTRA_MY_ID, 0)
         myNickname = intent.getStringExtra(EXTRA_NICKNAME) ?: "Игрок"
 
@@ -256,6 +256,11 @@ class MpGameActivity : AppCompatActivity() {
                     gameView.animateFlag(row, col)
                     sound?.play(SoundManager.Type.FLAG)
                     updateMinesLabel()
+                    // В Лавине победа может наступить при постановке флага
+                    if (e.won) {
+                        endGame("won", -1, myId)
+                        return
+                    }
                 }
             } else {
                 val res = e.reveal(row, col)
@@ -508,6 +513,11 @@ class MpGameActivity : AppCompatActivity() {
                 }
                 gameView.invalidate()
                 updateMinesLabel()
+                // В Лавине победа может наступить при постановке флага
+                if (e.won) {
+                    endGame("won", -1, clientId)
+                    return
+                }
                 broadcastState()
             }
             is Message.Chord -> {
