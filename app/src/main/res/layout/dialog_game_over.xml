@@ -16,17 +16,18 @@
         android:id="@+id/tvResultTitle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/press_start_2p"
         android:textColor="@color/text_primary"
-        android:textSize="24sp"
-        android:textStyle="bold"
+        android:textSize="20sp"
         android:layout_marginTop="12dp" />
 
     <TextView
         android:id="@+id/tvResultDetails"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/vt323"
         android:textColor="@color/text_secondary"
-        android:textSize="14sp"
+        android:textSize="16sp"
         android:layout_marginTop="8dp"
         android:gravity="center" />
 
@@ -36,6 +37,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
         android:background="@drawable/bg_button_primary"
+        android:fontFamily="@font/pixelify_sans"
         android:text="@string/play_again"
         android:textColor="@color/bg_dark"
         android:textStyle="bold" />
@@ -46,6 +48,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:background="@drawable/bg_button_secondary"
+        android:fontFamily="@font/pixelify_sans"
         android:text="@string/to_menu"
         android:textColor="@color/text_primary" />
 </LinearLayout>

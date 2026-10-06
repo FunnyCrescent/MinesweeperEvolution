@@ -13,6 +13,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:fontFamily="@font/pixelify_sans"
             android:text="Режим"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
@@ -29,6 +30,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:fontFamily="@font/pixelify_sans"
             android:text="Сложность"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
@@ -48,6 +50,7 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:background="@drawable/bg_button_primary"
+            android:fontFamily="@font/pixelify_sans"
             android:text="@string/start_game"
             android:textColor="@color/bg_dark"
             android:textSize="16sp"

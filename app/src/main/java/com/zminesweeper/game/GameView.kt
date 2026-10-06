@@ -1,9 +1,12 @@
 package com.zminesweeper.game
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
 import android.graphics.RectF
 import android.os.Handler
 import android.os.Looper
@@ -38,8 +41,32 @@ class GameView : View {
     }
 
     private fun init() {
-        // no-op; placeholders for future view setup
+        loadBitmaps()
     }
+
+    // ----- Спрайты (пиксель-арт) -----
+    private val bitmaps = HashMap<String, Bitmap>()
+
+    private fun loadBitmaps() {
+        val res = context.resources
+        fun load(name: String): Bitmap {
+            val id = res.getIdentifier(name, "drawable", context.packageName)
+            return if (id != 0) BitmapFactory.decodeResource(res, id)
+            else Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+        }
+        bitmaps["tile_closed"] = load("tile_closed")
+        bitmaps["tile_open"] = load("tile_open")
+        bitmaps["tile_exploded"] = load("tile_exploded")
+        bitmaps["bomb"] = load("item_bomb")
+        bitmaps["flag"] = load("item_flag")
+        bitmaps["flag_wrong"] = load("item_flag_wrong")
+        for (i in 1..8) bitmaps["num_$i"] = load("num_$i")
+    }
+
+    /** Paint для отрисовки битмапов: filterBitmap=false → чёткие пиксели без сглаживания. */
+    private val bitmapPaint = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
+    private val bitmapPaintAlpha = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
+    private val destRect = Rect()
 
     var engine: GameEngine? = null
         set(value) {
@@ -440,90 +467,79 @@ class GameView : View {
 
                 when {
                     engine.isRevealed(r, c) && engine.isMine(r, c) -> {
-                        // Для мины — лёгкая пульсация при первом открытии
+                        // Открытая мина: лёгкая пульсация при первом открытии.
+                        // Берём tile_exploded + bomb с alpha по reveal-анимации.
                         canvas.save()
                         val cx = rect.centerX()
                         val cy = rect.centerY()
                         val sc = 0.5f + 0.5f * revealProg
                         canvas.scale(sc, sc, cx, cy)
                         val alpha = (255 * revealProg).toInt().coerceIn(0, 255)
-                        val bg = if (isExploded) paintMineExploded else paintMine
-                        bg.alpha = alpha
-                        canvas.drawRoundRect(rect, 4f, 4f, bg)
-                        paintMineNormal.alpha = alpha
-                        drawMine(canvas, rect, alpha)
-                        bg.alpha = 255
-                        paintMineNormal.alpha = 255
+                        drawBitmapAlpha(canvas, "tile_exploded", left, top, right, bottom, alpha)
+                        drawBitmapAlpha(canvas, "bomb", left, top, right, bottom, alpha)
                         canvas.restore()
                     }
                     engine.gameOver && engine.isMine(r, c) && !engine.isFlagged(r, c) -> {
                         // После поражения — показать ВСЕ мины, даже не открытые.
-                        // Взорвавшаяся уже нарисована выше красным, остальные — тускло-красным.
-                        val bg = if (isExploded) paintMineExploded else paintMineDim
-                        canvas.drawRoundRect(rect, 4f, 4f, bg)
-                        drawMine(canvas, rect, 255)
+                        drawBitmap(canvas, "tile_exploded", left, top, right, bottom)
+                        drawBitmap(canvas, "bomb", left, top, right, bottom)
                     }
                     engine.isRevealed(r, c) -> {
-                        // Анимация открытия: масштаб + альфа
+                        // Анимация открытия: масштаб + альфа.
                         canvas.save()
                         val cx = rect.centerX()
                         val cy = rect.centerY()
                         val sc = 0.4f + 0.6f * revealProg
                         canvas.scale(sc, sc, cx, cy)
                         val alpha = (255 * revealProg).toInt().coerceIn(0, 255)
-                        paintRevealed.alpha = alpha
-                        canvas.drawRoundRect(rect, 4f, 4f, paintRevealed)
+                        drawBitmapAlpha(canvas, "tile_open", left, top, right, bottom, alpha)
                         val n = engine.adjacentMines(r, c)
-                        if (n > 0) drawNumber(canvas, n, rect, alpha)
-                        paintRevealed.alpha = 255
-                        paintNumber.alpha = 255
+                        if (n > 0) {
+                            drawBitmapAlpha(canvas, "num_$n", left, top, right, bottom, alpha)
+                        }
                         canvas.restore()
                     }
                     engine.isFlagged(r, c) -> {
+                        // Пульсация флажка при постановке.
                         canvas.save()
                         val cx = rect.centerX()
                         val cy = rect.centerY()
                         canvas.scale(flagScale, flagScale, cx, cy)
-                        canvas.drawRoundRect(rect, 4f, 4f, paintHidden)
-                        rect.set(left, top, right, top + (bottom - top) * 0.4f)
-                        canvas.drawRoundRect(rect, 4f, 4f, paintHiddenTop)
-                        drawFlag(canvas, RectF(left, top, right, bottom))
-                        // Если поражение и флаг стоит НЕ на мине — перечёркиваем оранжевым крестом
-                        if (engine.gameOver && !engine.isMine(r, c)) {
-                            paintFlagWrong.strokeWidth = (right - left) * 0.12f
-                            rect.set(left, top, right, bottom)
-                            canvas.drawLine(
-                                left + (right - left) * 0.15f,
-                                top + (bottom - top) * 0.15f,
-                                right - (right - left) * 0.15f,
-                                bottom - (bottom - top) * 0.15f,
-                                paintFlagWrong
-                            )
-                            canvas.drawLine(
-                                right - (right - left) * 0.15f,
-                                top + (bottom - top) * 0.15f,
-                                left + (right - left) * 0.15f,
-                                bottom - (bottom - top) * 0.15f,
-                                paintFlagWrong
-                            )
-                        }
+                        drawBitmap(canvas, "tile_closed", left, top, right, bottom)
+                        // Если поражение и флаг стоит НЕ на мине — перечёркнутый флаг.
+                        val wrong = engine.gameOver && !engine.isMine(r, c)
+                        drawBitmap(canvas, if (wrong) "flag_wrong" else "flag", left, top, right, bottom)
                         canvas.restore()
                     }
                     else -> {
-                        canvas.drawRoundRect(rect, 4f, 4f, paintHidden)
-                        rect.set(left, top, right, top + (bottom - top) * 0.4f)
-                        canvas.drawRoundRect(rect, 4f, 4f, paintHiddenTop)
-                        // Вспышка при сдвиге мин
+                        // Скрытая клетка.
+                        drawBitmap(canvas, "tile_closed", left, top, right, bottom)
+                        // Вспышка при сдвиге мин — жёлтый полупрозрачный оверлей.
                         if (flashAlpha > 0f) {
                             paintShiftFlash.alpha = (flashAlpha * 110).toInt()
                             rect.set(left, top, right, bottom)
-                            canvas.drawRoundRect(rect, 4f, 4f, paintShiftFlash)
+                            canvas.drawRect(rect, paintShiftFlash)
                         }
                     }
                 }
             }
         }
         canvas.restore()  // снимаем canvas.translate(offsetX, offsetY)
+    }
+
+    /** Отрисовать битмап из кэша в dest прямоугольник (без alpha-модуляции). */
+    private fun drawBitmap(canvas: Canvas, key: String, left: Float, top: Float, right: Float, bottom: Float) {
+        val bmp = bitmaps[key] ?: return
+        destRect.set(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
+        canvas.drawBitmap(bmp, null, destRect, bitmapPaint)
+    }
+
+    /** Отрисовать битмап с альфа-модуляцией (для reveal-анимации). */
+    private fun drawBitmapAlpha(canvas: Canvas, key: String, left: Float, top: Float, right: Float, bottom: Float, alpha: Int) {
+        val bmp = bitmaps[key] ?: return
+        bitmapPaintAlpha.alpha = alpha
+        destRect.set(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
+        canvas.drawBitmap(bmp, null, destRect, bitmapPaintAlpha)
     }
 
     private fun drawMine(canvas: Canvas, r: RectF, alpha: Int) {

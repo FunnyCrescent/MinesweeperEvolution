@@ -83,6 +83,12 @@ class MainActivity : AppCompatActivity() {
             card.layoutParams = params
             card.findViewById<TextView>(R.id.tvModeName).text = mode.display
             card.findViewById<TextView>(R.id.tvModeDesc).text = mode.shortDesc
+            // Иконка режима — по имени ресурса mode_<key>.
+            val iconId = resources.getIdentifier("mode_${mode.key}", "drawable", packageName)
+            if (iconId != 0) {
+                card.findViewById<android.widget.ImageView>(R.id.ivModeIcon)
+                    .setImageResource(iconId)
+            }
             card.setOnClickListener {
                 selectedMode = mode
                 for (i in 0 until modesContainer.childCount) {
