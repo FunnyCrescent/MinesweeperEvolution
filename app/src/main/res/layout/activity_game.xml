@@ -92,16 +92,17 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <Button
+            <ImageView
                 android:id="@+id/btnFlagMode"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_button_secondary"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
                 android:padding="6dp"
-                android:text="🚩"
-                android:textSize="18sp" />
+                android:scaleType="fitCenter"
+                android:src="@drawable/item_flag"
+                android:contentDescription="@string/flag_mode"
+                android:clickable="true"
+                android:focusable="true" />
 
             <TextView
                 style="@style/TopBarLabel"
@@ -117,16 +118,17 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <Button
+            <ImageView
                 android:id="@+id/btnMenu"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_button_secondary"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
                 android:padding="6dp"
-                android:text="⏸"
-                android:textSize="20sp" />
+                android:scaleType="fitCenter"
+                android:src="@drawable/icon_pause"
+                android:contentDescription="@string/menu"
+                android:clickable="true"
+                android:focusable="true" />
 
             <TextView
                 style="@style/TopBarLabel"
@@ -147,12 +149,14 @@
             android:id="@+id/tvModeLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:fontFamily="@font/vt323"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp"
+            android:textSize="14sp"
+            android:maxLines="1"
             android:text="—" />
     </LinearLayout>
 
-    <!-- FrameLayout: GameView + кнопки зума поверх -->
+    <!-- FrameLayout: GameView (pinch-to-zoom is the primary zoom control) -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -162,41 +166,6 @@
             android:id="@+id/gameView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
-
-        <!-- Кнопки зума (правый нижний угол, поверх поля) -->
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom|end"
-            android:layout_marginEnd="12dp"
-            android:layout_marginBottom="12dp"
-            android:orientation="vertical">
-
-            <Button
-                android:id="@+id/btnZoomIn"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_button_secondary"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:padding="0dp"
-                android:text="🔍+"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp"
-                android:layout_marginBottom="6dp" />
-
-            <Button
-                android:id="@+id/btnZoomOut"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="@drawable/bg_button_secondary"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
-                android:padding="0dp"
-                android:text="🔍−"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp" />
-        </LinearLayout>
     </FrameLayout>
 
 </LinearLayout>

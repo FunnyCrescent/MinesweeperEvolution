@@ -1,5 +1,7 @@
 package com.zminesweeper.game.net
 
+import com.zminesweeper.game.MinesweeperApp
+import com.zminesweeper.game.R
 import java.net.InetAddress
 import java.net.NetworkInterface
 
@@ -33,7 +35,7 @@ object NetUtil {
  *        existing=["Alice","alice (2)"], new="alice" → "alice (3)"
  */
 fun deduplicateNickname(nickname: String, existing: List<String>): String {
-    if (nickname.isBlank()) return "Игрок"
+    if (nickname.isBlank()) return MinesweeperApp.instance.getString(R.string.default_player_name)
     val base = nickname.trim().take(20)
     val taken = existing.map { it.trim().lowercase() }.toMutableSet()
     if (base.lowercase() !in taken) return base

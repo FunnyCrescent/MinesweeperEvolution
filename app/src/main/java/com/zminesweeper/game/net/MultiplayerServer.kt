@@ -1,5 +1,7 @@
 package com.zminesweeper.game.net
 
+import com.zminesweeper.game.MinesweeperApp
+import com.zminesweeper.game.R
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -53,7 +55,7 @@ class MultiplayerServer(
             running = true
             listenThread.start()
         } catch (e: IOException) {
-            onError("Не удалось открыть порт $port: ${e.message}")
+            onError(MinesweeperApp.instance.getString(R.string.port_open_failed, port, e.message ?: ""))
         }
     }
 
@@ -96,7 +98,7 @@ class MultiplayerServer(
             if (clients.size >= MAX_PLAYERS - 1) {
                 try {
                     val w = OutputStreamWriter(s.getOutputStream(), Charsets.UTF_8)
-                    w.write(Message.Error("Лобби заполнено (макс. $MAX_PLAYERS игроков).").toJson().toString() + "\n")
+                    w.write(Message.Error(MinesweeperApp.instance.getString(R.string.lobby_full, MAX_PLAYERS)).toJson().toString() + "\n")
                     w.write(Message.Goodbye.toJson().toString() + "\n")
                     w.flush()
                     s.close()

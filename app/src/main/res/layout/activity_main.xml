@@ -21,7 +21,9 @@
             android:fontFamily="@font/press_start_2p"
             android:text="@string/app_name"
             android:textColor="@color/text_primary"
-            android:textSize="22sp" />
+            android:textSize="20sp"
+            android:maxLines="2"
+            android:gravity="center" />
 
         <TextView
             android:id="@+id/subtitle"
@@ -59,18 +61,20 @@
             android:textStyle="bold"
             android:visibility="gone" />
 
-        <!-- Quick game: starts with last used mode+difficulty -->
-        <Button
+        <!-- Quick game icon: starts with last used mode+difficulty -->
+        <ImageView
             android:id="@+id/btnQuickGame"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center"
             android:layout_marginBottom="8dp"
             android:background="@drawable/bg_button_secondary"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="↻ Повтор"
-            android:textColor="@color/text_primary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/icon_retry"
+            android:contentDescription="@string/restart"
+            android:clickable="true"
+            android:focusable="true" />
 
         <!-- New game -->
         <Button
@@ -135,27 +139,38 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <!-- Bottom buttons -->
-        <Button
-            android:id="@+id/btnStats"
+        <!-- Bottom icon buttons: stats + settings -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="8dp"
-            android:background="@drawable/bg_button_secondary"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="@string/stats"
-            android:textColor="@color/text_primary"
-            android:textSize="14sp" />
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
 
-        <Button
-            android:id="@+id/btnSettings"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:background="@drawable/bg_button_secondary"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="@string/settings"
-            android:textColor="@color/text_primary"
-            android:textSize="14sp" />
+            <ImageView
+                android:id="@+id/btnStats"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="24dp"
+                android:background="@drawable/bg_button_secondary"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/icon_stats"
+                android:contentDescription="@string/stats"
+                android:clickable="true"
+                android:focusable="true" />
+
+            <ImageView
+                android:id="@+id/btnSettings"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="@drawable/bg_button_secondary"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/icon_settings"
+                android:contentDescription="@string/settings"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>

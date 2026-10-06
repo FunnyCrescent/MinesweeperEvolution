@@ -14,19 +14,20 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Подключиться через сервер"
+            android:text="@string/mp_relay_join_title"
+            android:fontFamily="@font/press_start_2p"
             android:textColor="@color/text_primary"
-            android:textSize="22sp"
-            android:textStyle="bold"
+            android:textSize="10sp"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="16dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="URL relay-сервера"
+            android:text="@string/relay_url_hint"
+            android:fontFamily="@font/vt323"
             android:textColor="@color/text_secondary"
-            android:textSize="13sp"
+            android:textSize="14sp"
             android:layout_marginBottom="4dp" />
 
         <EditText
@@ -45,9 +46,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Код комнаты хоста"
+            android:text="@string/room_code_hint"
+            android:fontFamily="@font/vt323"
             android:textColor="@color/text_secondary"
-            android:textSize="13sp"
+            android:textSize="14sp"
             android:layout_marginBottom="4dp" />
 
         <EditText
@@ -67,8 +69,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/mp_nickname_hint"
+            android:fontFamily="@font/vt323"
             android:textColor="@color/text_secondary"
-            android:textSize="13sp"
+            android:textSize="14sp"
             android:layout_marginBottom="4dp" />
 
         <EditText
@@ -89,6 +92,7 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:background="@drawable/bg_button_primary"
+            android:fontFamily="@font/pixelify_sans"
             android:text="@string/mp_connect"
             android:textColor="@color/bg_dark"
             android:textSize="16sp"
@@ -100,6 +104,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:background="@drawable/bg_button_secondary"
+            android:fontFamily="@font/pixelify_sans"
             android:text="@string/mp_disconnect"
             android:textColor="@color/text_primary"
             android:textSize="14sp"
@@ -108,10 +113,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Игроки в лобби:"
+            android:text="@string/section_players"
+            android:fontFamily="@font/press_start_2p"
             android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:textStyle="bold"
+            android:textSize="10sp"
             android:layout_marginBottom="6dp" />
 
         <TextView
@@ -121,6 +126,7 @@
             android:background="@color/bg_panel"
             android:padding="12dp"
             android:textColor="@color/text_primary"
+            android:fontFamily="@font/vt323"
             android:textSize="14sp"
             android:layout_marginBottom="12dp" />
 
@@ -131,8 +137,8 @@
             android:background="@color/bg_panel"
             android:padding="12dp"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp"
-            android:fontFamily="monospace"
+            android:textSize="14sp"
+            android:fontFamily="@font/vt323"
             android:minLines="3" />
 
         <View
@@ -145,6 +151,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:background="@drawable/bg_button_secondary"
+            android:fontFamily="@font/pixelify_sans"
             android:text="@string/back"
             android:textColor="@color/text_primary"
             android:textSize="14sp" />

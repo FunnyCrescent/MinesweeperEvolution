@@ -38,8 +38,7 @@ class LobbyHostActivity : AppCompatActivity() {
 
     private val players = LinkedHashMap<Int, Message.PlayerInfo>()
     private val hostId: Int = 0
-    private var hostNickname: String = "Хост"
-
+    private var hostNickname: String = "Host"
     private var selectedMode: GameMode = GameMode.CLASSIC
     private var selectedDiff: Difficulty = Difficulty.BEGINNER
     private var selectedMpMode: MpMode = MpMode.COOP
@@ -49,7 +48,7 @@ class LobbyHostActivity : AppCompatActivity() {
         setContentView(R.layout.activity_lobby_host)
         save = SaveManager(this)
 
-        hostNickname = save.nickname() ?: "Хост"
+        hostNickname = save.nickname() ?: getString(R.string.host_default_name)
         hostNickname = deduplicateNickname(hostNickname, emptyList())
         players[hostId] = Message.PlayerInfo(hostId, hostNickname, true)
 
@@ -57,53 +56,53 @@ class LobbyHostActivity : AppCompatActivity() {
         server = MultiplayerServer(port = port).apply {
             onClientMessage = { clientId, msg -> handleClientMessage(clientId, msg) }
             onClientConnected = { clientId, addr ->
-                handler.post { appendLog("Подключился $addr (#$clientId), ждём ник…") }
+                handler.post { appendLog(getString(R.string.player_connected_waiting, addr.toString(), clientId)) }
             }
             onClientDisconnected = { clientId ->
                 handler.post {
                     val removed = players.remove(clientId)
-                    if (removed != null) appendLog("${removed.name} отключился")
+                    if (removed != null) appendLog(getString(R.string.player_disconnected, removed.name))
                     refreshPlayerList()
                     broadcastLobby()
                 }
             }
-            onError = { msg -> handler.post { appendLog("Ошибка: $msg") } }
+            onError = { msg -> handler.post { appendLog(getString(R.string.error_with_message, msg)) } }
             start()
         }
 
         val ips = NetUtil.localIpAddresses()
         findViewById<TextView>(R.id.tvHostIp).text =
-            "IP-адреса хоста:\n" + (if (ips.isEmpty()) "Не определён (используй Wi-Fi/ZeroTier)"
+            getString(R.string.ip_addresses_label) + "\n" + (if (ips.isEmpty()) getString(R.string.ip_undefined)
                                     else ips.joinToString("\n"))
-        findViewById<TextView>(R.id.tvHostPort).text = "Порт: $port"
+        findViewById<TextView>(R.id.tvHostPort).text = getString(R.string.port_format, port)
 
         findViewById<Button>(R.id.btnHostNick).apply {
-            text = "Ник: $hostNickname"
+            text = getString(R.string.nickname_format, hostNickname)
             setOnClickListener { promptNickname() }
         }
 
         findViewById<Button>(R.id.btnPickMode).apply {
-            text = "Режим: ${selectedMode.display}"
+            text = getString(R.string.mode_format, selectedMode.display)
             setOnClickListener { pickMode() }
         }
         findViewById<Button>(R.id.btnPickDiff).apply {
-            text = "Сложность: ${selectedDiff.display}"
+            text = getString(R.string.difficulty_format, selectedDiff.display)
             setOnClickListener { pickDifficulty() }
         }
         findViewById<Button>(R.id.btnPickShift).apply {
-            text = "Сдвиг: ${save.shiftInterval()} сек"
+            text = getString(R.string.shift_format, save.shiftInterval())
             setOnClickListener { pickShiftInterval() }
         }
         // Кнопка выбора MP-режима: Вместе / Гонка
         findViewById<Button>(R.id.btnPickMpMode)?.apply {
-            text = "Режим игры: ${selectedMpMode.display}"
+            text = getString(R.string.mp_mode_format, selectedMpMode.display)
             setOnClickListener {
                 val labels = MpMode.entries.map { "${it.display} — ${it.shortDesc}" }.toTypedArray<String>()
                 AlertDialog.Builder(this@LobbyHostActivity)
-                    .setTitle("Сетевой режим")
+                    .setTitle(R.string.mp_mode_title)
                     .setItems(labels) { _, which ->
                         selectedMpMode = MpMode.entries[which]
-                        findViewById<Button>(R.id.btnPickMpMode).text = "Режим игры: ${selectedMpMode.display}"
+                        findViewById<Button>(R.id.btnPickMpMode).text = getString(R.string.mp_mode_format, selectedMpMode.display)
                     }
                     .show()
             }
@@ -112,7 +111,7 @@ class LobbyHostActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnStartMp).setOnClickListener { startGame() }
 
         refreshPlayerList()
-        appendLog("Лобби открыто. Жди подключений.")
+        appendLog(getString(R.string.lobby_open_log))
     }
 
     private fun handleClientMessage(clientId: Int, msg: Message) {
@@ -121,7 +120,7 @@ class LobbyHostActivity : AppCompatActivity() {
                 is Message.Join -> handleJoin(clientId, msg.nickname)
                 is Message.Leave, Message.Goodbye -> {
                     val removed = players.remove(clientId)
-                    if (removed != null) appendLog("${removed.name} вышел")
+                    if (removed != null) appendLog(getString(R.string.player_left, removed.name))
                     refreshPlayerList()
                     broadcastLobby()
                 }
@@ -140,7 +139,7 @@ class LobbyHostActivity : AppCompatActivity() {
         server?.sendTo(clientId, Message.JoinAck(finalNick, clientId))
         broadcastLobby()
         refreshPlayerList()
-        appendLog("$finalNick присоединился")
+        appendLog(getString(R.string.player_joined, finalNick))
     }
 
     private fun broadcastLobby() {
@@ -152,7 +151,8 @@ class LobbyHostActivity : AppCompatActivity() {
         container.removeAllViews()
         for ((idx, p) in players.values.withIndex()) {
             val tv = TextView(this).apply {
-                text = "${idx + 1}. ${p.name}${if (p.isHost) "  (хост)" else ""}"
+                val tag = if (p.isHost) getString(R.string.host_tag) else ""
+                text = getString(R.string.player_idx_format, idx + 1, p.name, tag)
                 setTextColor(getColor(R.color.text_primary))
                 textSize = 14f
                 setPadding(0, 8, 0, 8)
@@ -165,10 +165,10 @@ class LobbyHostActivity : AppCompatActivity() {
     private fun pickMode() {
         val labels = GameMode.entries.map { "${it.display} — ${it.shortDesc}" }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle("Режим игры")
+            .setTitle(R.string.mode_picker_title)
             .setItems(labels) { _, which ->
                 selectedMode = GameMode.entries[which]
-                findViewById<Button>(R.id.btnPickMode).text = "Режим: ${selectedMode.display}"
+                findViewById<Button>(R.id.btnPickMode).text = getString(R.string.mode_format, selectedMode.display)
             }
             .show()
     }
@@ -176,46 +176,46 @@ class LobbyHostActivity : AppCompatActivity() {
     private fun pickDifficulty() {
         val labels = Difficulty.entries.map { "${it.display} — ${it.shortDesc}" }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle("Сложность")
+            .setTitle(R.string.difficulty_picker_title)
             .setItems(labels) { _, which ->
                 selectedDiff = Difficulty.entries[which]
-                findViewById<Button>(R.id.btnPickDiff).text = "Сложность: ${selectedDiff.display}"
+                findViewById<Button>(R.id.btnPickDiff).text = getString(R.string.difficulty_format, selectedDiff.display)
             }
             .show()
     }
 
     private fun pickShiftInterval() {
         val values = (3..30).toList()
-        val labels = values.map { "$it сек" }.toTypedArray()
+        val labels = values.map { getString(R.string.shift_value, it) }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle("Интервал сдвига")
+            .setTitle(R.string.shift_picker_title)
             .setItems(labels) { _, which ->
                 save.setShiftInterval(values[which])
-                findViewById<Button>(R.id.btnPickShift).text = "Сдвиг: ${values[which]} сек"
+                findViewById<Button>(R.id.btnPickShift).text = getString(R.string.shift_format, values[which])
             }
             .show()
     }
 
     private fun promptNickname() {
         val input = android.widget.EditText(this).apply {
-            hint = "Ваш ник"
+            hint = getString(R.string.your_nickname_hint)
             setText(hostNickname)
             setSingleLine()
         }
         AlertDialog.Builder(this)
-            .setTitle("Ник хоста")
+            .setTitle(R.string.host_nickname_title)
             .setView(input)
-            .setPositiveButton("OK") { _, _ ->
-                val name = input.text.toString().trim().ifBlank { "Хост" }
+            .setPositiveButton(R.string.ok) { _, _ ->
+                val name = input.text.toString().trim().ifBlank { getString(R.string.host_default_name) }
                 val existing = players.values.filter { it.id != hostId }.map { it.name }
                 hostNickname = deduplicateNickname(name, existing)
                 players[hostId] = Message.PlayerInfo(hostId, hostNickname, true)
-                findViewById<Button>(R.id.btnHostNick).text = "Ник: $hostNickname"
+                findViewById<Button>(R.id.btnHostNick).text = getString(R.string.nickname_format, hostNickname)
                 refreshPlayerList()
                 broadcastLobby()
                 save.setNickname(hostNickname)
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
@@ -283,14 +283,14 @@ class LobbyHostActivity : AppCompatActivity() {
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
         AlertDialog.Builder(this)
-            .setTitle("Закрыть лобби?")
-            .setMessage("Игроки будут отключены.")
-            .setPositiveButton("Закрыть") { _, _ ->
+            .setTitle(R.string.close_lobby_question)
+            .setMessage(R.string.close_lobby_message)
+            .setPositiveButton(R.string.close) { _, _ ->
                 server?.broadcast(Message.Goodbye)
                 server?.stop()
                 finish()
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 }

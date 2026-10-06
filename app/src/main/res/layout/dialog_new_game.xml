@@ -13,11 +13,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="Режим"
+            android:fontFamily="@font/press_start_2p"
+            android:text="@string/select_mode"
             android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:textStyle="bold"
+            android:textSize="10sp"
             android:layout_marginBottom="8dp" />
 
         <LinearLayout
@@ -30,11 +29,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="Сложность"
+            android:fontFamily="@font/press_start_2p"
+            android:text="@string/select_difficulty"
             android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:textStyle="bold"
+            android:textSize="10sp"
             android:layout_marginBottom="8dp" />
 
         <LinearLayout

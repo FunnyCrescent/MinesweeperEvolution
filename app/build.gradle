@@ -14,7 +14,7 @@ android {
         versionCode 4
         versionName "1.2"
         // Ограничиваем языки, чтобы ускорить обработку ресурсов.
-        resConfigs 'ru', 'en'
+        resConfigs 'ru', 'en', 'es'
     }
 
     // Фиксированный debug keystore в репозитории.

@@ -9,6 +9,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/vibration"
+        android:fontFamily="@font/pixelify_sans"
         android:textColor="@color/text_primary"
         android:textSize="15sp"
         android:layout_marginBottom="8dp" />
@@ -17,6 +18,7 @@
         android:id="@+id/swVibration"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/pixelify_sans"
         android:textColor="@color/text_secondary" />
 
     <View
@@ -29,6 +31,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/sound"
+        android:fontFamily="@font/pixelify_sans"
         android:textColor="@color/text_primary"
         android:textSize="15sp"
         android:layout_marginBottom="8dp" />
@@ -37,6 +40,7 @@
         android:id="@+id/swSound"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/pixelify_sans"
         android:textColor="@color/text_secondary" />
 
     <View
@@ -49,6 +53,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/long_press_flag"
+        android:fontFamily="@font/pixelify_sans"
         android:textColor="@color/text_primary"
         android:textSize="15sp"
         android:layout_marginBottom="8dp" />
@@ -57,6 +62,7 @@
         android:id="@+id/swLongPress"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:fontFamily="@font/pixelify_sans"
         android:textColor="@color/text_secondary" />
 
     <View
@@ -69,6 +75,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="@string/shift_interval"
+        android:fontFamily="@font/pixelify_sans"
         android:textColor="@color/text_primary"
         android:textSize="15sp"
         android:layout_marginBottom="8dp" />
@@ -77,7 +84,8 @@
         android:id="@+id/tvShiftVal"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="10 сек"
+        android:text="@string/shift_default_value"
+        android:fontFamily="@font/vt323"
         android:textColor="@color/accent"
         android:textSize="14sp"
         android:textStyle="bold" />

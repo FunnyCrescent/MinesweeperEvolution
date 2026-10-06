@@ -12,6 +12,7 @@ import android.widget.Toast
 class MinesweeperApp : Application() {
     override fun onCreate() {
         super.onCreate()
+        instance = this
         // Загружаем сохранённые размеры кастомного поля.
         val save = SaveManager(this)
         customRows = save.customRows()
@@ -23,7 +24,7 @@ class MinesweeperApp : Application() {
             try {
                 Log.e("MinesweeperCrash", "Uncaught exception on ${thread.name}", throwable)
                 val msg = throwable.message ?: throwable.javaClass.simpleName
-                val toastText = "Сапёр крашнулся: $msg"
+                val toastText = getString(R.string.crash_message, msg)
                 val mainLooper = android.os.Looper.getMainLooper()
                 if (thread == Thread.currentThread() && mainLooper.thread == thread) {
                     Toast.makeText(this, toastText, Toast.LENGTH_LONG).show()
@@ -37,6 +38,10 @@ class MinesweeperApp : Application() {
     }
 
     companion object {
+        /** Singleton instance — используется для доступа к ресурсам из enum'ов. */
+        lateinit var instance: MinesweeperApp
+            private set
+
         /** Кастомные размеры поля, загружаются из SaveManager при старте. */
         @Volatile var customRows: Int = 16
         @Volatile var customCols: Int = 30

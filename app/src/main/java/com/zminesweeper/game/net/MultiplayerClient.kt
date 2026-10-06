@@ -1,5 +1,7 @@
 package com.zminesweeper.game.net
 
+import com.zminesweeper.game.MinesweeperApp
+import com.zminesweeper.game.R
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -39,7 +41,7 @@ class MultiplayerClient {
             running = true
             pool.execute { readLoop(s) }
         } catch (e: IOException) {
-            onError("Не удалось подключиться к $hostIp:$port — ${e.message}")
+            onError(MinesweeperApp.instance.getString(R.string.connect_failed, hostIp, port, e.message ?: ""))
         }
     }
 

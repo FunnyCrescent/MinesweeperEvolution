@@ -14,9 +14,10 @@
         android:padding="12dp"
         android:layout_margin="8dp"
         android:gravity="center"
+        android:fontFamily="@font/press_start_2p"
         android:textColor="@color/accent"
-        android:textSize="18sp"
-        android:textStyle="bold"
+        android:textSize="12sp"
+        android:maxLines="1"
         android:text="@string/mp_your_turn" />
 
     <!-- Top status bar (как в обычной игре) -->
@@ -40,6 +41,7 @@
             <TextView
                 android:id="@+id/tvMines"
                 style="@style/TopBarValue"
+                android:fontFamily="@font/press_start_2p"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0"
@@ -62,6 +64,7 @@
             <TextView
                 android:id="@+id/tvTime"
                 style="@style/TopBarValue"
+                android:fontFamily="@font/press_start_2p"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0:00"
@@ -85,6 +88,7 @@
             <TextView
                 android:id="@+id/tvShift"
                 style="@style/TopBarValue"
+                android:fontFamily="@font/press_start_2p"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="--"
@@ -104,16 +108,17 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <Button
+            <ImageView
                 android:id="@+id/btnFlagMode"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_button_secondary"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
                 android:padding="6dp"
-                android:text="🚩"
-                android:textSize="18sp" />
+                android:scaleType="fitCenter"
+                android:src="@drawable/item_flag"
+                android:contentDescription="@string/flag_mode"
+                android:clickable="true"
+                android:focusable="true" />
 
             <TextView
                 style="@style/TopBarLabel"
@@ -129,16 +134,17 @@
             android:orientation="vertical"
             android:gravity="center">
 
-            <Button
+            <ImageView
                 android:id="@+id/btnMenu"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:background="@drawable/bg_button_secondary"
-                android:minWidth="0dp"
-                android:minHeight="0dp"
                 android:padding="6dp"
-                android:text="≡"
-                android:textSize="20sp" />
+                android:scaleType="fitCenter"
+                android:src="@drawable/icon_pause"
+                android:contentDescription="@string/menu"
+                android:clickable="true"
+                android:focusable="true" />
 
             <TextView
                 style="@style/TopBarLabel"
@@ -159,8 +165,10 @@
             android:id="@+id/tvModeLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:fontFamily="@font/vt323"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp"
+            android:textSize="14sp"
+            android:maxLines="1"
             android:text="—" />
     </LinearLayout>
 

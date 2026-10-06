@@ -29,7 +29,7 @@ class RelayJoinActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
 
     private var myPlayerId: Int = -1
-    private var myNickname: String = "Игрок"
+    private var myNickname: String = "Player"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,7 +46,7 @@ class RelayJoinActivity : AppCompatActivity() {
         }
         findViewById<EditText>(R.id.etRelayNick).apply {
             setText(save.nickname() ?: "")
-            hint = "Твой ник"
+            hint = getString(R.string.mp_nickname_hint)
         }
 
         findViewById<Button>(R.id.btnRelayConnect).setOnClickListener { tryConnect() }
@@ -63,18 +63,18 @@ class RelayJoinActivity : AppCompatActivity() {
     private fun tryConnect() {
         val url = findViewById<EditText>(R.id.etRelayClientUrl).text.toString().trim()
         val roomId = findViewById<EditText>(R.id.etRelayRoomId).text.toString().trim().uppercase()
-        val nick = findViewById<EditText>(R.id.etRelayNick).text.toString().trim().ifBlank { "Игрок" }
+        val nick = findViewById<EditText>(R.id.etRelayNick).text.toString().trim().ifBlank { getString(R.string.default_player_name) }
 
         if (url.isEmpty()) {
-            AlertDialog.Builder(this).setMessage("Введи URL сервера").setPositiveButton("OK", null).show()
+            AlertDialog.Builder(this).setMessage(R.string.enter_server_url).setPositiveButton(R.string.ok, null).show()
             return
         }
         if (roomId.isEmpty()) {
-            AlertDialog.Builder(this).setMessage("Введи код комнаты").setPositiveButton("OK", null).show()
+            AlertDialog.Builder(this).setMessage(R.string.enter_room_code).setPositiveButton(R.string.ok, null).show()
             return
         }
         if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
-            AlertDialog.Builder(this).setMessage("URL должен начинаться с ws:// или wss://").setPositiveButton("OK", null).show()
+            AlertDialog.Builder(this).setMessage(R.string.invalid_url).setPositiveButton(R.string.ok, null).show()
             return
         }
 
@@ -84,11 +84,11 @@ class RelayJoinActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnRelayConnect).isEnabled = false
         findViewById<Button>(R.id.btnRelayDisconnect).isEnabled = true
-        appendLog("Подключаемся к $url, комната $roomId…")
+        appendLog(getString(R.string.connecting_to_room, url, roomId))
 
         relay = WebSocketRelay(url).apply {
             onOpen = { handler.post {
-                appendLog("WebSocket открыт, шлём JOIN_ROOM…")
+                appendLog(getString(R.string.ws_open_join))
                 // Send JOIN_ROOM
                 val msg = JSONObject().apply {
                     put("t", "JOIN_ROOM")
@@ -98,11 +98,11 @@ class RelayJoinActivity : AppCompatActivity() {
                 relay?.send(msg)
             } }
             onClose = { handler.post {
-                appendLog("WebSocket закрыт")
+                appendLog(getString(R.string.ws_closed))
                 resetButtons()
             } }
             onError = { msg -> handler.post {
-                appendLog("Ошибка: $msg")
+                appendLog(getString(R.string.error_with_message, msg))
                 resetButtons()
             } }
             onMessage = { obj -> handler.post { handleServerMessage(obj) } }
@@ -116,7 +116,7 @@ class RelayJoinActivity : AppCompatActivity() {
             "JOIN_ACK" -> {
                 myPlayerId = obj.optInt("playerId")
                 myNickname = obj.optString("nickname")
-                appendLog("Подключён как $myNickname (#$myPlayerId)")
+                appendLog(getString(R.string.connected_as, myNickname, myPlayerId))
             }
             "LOBBY" -> {
                 val arr = obj.optJSONArray("players")
@@ -126,13 +126,14 @@ class RelayJoinActivity : AppCompatActivity() {
                         val p = arr.getJSONObject(i)
                         val name = p.optString("name")
                         val isHost = p.optBoolean("isHost")
-                        sb.append("${i + 1}. $name${if (isHost) "  (хост)" else ""}\n")
+                        val tag = if (isHost) "  " + getString(R.string.host_tag) else ""
+                        sb.append("${i + 1}. $name$tag\n")
                     }
                 }
                 findViewById<TextView>(R.id.tvRelayClientPlayers).text = sb.toString().trim()
             }
             "START" -> {
-                appendLog("Хост стартовал игру!")
+                appendLog(getString(R.string.host_started_game))
                 launchGame(obj)
             }
             "STATE" -> {
@@ -144,11 +145,11 @@ class RelayJoinActivity : AppCompatActivity() {
                 // Игра ещё не запущена? Игнорируем. Если запущена — Holder получит.
             }
             "GOODBYE" -> {
-                appendLog("Хост закрыл лобби")
+                appendLog(getString(R.string.host_closed_lobby))
                 disconnect()
             }
             "ERROR" -> {
-                appendLog("Ошибка: ${obj.optString("message")}")
+                appendLog(getString(R.string.error_with_message, obj.optString("message")))
             }
         }
     }
