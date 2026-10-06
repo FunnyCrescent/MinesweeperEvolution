@@ -111,7 +111,7 @@ class MainActivity : AppCompatActivity() {
                 "${diff.display}\n${diff.shortDesc}"
             }
             btn.textSize = 11f
-            btn.setBackgroundResource(R.drawable.ui_button_normal)
+            btn.setBackgroundResource(R.drawable.bg_diff_button)
             btn.setTextColor(getColor(R.color.text_primary))
             btn.setPadding(4, 12, 4, 12)
             btn.gravity = Gravity.CENTER

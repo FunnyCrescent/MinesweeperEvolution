@@ -39,10 +39,10 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:background="@drawable/ui_button_active"
+        android:background="@drawable/bg_button_primary"
         android:fontFamily="@font/pixelify_sans"
         android:text="@string/play_again"
-        android:textColor="@color/bg_dark"
+        android:textColor="@color/text_primary"
         android:textStyle="bold" />
 
     <Button
@@ -50,7 +50,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="@drawable/ui_button_normal"
+        android:background="@drawable/bg_button_secondary"
         android:fontFamily="@font/pixelify_sans"
         android:text="@string/to_menu"
         android:textColor="@color/text_primary" />
