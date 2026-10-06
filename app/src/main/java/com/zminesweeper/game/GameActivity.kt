@@ -86,8 +86,9 @@ class GameActivity : AppCompatActivity() {
         val loadSave = intent.getBooleanExtra(EXTRA_LOAD_SAVE, false)
         if (loadSave && save.hasSavedGame()) {
             val state = save.loadGame()!!
+            android.util.Log.d("MinesweeperSave", "Loaded state: ${state.length} chars")
             engine = GameEngine.deserialize(state) ?: run {
-                // Сохранение повреждено или невалидно — начнём новую игру.
+                android.util.Log.e("MinesweeperSave", "Deserialize returned null — starting new game")
                 android.widget.Toast.makeText(this,
                     getString(R.string.save_corrupted),
                     android.widget.Toast.LENGTH_LONG
@@ -95,6 +96,11 @@ class GameActivity : AppCompatActivity() {
                 save.clearSavedGame()
                 initNewGame(GameMode.CLASSIC, Difficulty.BEGINNER)
                 engine
+            }
+            // ВАЖНО: после десериализации НЕ вызываем initGame или placeMinesRandomly.
+            // Мины уже загружены из файла. Ничего не должно их менять.
+            if (engine != null) {
+                android.util.Log.d("MinesweeperSave", "Engine loaded: ${engine!!.rows}x${engine!!.cols}, mines=${engine!!.mineCount}, revealed=${engine!!.revealedCount}, firstClick=${engine!!.firstClickDone}")
             }
             savedFromLoaded = true
         } else {
