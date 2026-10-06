@@ -531,6 +531,17 @@ class GameEngine {
     // ---- Сериализация для сохранений ----
 
     fun serialize(): String {
+        // Пересчитываем фактическое число мин, чтобы оно всегда совпадало
+        // с тем, что в массиве mines[][]. В Анархии mineCount может
+        // рассинхронизироваться после shiftMines + enforceNumberedInvariant.
+        var actualMines = 0
+        for (r in 0 until rows) {
+            for (c in 0 until cols) {
+                if (mines[r][c]) actualMines++
+            }
+        }
+        mineCount = actualMines
+
         val sb = StringBuilder()
         sb.append(mode.key).append('\n')
         sb.append(difficulty.key).append('\n')
@@ -592,12 +603,10 @@ class GameEngine {
                         if (engine.revealed[rr][cc]) engine.revealedCount++
                     }
                 }
-                // Валидация: фактическое число мин должно совпадать с mineCount.
-                // Если нет — сохранение повреждено, начнём новую игру.
+                // Валидация: если mineCount не совпадает с фактическим —
+                // ИСПРАВЛЯЕМ (а не сбрасываем). В Анархии mineCount мог устареть.
                 if (actualMineCount != engine.mineCount) {
-                    // Лавина могла переместить мины, но mineCount должен совпадать с фактом.
-                    // Если рассинхрон — сбрасываем.
-                    return null
+                    engine.mineCount = actualMineCount
                 }
                 engine
             } catch (e: Exception) {
