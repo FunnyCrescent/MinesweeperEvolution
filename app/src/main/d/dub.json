@@ -1,0 +1,25 @@
+{
+    "name": "minesweeper_engine",
+    "description": "Native D engine for MinesweeperEvolution Android app",
+    "targetType": "dynamicLibrary",
+    "targetPath": "../jniLibs/arm64-v8a",
+    "targetName": "libminesweeper_engine.so",
+    
+    "buildRequirements": ["allowWarnings"],
+    "buildOptions": ["betterC"],
+    
+    "configurations": [
+        {
+            "name": "android-arm64",
+            "platforms": ["aarch64-linux-android"],
+            "dFlags": ["-mtriple=aarch64-linux-android", "-gcc=/home/z/android-sdk/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android30-clang"],
+            "lflags": ["-nostdlib", "-lc", "-lm"],
+            "sourcePaths": ["."]
+        }
+    ],
+    
+    "sourceFiles": [
+        "engine.d",
+        "bridge.d"
+    ]
+}
