@@ -365,6 +365,7 @@ class GameEngine {
             if (nr in 0 until rows && nc in 0 until cols) safe.add(nr to nc)
         }
         // Переставить мины с этих клеток куда-то ещё.
+        // НО: мины под флажками НЕ ТРОГАЕМ — они заморожены (в Дрейфе и Лавине).
         val taken = ArrayList(safe)
         val occupied = ArrayList<Pair<Int, Int>>()
         for (r in 0 until rows) for (c in 0 until cols) {
@@ -372,17 +373,23 @@ class GameEngine {
                 occupied.add(r to c)
             }
         }
-        // Сбросить мины с безопасной зоны.
-        for ((r, c) in safe) mines[r][c] = false
-        // Доступные места — все не занятые, не входящие в safe.
+        // Сбросить мины с безопасной зоны, КРОМЕ мин под флажками.
+        for ((r, c) in safe) {
+            if (!flagged[r][c]) mines[r][c] = false  // флаг = замороженная мина, не трогаем
+        }
+        // Доступные места — все не занятые, не входящие в safe, не под флагами.
         val available = ArrayList<Pair<Int, Int>>()
         for (r in 0 until rows) for (c in 0 until cols) {
             if (taken.any { it.first == r && it.second == c }) continue
             if (occupied.any { it.first == r && it.second == c }) continue
+            if (flagged[r][c]) continue  // не ставим мины под флагами
             available.add(r to c)
         }
         available.shuffle(rng)
-        val needed = mineCount - occupied.size
+        // Считаем сколько мин нужно добавить (вычитая замороженные под флагами в safe).
+        var frozenInSafe = 0
+        for ((r, c) in safe) if (flagged[r][c] && mines[r][c]) frozenInSafe++
+        val needed = mineCount - occupied.size - frozenInSafe
         for (i in 0 until minOf(needed, available.size)) {
             val (r, c) = available[i]
             mines[r][c] = true
