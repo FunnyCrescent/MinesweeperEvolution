@@ -45,29 +45,43 @@ class GameView : View {
     }
 
     // ----- Спрайты (пиксель-арт) -----
-    private val bitmaps = HashMap<String, Bitmap>()
+    private val rawBitmaps = HashMap<String, Bitmap>()
+    private val scaledBitmaps = HashMap<String, Bitmap>()
+    private var lastCellSize = 0f
 
     private fun loadBitmaps() {
         val res = context.resources
         fun load(name: String): Bitmap {
             val id = res.getIdentifier(name, "drawable", context.packageName)
             if (id == 0) return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
-            val raw = BitmapFactory.decodeResource(res, id)
-            // Радикальный фикс мыла: масштабируем спрайт до 512×512 через NEAREST.
-            // Из 16×16 → 512×512 — каждый пиксель увеличивается в 32 раза, чёткие границы.
-            // Затем Canvas.drawBitmap масштабирует 512→cellSize с filterBitmap=false.
-            val targetSize = 512
-            val scaled = Bitmap.createScaledBitmap(raw, targetSize, targetSize, false)
-            if (scaled !== raw) raw.recycle()
-            return scaled
+            val opts = BitmapFactory.Options().apply {
+                inScaled = false  // НЕ масштабировать по density — берём как есть
+            }
+            return BitmapFactory.decodeResource(res, id, opts)
         }
-        bitmaps["tile_closed"] = load("tile_closed")
-        bitmaps["tile_open"] = load("tile_open")
-        bitmaps["tile_exploded"] = load("tile_exploded")
-        bitmaps["bomb"] = load("item_bomb")
-        bitmaps["flag"] = load("item_flag")
-        bitmaps["flag_wrong"] = load("item_flag_wrong")
-        for (i in 1..8) bitmaps["num_$i"] = load("num_$i")
+        rawBitmaps["tile_closed"] = load("tile_closed")
+        rawBitmaps["tile_open"] = load("tile_open")
+        rawBitmaps["tile_exploded"] = load("tile_exploded")
+        rawBitmaps["bomb"] = load("item_bomb")
+        rawBitmaps["flag"] = load("item_flag")
+        rawBitmaps["flag_wrong"] = load("item_flag_wrong")
+        for (i in 1..8) rawBitmaps["num_$i"] = load("num_$i")
+    }
+
+    /**
+     * Предмасштабируем все спрайты под текущий cellSize.
+     * Вызывается при изменении cellSize (в onMeasure / onSizeChanged).
+     * Используем NEAREST (filterQuality=false) — чёткие пиксели без мыла.
+     */
+    private fun rescaleBitmaps() {
+        if (cellSize == lastCellSize) return
+        lastCellSize = cellSize
+        val cs = cellSize.toInt().coerceAtLeast(1)
+        for ((key, raw) in rawBitmaps) {
+            // Масштабируем спрайт до размера клетки (cs×cs) через NEAREST.
+            // createScaledBitmap(src, w, h, false) = NEAREST, без билинейной фильтрации.
+            scaledBitmaps[key] = Bitmap.createScaledBitmap(raw, cs, cs, false)
+        }
     }
 
     /** Paint для отрисовки битмапов: filterBitmap=false → чёткие пиксели без сглаживания. */
@@ -124,6 +138,8 @@ class GameView : View {
             field = value.coerceIn(MIN_ZOOM, MAX_ZOOM)
             // При возврате к 1.0 — сбрасываем pan.
             if (field <= 1.0f) { panX = 0f; panY = 0f }
+            // Сбрасываем кэш масштабированных спрайтов — cellSize изменится.
+            lastCellSize = 0f
             requestLayout()
             invalidate()
         }
@@ -438,6 +454,8 @@ class GameView : View {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val engine = engine ?: return
+        // Предмасштабируем спрайты под текущий cellSize при необходимости.
+        rescaleBitmaps()
         canvas.drawColor(Color.parseColor("#101418"))
         val pad = 1f
         val flashAlpha = shiftFlashAlpha()
@@ -536,14 +554,14 @@ class GameView : View {
 
     /** Отрисовать битмап из кэша в dest прямоугольник (без alpha-модуляции). */
     private fun drawBitmap(canvas: Canvas, key: String, left: Float, top: Float, right: Float, bottom: Float) {
-        val bmp = bitmaps[key] ?: return
+        val bmp = scaledBitmaps[key] ?: return
         destRect.set(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
         canvas.drawBitmap(bmp, null, destRect, bitmapPaint)
     }
 
     /** Отрисовать битмап с альфа-модуляцией (для reveal-анимации). */
     private fun drawBitmapAlpha(canvas: Canvas, key: String, left: Float, top: Float, right: Float, bottom: Float, alpha: Int) {
-        val bmp = bitmaps[key] ?: return
+        val bmp = scaledBitmaps[key] ?: return
         bitmapPaintAlpha.alpha = alpha
         destRect.set(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
         canvas.drawBitmap(bmp, null, destRect, bitmapPaintAlpha)
