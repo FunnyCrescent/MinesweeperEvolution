@@ -39,15 +39,18 @@
     </style>
 
     <style name="TopBarValue">
-        <item name="android:textSize">22sp</item>
-        <item name="android:textStyle">bold</item>
+        <item name="android:textSize">14sp</item>
         <item name="android:textColor">@color/accent</item>
-        <item name="android:fontFamily">monospace</item>
+        <item name="android:fontFamily">@font/press_start_2p</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">none</item>
     </style>
 
     <style name="TopBarLabel">
-        <item name="android:textSize">10sp</item>
+        <item name="android:textSize">9sp</item>
         <item name="android:textColor">@color/text_secondary</item>
         <item name="android:textAllCaps">true</item>
+        <item name="android:fontFamily">@font/vt323</item>
+        <item name="android:maxLines">1</item>
     </style>
 </resources>

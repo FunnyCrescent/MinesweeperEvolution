@@ -11,19 +11,21 @@
     <string name="mode_avalanche">Лавина</string>
 
     <string name="mode_classic_desc">Классический сапёр. Мины стоят на месте.</string>
-    <string name="mode_drift_desc">Каждые 10 сек мины дрейфуют. Мины под флажком остаются.</string>
-    <string name="mode_chaos_desc">Каждые 10 сек все мины перемещаются. Флажки сбрасываются.</string>
-    <string name="mode_anarchy_desc">Хаос + случайное число мин каждый сдвиг. Лимита нет!</string>
-    <string name="mode_avalanche_desc">Каждые 25 сек всё поле закрывается. Успей закопать все мины!</string>
+    <string name="mode_drift_desc">Мины дрейфуют каждые 10 сек. Под флажком — остаются.</string>
+    <string name="mode_chaos_desc">Все мины перемещаются, флажки сбрасываются.</string>
+    <string name="mode_anarchy_desc">Хаос + случайное число мин. Лимита нет!</string>
+    <string name="mode_avalanche_desc">Каждые 25 сек всё поле закрывается. Мины под флажком остаются.</string>
 
     <!-- Difficulties -->
     <string name="diff_beginner">Новичок</string>
     <string name="diff_veteran">Ветеран</string>
     <string name="diff_master">Мастер</string>
+    <string name="diff_custom">Своя</string>
 
     <string name="diff_beginner_desc">8 × 8 · 10 мин</string>
     <string name="diff_veteran_desc">16 × 16 · 40 мин</string>
     <string name="diff_master_desc">16 × 30 · 99 мин</string>
+    <string name="diff_custom_desc">Свой размер поля</string>
 
     <!-- UI -->
     <string name="start_game">Начать игру</string>
@@ -36,6 +38,10 @@
     <string name="restart">Заново</string>
     <string name="flag_mode">Флажок</string>
     <string name="dig_mode">Копать</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Отмена</string>
+    <string name="exit">Выйти</string>
+    <string name="close">Закрыть</string>
 
     <!-- Game -->
     <string name="win">Победа!</string>
@@ -51,19 +57,36 @@
     <string name="game_saved">Игра сохранена</string>
     <string name="autosaved">Автосохранение…</string>
 
+    <!-- Pause dialog -->
+    <string name="pause_title">Пауза</string>
+    <string name="pause_message">Игра сохраняется автоматически.</string>
+    <string name="save_corrupted">Сохранение повреждено. Начинаем новую игру.</string>
+    <string name="time_label">Время: %1$s</string>
+    <string name="shifts_label">Сдвигов: %1$d</string>
+
     <!-- Settings -->
     <string name="settings">Настройки</string>
     <string name="vibration">Вибрация</string>
     <string name="sound">Звук</string>
     <string name="long_press_flag">Долгое нажатие = флажок</string>
     <string name="shift_interval">Интервал сдвига (сек)</string>
+    <string name="shift_value">%1$d сек</string>
+    <string name="shift_default_value">10 сек</string>
 
     <!-- Stats -->
     <string name="stats">Статистика</string>
     <string name="best_time">Лучшее время</string>
+    <string name="best_label">Лучшее</string>
     <string name="games_played">Сыграно</string>
     <string name="games_won">Побед</string>
     <string name="reset_stats">Сбросить статистику</string>
+    <string name="select_mode_required">Выбери режим</string>
+    <string name="select_diff_required">Выбери сложность</string>
+    <string name="custom_size">Своя\n%1$d×%2$d</string>
+    <string name="rows_hint">Строки</string>
+    <string name="cols_hint">Столбцы</string>
+    <string name="custom_size_title">Свой размер поля</string>
+    <string name="custom_size_message">Мины расставляются автоматически (~15% от площади).</string>
 
     <!-- Multiplayer -->
     <string name="mp_host">Создать игру (P2P)</string>
@@ -72,6 +95,8 @@
     <string name="mp_relay_join">Подключиться через сервер</string>
     <string name="mp_lobby_title">Лобби хоста</string>
     <string name="mp_join_title">Подключение</string>
+    <string name="mp_relay_host_title">Лобби на сервере (кроссплат)</string>
+    <string name="mp_relay_join_title">Подключиться через сервер</string>
     <string name="mp_nickname_hint">Твой ник</string>
     <string name="mp_host_ip_hint">IP хоста</string>
     <string name="mp_port_hint">Порт</string>
@@ -80,5 +105,82 @@
     <string name="mp_start_game">Начать игру</string>
     <string name="mp_your_turn">▼ ВАШ ХОД ▼</string>
     <string name="mp_turn_of">Ход: %1$s</string>
+    <string name="mp_mode_title">Сетевой режим</string>
+    <string name="mp_mode_coop">Вместе</string>
+    <string name="mp_mode_coop_desc">Ходы по кругу, одно поле на всех</string>
+    <string name="mp_mode_competitive">Гонка</string>
+    <string name="mp_mode_competitive_desc">Каждый на своём поле, кто быстрее</string>
+
+    <!-- Host nickname / lobby -->
+    <string name="host_default_name">Хост</string>
+    <string name="default_player_name">Игрок</string>
+    <string name="your_nickname_hint">Ваш ник</string>
+    <string name="host_nickname_title">Ник хоста</string>
+    <string name="nickname_for_mp_title">Ник для мультиплеера</string>
+    <string name="nickname_for_mp_message">Введи ник, под которым тебя увидят другие игроки.</string>
+    <string name="nickname_format">Ник: %1$s</string>
+    <string name="mode_format">Режим: %1$s</string>
+    <string name="difficulty_format">Сложность: %1$s</string>
+    <string name="shift_format">Сдвиг: %1$d сек</string>
+    <string name="mp_mode_format">Режим игры: %1$s</string>
+    <string name="mode_picker_title">Режим игры</string>
+    <string name="difficulty_picker_title">Сложность</string>
+    <string name="shift_picker_title">Интервал сдвига</string>
+    <string name="ip_addresses_label">IP-адреса хоста:</string>
+    <string name="ip_undefined">Не определён (используй Wi-Fi/ZeroTier)</string>
+    <string name="port_format">Порт: %1$d</string>
+    <string name="host_tag">(хост)</string>
+    <string name="player_idx_format">%1$d. %2$s %3$s</string>
+    <string name="lobby_open_log">Лобби открыто. Жди подключений.</string>
+    <string name="player_connected_waiting">Подключился %1$s (#%2$d), ждём ник…</string>
+    <string name="player_disconnected">%1$s отключился</string>
+    <string name="player_left">%1$s вышел</string>
+    <string name="player_joined">%1$s присоединился</string>
+    <string name="host_started_game">Хост стартовал игру!</string>
+    <string name="host_closed_lobby">Хост закрыл лобби</string>
+    <string name="host_closed_game">Хост закрыл игру</string>
+    <string name="connected_as">Подключён как %1$s (#%2$d)</string>
+    <string name="disconnected_from_host">Отключено от хоста</string>
+    <string name="connecting_to_addr">Подключаемся к %1$s:%2$d…</string>
+    <string name="connecting_to_url">Подключаемся к %1$s…</string>
+    <string name="connecting_to_room">Подключаемся к %1$s, комната %2$s…</string>
+    <string name="ws_open_creating">WebSocket открыт, создаём комнату…</string>
+    <string name="ws_open_join">WebSocket открыт, шлём JOIN_ROOM…</string>
+    <string name="ws_closed">WebSocket закрыт</string>
+    <string name="server_closed">Сервер закрыл соединение</string>
+    <string name="error_with_message">Ошибка: %1$s</string>
+    <string name="connection_to_server_lost">Соединение с сервером потеряно</string>
+    <string name="connection_to_host_lost">Соединение с хостом потеряно</string>
+    <string name="exit_lobby_question">Выйти из лобби?</string>
+    <string name="exit_game_question">Выйти из игры?</string>
+    <string name="exit_game_message">Игра будет прервана для всех игроков.</string>
+    <string name="close_lobby_question">Закрыть лобби?</string>
+    <string name="close_lobby_message">Игроки будут отключены.</string>
+    <string name="close_lobby">Закрыть лобби</string>
+    <string name="create_room">Создать комнату</string>
+    <string name="room_code_format">Код комнаты: %1$s</string>
+    <string name="room_code_placeholder">Код комнаты появится здесь</string>
+    <string name="room_created_log">Комната создана. Код: %1$s</string>
+    <string name="room_code_hint">Код комнаты хоста</string>
+    <string name="relay_url_hint">URL relay-сервера</string>
+    <string name="enter_server_url">Введи URL сервера</string>
+    <string name="enter_host_ip">Введи IP хоста</string>
+    <string name="enter_room_code">Введи код комнаты</string>
+    <string name="invalid_url">URL должен начинаться с ws:// или wss://</string>
+    <string name="port_open_failed">Не удалось открыть порт %1$d: %2$s</string>
+    <string name="connect_failed">Не удалось подключиться к %1$s:%2$d — %3$s</string>
+    <string name="lobby_full">Лобби заполнено (макс. %1$d игроков).</string>
+    <string name="game_over_reason">Время: %1$s\nПричина: %2$s</string>
+
+    <!-- Crash reporter -->
+    <string name="crash_message">Сапёр крашнулся: %1$s</string>
+
+    <!-- Section headers -->
+    <string name="section_connection">ПОДКЛЮЧЕНИЕ</string>
+    <string name="section_game_settings">НАСТРОЙКИ ИГРЫ</string>
+    <string name="section_players">ИГРОКИ В ЛОББИ</string>
+    <string name="section_log">ЛОГ</string>
+    <string name="section_server">СЕРВЕР</string>
+    <string name="stats_row_format">  %1$s:  %2$d/%3$d   |   Лучшее: %4$s</string>
 
 </resources>

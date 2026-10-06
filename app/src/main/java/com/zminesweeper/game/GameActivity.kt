@@ -9,7 +9,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.View
-import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -68,7 +68,7 @@ class GameActivity : AppCompatActivity() {
                 } else {
                     findViewById<TextView>(R.id.tvShift).setTextColor(getColor(R.color.warning))
                 }
-                findViewById<TextView>(R.id.tvShift).text = "${shiftRemainingSec}с"
+                findViewById<TextView>(R.id.tvShift).text = shiftRemainingSec.toString()
             } else if (!engine.firstClickDone) {
                 findViewById<TextView>(R.id.tvShift).text = "—"
             }
@@ -89,7 +89,7 @@ class GameActivity : AppCompatActivity() {
             engine = GameEngine.deserialize(state) ?: run {
                 // Сохранение повреждено или невалидно — начнём новую игру.
                 android.widget.Toast.makeText(this,
-                    "Сохранение повреждено. Начинаем новую игру.",
+                    getString(R.string.save_corrupted),
                     android.widget.Toast.LENGTH_LONG
                 ).show()
                 save.clearSavedGame()
@@ -146,25 +146,24 @@ class GameActivity : AppCompatActivity() {
             updateMinesLabel()
         }
 
-        findViewById<Button>(R.id.btnFlagMode).setOnClickListener {
+        findViewById<ImageView>(R.id.btnFlagMode).setOnClickListener {
             gameView.flagMode = !gameView.flagMode
             it.isSelected = gameView.flagMode
-            (it as Button).text = if (gameView.flagMode) "⛏" else "🚩"
+            // Меняем иконку: флажок / кирка (dig mode).
+            val resId = if (gameView.flagMode)
+                R.drawable.item_flag  // в режиме флажка показываем флажок
+            else
+                R.drawable.tile_open  // в режиме копания — открытая плитка
+            (it as ImageView).setImageResource(resId)
             sound?.play(SoundManager.Type.CLICK)
         }
-        findViewById<Button>(R.id.btnMenu).setOnClickListener {
+        findViewById<ImageView>(R.id.btnMenu).setOnClickListener {
             confirmExit()
-        }
-        findViewById<Button>(R.id.btnZoomIn)?.setOnClickListener {
-            gameView.zoomIn()
-        }
-        findViewById<Button>(R.id.btnZoomOut)?.setOnClickListener {
-            gameView.zoomOut()
         }
 
         updateModeLabel()
         updateMinesLabel()
-        findViewById<TextView>(R.id.tvShift).text = if (engine.mode.shifts) "${if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()}с" else "—"
+        findViewById<TextView>(R.id.tvShift).text = if (engine.mode.shifts) (if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()).toString() else "—"
         findViewById<View>(R.id.llShift).visibility = if (engine.mode.shifts) View.VISIBLE else View.INVISIBLE
 
         startTimeMs = System.currentTimeMillis()
@@ -237,13 +236,13 @@ class GameActivity : AppCompatActivity() {
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(shiftRunnable)
         AlertDialog.Builder(this)
-            .setTitle("Пауза")
-            .setMessage("Игра сохраняется автоматически.")
-            .setPositiveButton("Выйти") { _, _ ->
+            .setTitle(R.string.pause_title)
+            .setMessage(R.string.pause_message)
+            .setPositiveButton(R.string.exit) { _, _ ->
                 if (!engine.gameOver) save.saveGame(engine.serialize())
                 finish()
             }
-            .setNegativeButton("Продолжить") { _, _ ->
+            .setNegativeButton(R.string.continue_game) { _, _ ->
                 // Возобновляем таймеры с учётом паузы.
                 startTimeMs = System.currentTimeMillis() - elapsedSec * 1000L
                 handler.post(tickRunnable)
@@ -251,7 +250,7 @@ class GameActivity : AppCompatActivity() {
                     handler.post(shiftRunnable)
                 }
             }
-            .setNeutralButton("Заново") { _, _ ->
+            .setNeutralButton(R.string.restart) { _, _ ->
                 restartGame()
             }
             .setCancelable(false)
@@ -270,7 +269,7 @@ class GameActivity : AppCompatActivity() {
 
         updateModeLabel()
         updateMinesLabel()
-        findViewById<TextView>(R.id.tvShift).text = if (mode.shifts) "${if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()}с" else "—"
+        findViewById<TextView>(R.id.tvShift).text = if (mode.shifts) (if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()).toString() else "—"
         findViewById<View>(R.id.llShift).visibility = if (mode.shifts) View.VISIBLE else View.INVISIBLE
 
         // Сброс таймера
@@ -318,14 +317,14 @@ class GameActivity : AppCompatActivity() {
         view.findViewById<TextView>(R.id.tvResultIcon).text = if (won) "🏆" else "💥"
         view.findViewById<TextView>(R.id.tvResultTitle).text =
             if (won) getString(R.string.win) else getString(R.string.lose)
-        val shifts = if (engine.mode.shifts) "Сдвигов: ${engine.shiftsCount}" else ""
+        val shifts = if (engine.mode.shifts) getString(R.string.shifts_label, engine.shiftsCount) else ""
         view.findViewById<TextView>(R.id.tvResultDetails).text =
-            "Время: ${formatTime(elapsedSec)}\n$shifts"
-        view.findViewById<Button>(R.id.btnPlayAgain).setOnClickListener {
+            getString(R.string.time_label, formatTime(elapsedSec)) + "\n" + shifts
+        view.findViewById<android.widget.Button>(R.id.btnPlayAgain).setOnClickListener {
             dialog?.dismiss()
             restartGame()
         }
-        view.findViewById<Button>(R.id.btnToMenu).setOnClickListener {
+        view.findViewById<android.widget.Button>(R.id.btnToMenu).setOnClickListener {
             dialog?.dismiss()
             finish()
         }

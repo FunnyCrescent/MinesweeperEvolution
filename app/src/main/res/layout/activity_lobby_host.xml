@@ -15,9 +15,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/mp_lobby_title"
+            android:fontFamily="@font/press_start_2p"
             android:textColor="@color/text_primary"
-            android:textSize="22sp"
-            android:textStyle="bold"
+            android:textSize="10sp"
             android:layout_marginTop="16dp"
             android:layout_marginBottom="16dp" />
 
@@ -25,10 +25,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ПОДКЛЮЧЕНИЕ"
+            android:text="@string/section_connection"
+            android:fontFamily="@font/press_start_2p"
             android:textColor="@color/accent"
-            android:textSize="11sp"
-            android:textStyle="bold"
+            android:textSize="10sp"
             android:letterSpacing="0.1"
             android:layout_marginBottom="8dp" />
 
@@ -39,9 +39,9 @@
             android:background="@color/bg_panel"
             android:padding="12dp"
             android:textColor="@color/accent"
-            android:textSize="13sp"
+            android:textSize="14sp"
+            android:fontFamily="@font/vt323"
             android:textIsSelectable="true"
-            android:fontFamily="monospace"
             android:layout_marginBottom="4dp" />
 
         <TextView
@@ -51,7 +51,8 @@
             android:background="@color/bg_panel"
             android:padding="12dp"
             android:textColor="@color/text_secondary"
-            android:textSize="13sp"
+            android:fontFamily="@font/vt323"
+            android:textSize="14sp"
             android:layout_marginBottom="16dp" />
 
         <!-- Разделитель -->
@@ -65,10 +66,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="НАСТРОЙКИ ИГРЫ"
+            android:text="@string/section_game_settings"
+            android:fontFamily="@font/press_start_2p"
             android:textColor="@color/accent"
-            android:textSize="11sp"
-            android:textStyle="bold"
+            android:textSize="10sp"
             android:letterSpacing="0.1"
             android:layout_marginBottom="8dp" />
 
@@ -77,6 +78,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:background="@drawable/bg_button_secondary"
+            android:fontFamily="@font/pixelify_sans"
             android:textColor="@color/text_primary"
             android:textSize="13sp"
             android:layout_marginBottom="6dp"
@@ -88,6 +90,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:background="@drawable/bg_button_secondary"
+            android:fontFamily="@font/pixelify_sans"
             android:textColor="@color/text_primary"
             android:textSize="13sp"
             android:layout_marginBottom="6dp"
@@ -99,6 +102,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:background="@drawable/bg_button_secondary"
+            android:fontFamily="@font/pixelify_sans"
             android:textColor="@color/text_primary"
             android:textSize="13sp"
             android:layout_marginBottom="6dp"
@@ -110,6 +114,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:background="@drawable/bg_button_secondary"
+            android:fontFamily="@font/pixelify_sans"
             android:textColor="@color/text_primary"
             android:textSize="13sp"
             android:layout_marginBottom="6dp"
@@ -121,6 +126,7 @@
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:background="@drawable/bg_button_secondary"
+            android:fontFamily="@font/pixelify_sans"
             android:textColor="@color/text_primary"
             android:textSize="13sp"
             android:layout_marginBottom="16dp"
@@ -138,10 +144,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ИГРОКИ В ЛОББИ"
+            android:text="@string/section_players"
+            android:fontFamily="@font/press_start_2p"
             android:textColor="@color/accent"
-            android:textSize="11sp"
-            android:textStyle="bold"
+            android:textSize="10sp"
             android:letterSpacing="0.1"
             android:layout_marginBottom="8dp" />
 
@@ -165,10 +171,10 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="ЛОГ"
+            android:text="@string/section_log"
+            android:fontFamily="@font/press_start_2p"
             android:textColor="@color/accent"
-            android:textSize="11sp"
-            android:textStyle="bold"
+            android:textSize="10sp"
             android:letterSpacing="0.1"
             android:layout_marginBottom="8dp" />
 
@@ -179,8 +185,8 @@
             android:background="@color/bg_panel"
             android:padding="12dp"
             android:textColor="@color/text_secondary"
-            android:textSize="12sp"
-            android:fontFamily="monospace"
+            android:textSize="14sp"
+            android:fontFamily="@font/vt323"
             android:minLines="3"
             android:layout_marginBottom="16dp" />
 
@@ -194,6 +200,7 @@
             android:layout_width="match_parent"
             android:layout_height="56dp"
             android:background="@drawable/bg_button_primary"
+            android:fontFamily="@font/pixelify_sans"
             android:text="@string/mp_start_game"
             android:textColor="@color/bg_dark"
             android:textSize="16sp"

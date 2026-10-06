@@ -39,7 +39,7 @@ class RelayHostActivity : AppCompatActivity() {
 
     private val players = LinkedHashMap<Int, Message.PlayerInfo>()
     private val hostId: Int = 0
-    private var hostNickname: String = "Хост"
+    private var hostNickname: String = "Host"
 
     private var selectedMode: GameMode = GameMode.CLASSIC
     private var selectedDiff: Difficulty = Difficulty.BEGINNER
@@ -49,7 +49,7 @@ class RelayHostActivity : AppCompatActivity() {
         setContentView(R.layout.activity_relay_host)
         save = SaveManager(this)
 
-        hostNickname = save.nickname() ?: "Хост"
+        hostNickname = save.nickname() ?: getString(R.string.host_default_name)
         hostNickname = deduplicateNickname(hostNickname, emptyList())
         players[hostId] = Message.PlayerInfo(hostId, hostNickname, true)
 
@@ -60,35 +60,35 @@ class RelayHostActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnRelayHostCreate).setOnClickListener { createRoom() }
 
         findViewById<Button>(R.id.btnHostNick).apply {
-            text = "Ник: $hostNickname"
+            text = getString(R.string.nickname_format, hostNickname)
             setOnClickListener { promptNickname() }
         }
         findViewById<Button>(R.id.btnPickMode).apply {
-            text = "Режим: ${selectedMode.display}"
+            text = getString(R.string.mode_format, selectedMode.display)
             setOnClickListener { pickMode() }
         }
         findViewById<Button>(R.id.btnPickDiff).apply {
-            text = "Сложность: ${selectedDiff.display}"
+            text = getString(R.string.difficulty_format, selectedDiff.display)
             setOnClickListener { pickDifficulty() }
         }
         findViewById<Button>(R.id.btnPickShift).apply {
-            text = "Сдвиг: ${save.shiftInterval()} сек"
+            text = getString(R.string.shift_format, save.shiftInterval())
             setOnClickListener { pickShiftInterval() }
         }
 
         findViewById<Button>(R.id.btnStartMp).setOnClickListener { startGame() }
         findViewById<Button>(R.id.btnCloseLobby).setOnClickListener {
             AlertDialog.Builder(this)
-                .setTitle("Закрыть лобби?")
-                .setMessage("Игроки будут отключены.")
-                .setPositiveButton("Закрыть") { _, _ ->
+                .setTitle(R.string.close_lobby_question)
+                .setMessage(R.string.close_lobby_message)
+                .setPositiveButton(R.string.close) { _, _ ->
                     relay?.broadcast(Message.Goodbye)
                     relay?.send(JSONObject().apply { put("t", "LEAVE") })
                     relay?.disconnect()
                     relay = null
                     finish()
                 }
-                .setNegativeButton("Отмена", null)
+                .setNegativeButton(R.string.cancel, null)
                 .show()
         }
 
@@ -98,19 +98,19 @@ class RelayHostActivity : AppCompatActivity() {
     private fun createRoom() {
         val url = findViewById<EditText>(R.id.etRelayHostUrl).text.toString().trim()
         if (url.isEmpty()) {
-            AlertDialog.Builder(this).setMessage("Введи URL сервера").setPositiveButton("OK", null).show()
+            AlertDialog.Builder(this).setMessage(R.string.enter_server_url).setPositiveButton(R.string.ok, null).show()
             return
         }
         if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
-            AlertDialog.Builder(this).setMessage("URL должен начинаться с ws:// или wss://").setPositiveButton("OK", null).show()
+            AlertDialog.Builder(this).setMessage(R.string.invalid_url).setPositiveButton(R.string.ok, null).show()
             return
         }
         save.setLastRelayUrl(url)
-        appendLog("Подключаемся к $url…")
+        appendLog(getString(R.string.connecting_to_url, url))
 
         relay = WebSocketRelay(url).apply {
             onOpen = { handler.post {
-                appendLog("WebSocket открыт, создаём комнату…")
+                appendLog(getString(R.string.ws_open_creating))
                 val msg = JSONObject().apply {
                     put("t", "CREATE_ROOM")
                     put("nickname", hostNickname)
@@ -118,9 +118,9 @@ class RelayHostActivity : AppCompatActivity() {
                 relay?.send(msg)
             } }
             onClose = { handler.post {
-                appendLog("WebSocket закрыт")
+                appendLog(getString(R.string.ws_closed))
             } }
-            onError = { msg -> handler.post { appendLog("Ошибка: $msg") } }
+            onError = { msg -> handler.post { appendLog(getString(R.string.error_with_message, msg)) } }
             onMessage = { obj -> handler.post { handleServerMessage(obj) } }
         }
         relay?.connect()
@@ -130,8 +130,8 @@ class RelayHostActivity : AppCompatActivity() {
         when (obj.optString("t")) {
             "ROOM_CREATED" -> {
                 val roomId = obj.optString("roomId")
-                findViewById<TextView>(R.id.tvHostRoomId).text = "Код комнаты: $roomId"
-                appendLog("Комната создана. Код: $roomId")
+                findViewById<TextView>(R.id.tvHostRoomId).text = getString(R.string.room_code_format, roomId)
+                appendLog(getString(R.string.room_created_log, roomId))
                 broadcastLobby()
             }
             "LOBBY" -> {
@@ -149,7 +149,7 @@ class RelayHostActivity : AppCompatActivity() {
                 // Detect new connections
                 for (p in newPlayers) {
                     if (!players.containsKey(p.id) && p.id != 0) {
-                        appendLog("${p.name} присоединился")
+                        appendLog(getString(R.string.player_joined, p.name))
                     }
                 }
                 players.clear()
@@ -159,7 +159,7 @@ class RelayHostActivity : AppCompatActivity() {
             "PLAYER_LEFT" -> {
                 val pid = obj.optInt("playerId")
                 val removed = players.remove(pid)
-                if (removed != null) appendLog("${removed.name} отключился")
+                if (removed != null) appendLog(getString(R.string.player_disconnected, removed.name))
                 refreshPlayerList()
                 broadcastLobby()
             }
@@ -178,10 +178,10 @@ class RelayHostActivity : AppCompatActivity() {
                 MpContextHolder.clientMessageHandler?.invoke(senderId, msg)
             }
             "GOODBYE" -> {
-                appendLog("Сервер закрыл соединение")
+                appendLog(getString(R.string.server_closed))
             }
             "ERROR" -> {
-                appendLog("Ошибка: ${obj.optString("message")}")
+                appendLog(getString(R.string.error_with_message, obj.optString("message")))
             }
         }
     }
@@ -195,7 +195,8 @@ class RelayHostActivity : AppCompatActivity() {
         container.removeAllViews()
         for ((idx, p) in players.values.withIndex()) {
             val tv = TextView(this).apply {
-                text = "${idx + 1}. ${p.name}${if (p.isHost) "  (хост)" else ""}"
+                val tag = if (p.isHost) getString(R.string.host_tag) else ""
+                text = getString(R.string.player_idx_format, idx + 1, p.name, tag)
                 setTextColor(getColor(R.color.text_primary))
                 textSize = 14f
                 setPadding(0, 8, 0, 8)
@@ -208,10 +209,10 @@ class RelayHostActivity : AppCompatActivity() {
     private fun pickMode() {
         val labels = GameMode.entries.map { "${it.display} — ${it.shortDesc}" }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle("Режим игры")
+            .setTitle(R.string.mode_picker_title)
             .setItems(labels) { _, which ->
                 selectedMode = GameMode.entries[which]
-                findViewById<Button>(R.id.btnPickMode).text = "Режим: ${selectedMode.display}"
+                findViewById<Button>(R.id.btnPickMode).text = getString(R.string.mode_format, selectedMode.display)
             }
             .show()
     }
@@ -219,46 +220,46 @@ class RelayHostActivity : AppCompatActivity() {
     private fun pickDifficulty() {
         val labels = Difficulty.entries.map { "${it.display} — ${it.shortDesc}" }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle("Сложность")
+            .setTitle(R.string.difficulty_picker_title)
             .setItems(labels) { _, which ->
                 selectedDiff = Difficulty.entries[which]
-                findViewById<Button>(R.id.btnPickDiff).text = "Сложность: ${selectedDiff.display}"
+                findViewById<Button>(R.id.btnPickDiff).text = getString(R.string.difficulty_format, selectedDiff.display)
             }
             .show()
     }
 
     private fun pickShiftInterval() {
         val values = (3..30).toList()
-        val labels = values.map { "$it сек" }.toTypedArray()
+        val labels = values.map { getString(R.string.shift_value, it) }.toTypedArray()
         AlertDialog.Builder(this)
-            .setTitle("Интервал сдвига")
+            .setTitle(R.string.shift_picker_title)
             .setItems(labels) { _, which ->
                 save.setShiftInterval(values[which])
-                findViewById<Button>(R.id.btnPickShift).text = "Сдвиг: ${values[which]} сек"
+                findViewById<Button>(R.id.btnPickShift).text = getString(R.string.shift_format, values[which])
             }
             .show()
     }
 
     private fun promptNickname() {
         val input = EditText(this).apply {
-            hint = "Ваш ник"
+            hint = getString(R.string.your_nickname_hint)
             setText(hostNickname)
             setSingleLine()
         }
         AlertDialog.Builder(this)
-            .setTitle("Ник хоста")
+            .setTitle(R.string.host_nickname_title)
             .setView(input)
-            .setPositiveButton("OK") { _, _ ->
-                val name = input.text.toString().trim().ifBlank { "Хост" }
+            .setPositiveButton(R.string.ok) { _, _ ->
+                val name = input.text.toString().trim().ifBlank { getString(R.string.host_default_name) }
                 val existing = players.values.filter { it.id != hostId }.map { it.name }
                 hostNickname = deduplicateNickname(name, existing)
                 players[hostId] = Message.PlayerInfo(hostId, hostNickname, true)
-                findViewById<Button>(R.id.btnHostNick).text = "Ник: $hostNickname"
+                findViewById<Button>(R.id.btnHostNick).text = getString(R.string.nickname_format, hostNickname)
                 refreshPlayerList()
                 broadcastLobby()
                 save.setNickname(hostNickname)
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 

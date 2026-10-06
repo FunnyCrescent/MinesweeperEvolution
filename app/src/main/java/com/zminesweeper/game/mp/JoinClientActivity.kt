@@ -35,7 +35,7 @@ class JoinClientActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
 
     private var myPlayerId: Int = -1
-    private var myNickname: String = "Игрок"
+    private var myNickname: String = "Player"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,14 +44,14 @@ class JoinClientActivity : AppCompatActivity() {
 
         findViewById<EditText>(R.id.etHostIp).apply {
             setText(save.lastHostIp() ?: "")
-            hint = "10.147.17.5 или 192.168.1.5"
+            hint = "10.147.17.5 / 192.168.1.5"
         }
         findViewById<EditText>(R.id.etHostPort).apply {
             setText(MultiplayerServer.DEFAULT_PORT.toString())
         }
         findViewById<EditText>(R.id.etNick).apply {
             setText(save.nickname() ?: "")
-            hint = "Твой ник"
+            hint = getString(R.string.mp_nickname_hint)
         }
 
         findViewById<Button>(R.id.btnConnect).setOnClickListener { tryConnect() }
@@ -64,10 +64,10 @@ class JoinClientActivity : AppCompatActivity() {
     private fun tryConnect() {
         val ip = findViewById<EditText>(R.id.etHostIp).text.toString().trim()
         val portStr = findViewById<EditText>(R.id.etHostPort).text.toString().trim()
-        val requestedNick = findViewById<EditText>(R.id.etNick).text.toString().trim().ifBlank { "Игрок" }
+        val requestedNick = findViewById<EditText>(R.id.etNick).text.toString().trim().ifBlank { getString(R.string.default_player_name) }
 
         if (ip.isEmpty()) {
-            AlertDialog.Builder(this).setMessage("Введи IP хоста").setPositiveButton("OK", null).show()
+            AlertDialog.Builder(this).setMessage(R.string.enter_host_ip).setPositiveButton(R.string.ok, null).show()
             return
         }
         val port = portStr.toIntOrNull() ?: MultiplayerServer.DEFAULT_PORT
@@ -77,20 +77,20 @@ class JoinClientActivity : AppCompatActivity() {
 
         findViewById<Button>(R.id.btnConnect).isEnabled = false
         findViewById<Button>(R.id.btnDisconnect).isEnabled = true
-        appendLog("Подключаемся к $ip:$port…")
+        appendLog(getString(R.string.connecting_to_addr, ip, port))
 
         client = MultiplayerClient().apply {
             onMessage = { msg -> handler.post { handleServerMessage(msg) } }
             onDisconnect = {
                 handler.post {
-                    appendLog("Отключено от хоста")
+                    appendLog(getString(R.string.disconnected_from_host))
                     findViewById<Button>(R.id.btnConnect).isEnabled = true
                     findViewById<Button>(R.id.btnDisconnect).isEnabled = false
                 }
             }
             onError = { msg ->
                 handler.post {
-                    appendLog("Ошибка: $msg")
+                    appendLog(getString(R.string.error_with_message, msg))
                     findViewById<Button>(R.id.btnConnect).isEnabled = true
                     findViewById<Button>(R.id.btnDisconnect).isEnabled = false
                 }
@@ -106,24 +106,25 @@ class JoinClientActivity : AppCompatActivity() {
             is Message.JoinAck -> {
                 myPlayerId = msg.playerId
                 myNickname = msg.nickname
-                appendLog("Подключён как ${msg.nickname} (#${msg.playerId})")
+                appendLog(getString(R.string.connected_as, msg.nickname, msg.playerId))
             }
             is Message.Lobby -> {
                 val sb = StringBuilder()
                 for ((idx, p) in msg.players.withIndex()) {
-                    sb.append("${idx + 1}. ${p.name}${if (p.isHost) "  (хост)" else ""}\n")
+                    val tag = if (p.isHost) "  " + getString(R.string.host_tag) else ""
+                    sb.append("${idx + 1}. ${p.name}$tag\n")
                 }
                 findViewById<TextView>(R.id.tvLobbyPlayers).text = sb.toString().trim()
             }
             is Message.Start -> {
-                appendLog("Хост стартовал игру!")
+                appendLog(getString(R.string.host_started_game))
                 launchGame(msg)
             }
             is Message.Goodbye -> {
-                appendLog("Хост закрыл лобби")
+                appendLog(getString(R.string.host_closed_lobby))
                 disconnect()
             }
-            is Message.Error -> appendLog("Ошибка: ${msg.message}")
+            is Message.Error -> appendLog(getString(R.string.error_with_message, msg.message))
             else -> {}
         }
     }
@@ -181,12 +182,12 @@ class JoinClientActivity : AppCompatActivity() {
     @Suppress("DEPRECATION")
     override fun onBackPressed() {
         AlertDialog.Builder(this)
-            .setTitle("Выйти из лобби?")
-            .setPositiveButton("Выйти") { _, _ ->
+            .setTitle(R.string.exit_lobby_question)
+            .setPositiveButton(R.string.exit) { _, _ ->
                 disconnect()
                 finish()
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 }

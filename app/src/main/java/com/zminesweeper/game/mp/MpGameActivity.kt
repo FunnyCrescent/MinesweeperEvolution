@@ -4,7 +4,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.View
-import android.widget.Button
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -57,7 +57,7 @@ class MpGameActivity : AppCompatActivity() {
     // Игроки
     private var players: List<Message.PlayerInfo> = emptyList()
     private var myId: Int = 0
-    private var myNickname: String = "Игрок"
+    private var myNickname: String = "Player"
     private var currentTurnId: Int = 0   // чей сейчас ход
 
     // Игровые параметры
@@ -102,7 +102,7 @@ class MpGameActivity : AppCompatActivity() {
                     } else {
                         findViewById<TextView>(R.id.tvShift).setTextColor(getColor(R.color.warning))
                     }
-                    findViewById<TextView>(R.id.tvShift).text = "${shiftRemainingSec}с"
+                    findViewById<TextView>(R.id.tvShift).text = shiftRemainingSec.toString()
                 } else if (!e.firstClickDone) {
                     findViewById<TextView>(R.id.tvShift).text = "—"
                 }
@@ -130,7 +130,7 @@ class MpGameActivity : AppCompatActivity() {
         difficulty = Difficulty.fromKey(intent.getStringExtra(EXTRA_DIFFICULTY))
         shiftInterval = if (mode.coversAllAfterShift) 25 else intent.getIntExtra(EXTRA_SHIFT_INTERVAL, 10)
         myId = intent.getIntExtra(EXTRA_MY_ID, 0)
-        myNickname = intent.getStringExtra(EXTRA_NICKNAME) ?: "Игрок"
+        myNickname = intent.getStringExtra(EXTRA_NICKNAME) ?: getString(R.string.default_player_name)
 
         // Парсим список игроков из JSON
         val playersJson = intent.getStringExtra(EXTRA_PLAYERS) ?: "[]"
@@ -154,9 +154,9 @@ class MpGameActivity : AppCompatActivity() {
                 relay?.onMessage = { obj -> handler.post { handleRelayMessageAsHost(obj) } }
                 relay?.onClose = { handler.post {
                     AlertDialog.Builder(this)
-                        .setMessage("Соединение с сервером потеряно")
+                        .setMessage(R.string.connection_to_server_lost)
                         .setCancelable(false)
-                        .setPositiveButton("OK") { _, _ -> finish() }
+                        .setPositiveButton(R.string.ok) { _, _ -> finish() }
                         .show()
                 } }
                 // Регистрируем handler для входящих от клиентов через Lobby (если активна)
@@ -168,7 +168,7 @@ class MpGameActivity : AppCompatActivity() {
                 MpContextHolder.server = null
                 server?.onClientMessage = { clientId, msg -> handler.post { handleClientMessage(clientId, msg) } }
                 server?.onClientDisconnected = { clientId -> handler.post { handleClientDisconnect(clientId) } }
-                server?.onError = { msg -> handler.post { appendDebug("Ошибка: $msg") } }
+                server?.onError = { msg -> handler.post { appendDebug(getString(R.string.error_with_message, msg)) } }
             }
         } else {
             // У клиента engine будет создан при первом STATE от хоста
@@ -178,9 +178,9 @@ class MpGameActivity : AppCompatActivity() {
                 relay?.onMessage = { obj -> handler.post { handleRelayMessageAsClient(obj) } }
                 relay?.onClose = { handler.post {
                     AlertDialog.Builder(this)
-                        .setMessage("Соединение с сервером потеряно")
+                        .setMessage(R.string.connection_to_server_lost)
                         .setCancelable(false)
-                        .setPositiveButton("OK") { _, _ -> finish() }
+                        .setPositiveButton(R.string.ok) { _, _ -> finish() }
                         .show()
                 } }
             } else {
@@ -189,12 +189,12 @@ class MpGameActivity : AppCompatActivity() {
                 client?.onMessage = { msg -> handler.post { handleServerMessage(msg) } }
                 client?.onDisconnect = { handler.post {
                     AlertDialog.Builder(this)
-                        .setMessage("Соединение с хостом потеряно")
+                        .setMessage(R.string.connection_to_host_lost)
                         .setCancelable(false)
-                        .setPositiveButton("OK") { _, _ -> finish() }
+                        .setPositiveButton(R.string.ok) { _, _ -> finish() }
                         .show()
                 } }
-                client?.onError = { msg -> handler.post { appendDebug("Ошибка: $msg") } }
+                client?.onError = { msg -> handler.post { appendDebug(getString(R.string.error_with_message, msg)) } }
             }
         }
 
@@ -216,18 +216,23 @@ class MpGameActivity : AppCompatActivity() {
             updateMinesLabel()
         }
 
-        findViewById<Button>(R.id.btnFlagMode).setOnClickListener {
+        findViewById<ImageView>(R.id.btnFlagMode).setOnClickListener {
             gameView.flagMode = !gameView.flagMode
             it.isSelected = gameView.flagMode
-            (it as Button).text = if (gameView.flagMode) "⛏" else "🚩"
+            // Меняем иконку: флажок / кирка (dig mode).
+            val resId = if (gameView.flagMode)
+                R.drawable.item_flag  // в режиме флажка показываем флажок
+            else
+                R.drawable.tile_open  // в режиме копания — открытая плитка
+            (it as ImageView).setImageResource(resId)
             sound?.play(SoundManager.Type.CLICK)
         }
-        findViewById<Button>(R.id.btnMenu).setOnClickListener { confirmExit() }
+        findViewById<ImageView>(R.id.btnMenu).setOnClickListener { confirmExit() }
 
         updateModeLabel()
         updateMinesLabel()
         updateTurnLabel()
-        findViewById<TextView>(R.id.tvShift).text = if (mode.shifts) "${shiftInterval}с" else "—"
+        findViewById<TextView>(R.id.tvShift).text = if (mode.shifts) shiftInterval.toString() else "—"
         findViewById<View>(R.id.llShift).visibility = if (mode.shifts) View.VISIBLE else View.INVISIBLE
 
         startTimeMs = System.currentTimeMillis()
@@ -463,13 +468,13 @@ class MpGameActivity : AppCompatActivity() {
             }
             "GOODBYE" -> {
                 AlertDialog.Builder(this)
-                    .setMessage("Хост закрыл игру")
+                    .setMessage(R.string.host_closed_game)
                     .setCancelable(false)
-                    .setPositiveButton("OK") { _, _ -> finish() }
+                    .setPositiveButton(R.string.ok) { _, _ -> finish() }
                     .show()
             }
             "ERROR" -> {
-                appendDebug("Ошибка: ${obj.optString("message")}")
+                appendDebug(getString(R.string.error_with_message, obj.optString("message")))
             }
             else -> {}
         }
@@ -501,9 +506,9 @@ class MpGameActivity : AppCompatActivity() {
             }
             is Message.Goodbye -> {
                 AlertDialog.Builder(this)
-                    .setMessage("Хост закрыл игру")
+                    .setMessage(R.string.host_closed_game)
                     .setCancelable(false)
-                    .setPositiveButton("OK") { _, _ -> finish() }
+                    .setPositiveButton(R.string.ok) { _, _ -> finish() }
                     .show()
             }
             else -> {}
@@ -582,17 +587,17 @@ class MpGameActivity : AppCompatActivity() {
         val youWon = winnerId == myId
         val youLost = loserId == myId
         val title = when {
-            youWon -> "🏆 Победа!"
-            youLost -> "💥 Ты проиграл"
-            winnerId != -1 -> "🏆 Победил: ${players.firstOrNull { it.id == winnerId }?.name ?: "?"}"
-            loserId != -1 -> "💥 Проиграл: ${players.firstOrNull { it.id == loserId }?.name ?: "?"}"
-            else -> "Игра окончена"
+            youWon -> "🏆 " + getString(R.string.win)
+            youLost -> "💥 " + getString(R.string.lose)
+            winnerId != -1 -> "🏆 " + players.firstOrNull { it.id == winnerId }?.name ?: "?"
+            loserId != -1 -> "💥 " + players.firstOrNull { it.id == loserId }?.name ?: "?"
+            else -> getString(R.string.game_over)
         }
         AlertDialog.Builder(this)
             .setTitle(title)
-            .setMessage("Время: ${formatTime(elapsedSec)}\nПричина: $reason")
+            .setMessage(getString(R.string.game_over_reason, formatTime(elapsedSec), reason))
             .setCancelable(false)
-            .setPositiveButton("В меню") { _, _ -> finish() }
+            .setPositiveButton(R.string.to_menu) { _, _ -> finish() }
             .show()
     }
 
@@ -610,18 +615,18 @@ class MpGameActivity : AppCompatActivity() {
         val tv = findViewById<TextView>(R.id.tvTurnIndicator)
         // В COMPETITIVE все играют одновременно — всегда твой ход.
         if (mpMode == com.zminesweeper.game.MpMode.COMPETITIVE) {
-            tv.text = "🏁 ГОНКА"
+            tv.text = "🏁 " + getString(R.string.mp_mode_competitive)
             tv.setTextColor(getColor(R.color.warning))
             gameView.inputEnabled = true
             return
         }
         if (currentTurnId == myId) {
-            tv.text = "▼ ВАШ ХОД ▼"
+            tv.text = getString(R.string.mp_your_turn)
             tv.setTextColor(getColor(R.color.accent))
             gameView.inputEnabled = true
         } else {
             val name = players.firstOrNull { it.id == currentTurnId }?.name ?: "?"
-            tv.text = "Ход: $name"
+            tv.text = getString(R.string.mp_turn_of, name)
             tv.setTextColor(getColor(R.color.text_primary))
             gameView.inputEnabled = false
         }
@@ -629,9 +634,9 @@ class MpGameActivity : AppCompatActivity() {
 
     private fun confirmExit() {
         AlertDialog.Builder(this)
-            .setTitle("Выйти из игры?")
-            .setMessage("Игра будет прервана для всех игроков.")
-            .setPositiveButton("Выйти") { _, _ ->
+            .setTitle(R.string.exit_game_question)
+            .setMessage(R.string.exit_game_message)
+            .setPositiveButton(R.string.exit) { _, _ ->
                 if (isHost) {
                     if (useRelay) {
                         relay?.broadcast(Message.Goodbye)
@@ -653,7 +658,7 @@ class MpGameActivity : AppCompatActivity() {
                 }
                 finish()
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 

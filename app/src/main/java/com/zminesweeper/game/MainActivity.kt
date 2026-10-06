@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity() {
         updateContinueButton()
 
         // Quick Game — старт с последним режимом/сложностью.
-        findViewById<android.widget.Button>(R.id.btnQuickGame).setOnClickListener {
+        findViewById<View>(R.id.btnQuickGame).setOnClickListener {
             val mode = save.lastMode()
             val diff = save.lastDifficulty()
             save.clearSavedGame()
@@ -41,10 +41,10 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.widget.Button>(R.id.btnNewGame).setOnClickListener {
             showNewGameDialog()
         }
-        findViewById<android.widget.Button>(R.id.btnSettings).setOnClickListener {
+        findViewById<View>(R.id.btnSettings).setOnClickListener {
             showSettingsDialog()
         }
-        findViewById<android.widget.Button>(R.id.btnStats).setOnClickListener {
+        findViewById<View>(R.id.btnStats).setOnClickListener {
             showStatsDialog()
         }
         findViewById<android.widget.Button>(R.id.btnMpHost).setOnClickListener {
@@ -106,7 +106,7 @@ class MainActivity : AppCompatActivity() {
             lp.setMargins(4, 0, 4, 0)
             btn.layoutParams = lp
             btn.text = if (diff == Difficulty.CUSTOM) {
-                "Своя\n${MinesweeperApp.customRows}×${MinesweeperApp.customCols}"
+                getString(R.string.custom_size, MinesweeperApp.customRows, MinesweeperApp.customCols)
             } else {
                 "${diff.display}\n${diff.shortDesc}"
             }
@@ -125,7 +125,7 @@ class MainActivity : AppCompatActivity() {
                             (diffContainer.getChildAt(i) as android.widget.Button).isSelected = false
                         }
                         btn.isSelected = true
-                        btn.text = "Своя\n${MinesweeperApp.customRows}×${MinesweeperApp.customCols}"
+                        btn.text = getString(R.string.custom_size, MinesweeperApp.customRows, MinesweeperApp.customCols)
                     }
                 } else {
                     selectedDiff = diff
@@ -141,18 +141,18 @@ class MainActivity : AppCompatActivity() {
         val dialog = AlertDialog.Builder(this)
             .setTitle(R.string.new_game)
             .setView(view)
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.cancel, null)
             .create()
 
         btnStart.setOnClickListener {
             val mode = selectedMode
             val diff = selectedDiff
             if (mode == null) {
-                android.widget.Toast.makeText(this, "Выбери режим", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(this, R.string.select_mode_required, android.widget.Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             if (diff == null) {
-                android.widget.Toast.makeText(this, "Выбери сложность", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(this, R.string.select_diff_required, android.widget.Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
             // Сохраняем последние выборы для кнопки «Повтор».
@@ -177,23 +177,23 @@ class MainActivity : AppCompatActivity() {
         }
         val etRows = android.widget.EditText(this).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            hint = "Строки"
+            hint = getString(R.string.rows_hint)
             setText(MinesweeperApp.customRows.toString())
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         val etCols = android.widget.EditText(this).apply {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER
-            hint = "Столбцы"
+            hint = getString(R.string.cols_hint)
             setText(MinesweeperApp.customCols.toString())
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
         container.addView(etRows)
         container.addView(etCols)
         AlertDialog.Builder(this)
-            .setTitle("Свой размер поля")
-            .setMessage("Мины расставляются автоматически (~15% от площади).")
+            .setTitle(R.string.custom_size_title)
+            .setMessage(R.string.custom_size_message)
             .setView(container)
-            .setPositiveButton("OK") { _, _ ->
+            .setPositiveButton(R.string.ok) { _, _ ->
                 val r = etRows.text.toString().toIntOrNull() ?: 16
                 val c = etCols.text.toString().toIntOrNull() ?: 30
                 val safeR = r.coerceIn(5, 30)
@@ -203,7 +203,7 @@ class MainActivity : AppCompatActivity() {
                 save.setCustomSize(safeR, safeC)
                 onSelected(Difficulty.CUSTOM)
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
@@ -212,19 +212,19 @@ class MainActivity : AppCompatActivity() {
         val cur = save.nickname()
         if (cur.isNullOrBlank()) {
             val input = android.widget.EditText(this).apply {
-                hint = "Твой ник"
+                hint = getString(R.string.mp_nickname_hint)
                 setSingleLine()
             }
             AlertDialog.Builder(this)
-                .setTitle("Ник для мультиплеера")
-                .setMessage("Введи ник, под которым тебя увидят другие игроки.")
+                .setTitle(R.string.nickname_for_mp_title)
+                .setMessage(R.string.nickname_for_mp_message)
                 .setView(input)
-                .setPositiveButton("OK") { _, _ ->
-                    val n = input.text.toString().trim().ifBlank { "Игрок" }
+                .setPositiveButton(R.string.ok) { _, _ ->
+                    val n = input.text.toString().trim().ifBlank { getString(R.string.default_player_name) }
                     save.setNickname(n)
                     action()
                 }
-                .setNegativeButton("Отмена", null)
+                .setNegativeButton(R.string.cancel, null)
                 .show()
         } else {
             action()
@@ -263,10 +263,10 @@ class MainActivity : AppCompatActivity() {
         swLongPress.isChecked = save.isLongPressFlag()
         sliderShift.max = 27   // 27 = 30 - 3
         sliderShift.progress = save.shiftInterval() - 3
-        tvShiftVal.text = "${save.shiftInterval()} сек"
+        tvShiftVal.text = getString(R.string.shift_value, save.shiftInterval())
         sliderShift.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                tvShiftVal.text = "${progress + 3} сек"
+                tvShiftVal.text = getString(R.string.shift_value, progress + 3)
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
@@ -275,13 +275,13 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
             .setView(view)
-            .setPositiveButton("OK") { _, _ ->
+            .setPositiveButton(R.string.ok) { _, _ ->
                 save.setVibration(swVibration.isChecked)
                 save.setSound(swSound.isChecked)
                 save.setLongPressFlag(swLongPress.isChecked)
                 save.setShiftInterval(sliderShift.progress + 3)
             }
-            .setNegativeButton("Отмена", null)
+            .setNegativeButton(R.string.cancel, null)
             .show()
     }
 
@@ -304,7 +304,7 @@ class MainActivity : AppCompatActivity() {
                 val best = save.getBestTime(mode, diff)
                 val bestStr = if (best == null) "—" else formatTime(best)
                 val row = TextView(this).apply {
-                    text = "  ${diff.display}:  $won/$played   |   Лучшее: $bestStr"
+                    text = getString(R.string.stats_row_format, diff.display, won, played, bestStr)
                     setTextColor(getColor(R.color.text_primary))
                     textSize = 13f
                     setPadding(4, 4, 4, 4)
@@ -315,7 +315,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle(R.string.stats)
             .setView(view)
-            .setPositiveButton("OK", null)
+            .setPositiveButton(R.string.ok, null)
             .setNeutralButton(R.string.reset_stats) { _, _ ->
                 save.resetStats()
                 showStatsDialog()
