@@ -93,7 +93,7 @@
             android:background="@drawable/bg_button_primary"
             android:fontFamily="@font/pixelify_sans"
             android:text="@string/mp_connect"
-            android:textColor="@color/bg_dark"
+            android:textColor="@color/text_primary"
             android:textSize="16sp"
             android:textStyle="bold"
             android:layout_marginBottom="8dp" />
@@ -102,7 +102,7 @@
             android:id="@+id/btnDisconnect"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:background="@drawable/ui_button_normal"
+            android:background="@drawable/bg_button_secondary"
             android:fontFamily="@font/pixelify_sans"
             android:text="@string/mp_disconnect"
             android:textColor="@color/text_primary"

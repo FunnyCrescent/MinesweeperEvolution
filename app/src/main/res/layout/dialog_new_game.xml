@@ -47,10 +47,10 @@
             android:id="@+id/btnStartGame"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:background="@drawable/ui_button_active"
+            android:background="@drawable/bg_button_primary"
             android:fontFamily="@font/pixelify_sans"
             android:text="@string/start_game"
-            android:textColor="@color/bg_dark"
+            android:textColor="@color/text_primary"
             android:textSize="16sp"
             android:textStyle="bold" />
 
