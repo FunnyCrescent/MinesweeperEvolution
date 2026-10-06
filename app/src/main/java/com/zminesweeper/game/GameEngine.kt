@@ -164,8 +164,6 @@ class GameEngine {
             }
         }
         available.shuffle(rng)
-        // Защита: если target = 0, но в Анархии должны быть мины — берём минимум 1.
-        // (target уже >= 1 для Анархии из initGame/shiftMines, но на всякий случай.)
         val effectiveTarget = if (!mode.hasMineLimit) maxOf(1, target) else target
         val actual = minOf(effectiveTarget, available.size)
         for (i in 0 until actual) {
@@ -173,6 +171,42 @@ class GameEngine {
             mines[r][c] = true
         }
         mineCount = actual
+
+        // ПРАВИЛО: мина не может быть окружена минами со всех сторон.
+        // Хотя бы одна соседняя клетка должна быть безопасной.
+        // Если мина полностью окружена — переставляем её.
+        enforceNoFullySurroundedMines()
+    }
+
+    /**
+     * Проверяет каждую мину: если ВСЕ её существующие соседи — мины,
+     * убираем одну соседнюю мину (делаем клетку безопасной).
+     * Это гарантирует, что игрок всегда может логически открыть клетку рядом с миной.
+     */
+    private fun enforceNoFullySurroundedMines() {
+        for (r in 0 until rows) {
+            for (c in 0 until cols) {
+                if (!mines[r][c]) continue
+                // Собираем соседей
+                val neighbors = ArrayList<Pair<Int, Int>>()
+                for (dr in -1..1) for (dc in -1..1) {
+                    if (dr == 0 && dc == 0) continue
+                    val nr = r + dr; val nc = c + dc
+                    if (nr in 0 until rows && nc in 0 until cols) {
+                        neighbors.add(nr to nc)
+                    }
+                }
+                if (neighbors.isEmpty()) continue
+                // Проверяем: все соседи — мины?
+                val allMines = neighbors.all { (nr, nc) -> mines[nr][nc] }
+                if (allMines) {
+                    // Убираем одну случайную соседнюю мину
+                    val (mr, mc) = neighbors[rng.nextInt(neighbors.size)]
+                    mines[mr][mc] = false
+                    mineCount--
+                }
+            }
+        }
     }
 
     /** Сдвиг мин в соответствии с режимом. Вызывается по таймеру. */

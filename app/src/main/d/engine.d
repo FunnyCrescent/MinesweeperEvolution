@@ -222,6 +222,56 @@ void placeMinesRandomly(GameEngine* e, int* exclude, int excludeCount) @nogc {
         placed++;
     }
     e.mineCount = placed;
+    
+    // ПРАВИЛО: мина не может быть окружена минами со всех сторон
+    enforceNoFullySurroundedMines(e);
+}
+
+/**
+ * Проверяет каждую мину: если ВСЕ её соседи — мины,
+ * убираем одну соседнюю мину. Гарантирует логическую разрешимость.
+ */
+void enforceNoFullySurroundedMines(GameEngine* e) @nogc {
+    for (int r = 0; r < e.rows; r++) {
+        for (int c = 0; c < e.cols; c++) {
+            if (!e.mines[r * e.cols + c]) continue;
+            
+            // Собираем соседей
+            int neighborCount = 0;
+            int allMines = 1;
+            for (int dr = -1; dr <= 1; dr++) {
+                for (int dc = -1; dc <= 1; dc++) {
+                    if (dr == 0 && dc == 0) continue;
+                    int nr = r + dr;
+                    int nc = c + dc;
+                    if (nr >= 0 && nr < e.rows && nc >= 0 && nc < e.cols) {
+                        neighborCount++;
+                        if (!e.mines[nr * e.cols + nc]) allMines = 0;
+                    }
+                }
+            }
+            
+            // Если все соседи — мины, убираем одну
+            if (neighborCount > 0 && allMines) {
+                // Находим первого соседа-мину и убираем
+                for (int dr = -1; dr <= 1; dr++) {
+                    for (int dc = -1; dc <= 1; dc++) {
+                        if (dr == 0 && dc == 0) continue;
+                        int nr = r + dr;
+                        int nc = c + dc;
+                        if (nr >= 0 && nr < e.rows && nc >= 0 && nc < e.cols) {
+                            if (e.mines[nr * e.cols + nc]) {
+                                e.mines[nr * e.cols + nc] = 0;
+                                e.mineCount--;
+                                break;
+                            }
+                        }
+                    }
+                    if (!allMines) break;
+                }
+            }
+        }
+    }
 }
 
 void forcePlaceOneMine(GameEngine* e) @nogc {
