@@ -6,11 +6,12 @@
     android:padding="24dp"
     android:gravity="center">
 
-    <TextView
-        android:id="@+id/tvResultIcon"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="64sp" />
+    <ImageView
+        android:id="@+id/ivMascot"
+        android:layout_width="120dp"
+        android:layout_height="160dp"
+        android:layout_gravity="center"
+        android:scaleType="fitCenter" />
 
     <TextView
         android:id="@+id/tvResultTitle"
@@ -38,7 +39,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="24dp"
-        android:background="@drawable/bg_button_primary"
+        android:background="@drawable/ui_button_active"
         android:fontFamily="@font/pixelify_sans"
         android:text="@string/play_again"
         android:textColor="@color/bg_dark"
@@ -49,7 +50,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
-        android:background="@drawable/bg_button_secondary"
+        android:background="@drawable/ui_button_normal"
         android:fontFamily="@font/pixelify_sans"
         android:text="@string/to_menu"
         android:textColor="@color/text_primary" />

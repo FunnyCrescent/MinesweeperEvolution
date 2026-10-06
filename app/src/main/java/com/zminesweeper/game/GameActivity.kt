@@ -320,7 +320,9 @@ class GameActivity : AppCompatActivity() {
         save.clearSavedGame()
 
         val view = layoutInflater.inflate(R.layout.dialog_game_over, null)
-        view.findViewById<TextView>(R.id.tvResultIcon).text = if (won) "🏆" else "💥"
+        // Маскот: победа → mascot_victory, поражение → mascot_gameover
+        val mascotResId = if (won) R.drawable.mascot_victory else R.drawable.mascot_gameover
+        view.findViewById<android.widget.ImageView>(R.id.ivMascot).setImageResource(mascotResId)
         view.findViewById<TextView>(R.id.tvResultTitle).text =
             if (won) getString(R.string.win) else getString(R.string.lose)
         val shifts = if (engine.mode.shifts) getString(R.string.shifts_label, engine.shiftsCount) else ""

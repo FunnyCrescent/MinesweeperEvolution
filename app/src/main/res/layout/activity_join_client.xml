@@ -102,7 +102,7 @@
             android:id="@+id/btnDisconnect"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:background="@drawable/bg_button_secondary"
+            android:background="@drawable/ui_button_normal"
             android:fontFamily="@font/pixelify_sans"
             android:text="@string/mp_disconnect"
             android:textColor="@color/text_primary"

@@ -47,7 +47,7 @@
             android:id="@+id/btnStartGame"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:background="@drawable/bg_button_primary"
+            android:background="@drawable/ui_button_active"
             android:fontFamily="@font/pixelify_sans"
             android:text="@string/start_game"
             android:textColor="@color/bg_dark"
