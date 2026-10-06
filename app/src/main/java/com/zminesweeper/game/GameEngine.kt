@@ -565,13 +565,23 @@ class GameEngine {
         fun deserialize(data: String): GameEngine? {
             return try {
                 val lines = data.split('\n')
-                if (lines.size < 5) return null
+                android.util.Log.d("MinesweeperSave", "deserialize: ${lines.size} lines, mode=${lines[0]}, diff=${lines[1]}")
+                if (lines.size < 5) {
+                    android.util.Log.e("MinesweeperSave", "deserialize: too few lines (${lines.size})")
+                    return null
+                }
                 val mode = GameMode.fromKey(lines[0])
                 val diff = Difficulty.fromKey(lines[1])
                 val (r, c) = lines[2].split(',').let { it[0].toInt() to it[1].toInt() }
-                if (r <= 0 || c <= 0 || r > 100 || c > 100) return null
+                if (r <= 0 || c <= 0 || r > 100 || c > 100) {
+                    android.util.Log.e("MinesweeperSave", "deserialize: bad dimensions $r x $c")
+                    return null
+                }
                 val meta = lines[3].split(',')
-                if (meta.size < 6) return null
+                if (meta.size < 6) {
+                    android.util.Log.e("MinesweeperSave", "deserialize: meta too short (${meta.size})")
+                    return null
+                }
                 val engine = GameEngine()
                 engine.mode = mode
                 engine.difficulty = diff
@@ -583,9 +593,6 @@ class GameEngine {
                 engine.won = meta[3].toInt() == 1
                 engine.firstClickDone = meta[4].toInt() == 1
                 engine.shiftsCount = meta[5].toInt()
-                // Валидация: если mineCount <= 0 — невалидное состояние (например,
-                // сохранение из старой версии с багом Анархии). Сбрасываем.
-                if (engine.mineCount <= 0) return null
                 engine.mines.clear(); engine.revealed.clear(); engine.flagged.clear()
                 var actualMineCount = 0
                 for (rr in 0 until r) {
@@ -593,7 +600,10 @@ class GameEngine {
                     engine.revealed.add(BooleanArray(c))
                     engine.flagged.add(BooleanArray(c))
                     val line = lines[4 + rr]
-                    if (line.length < c) return null  // строка короче ожидаемой
+                    if (line.length < c) {
+                        android.util.Log.e("MinesweeperSave", "deserialize: line $rr too short (${line.length} < $c)")
+                        return null
+                    }
                     for (cc in 0 until c) {
                         val v = line[cc].digitToInt()
                         engine.mines[rr][cc] = (v shr 2) and 1 == 1
@@ -603,13 +613,15 @@ class GameEngine {
                         if (engine.revealed[rr][cc]) engine.revealedCount++
                     }
                 }
-                // Валидация: если mineCount не совпадает с фактическим —
-                // ИСПРАВЛЯЕМ (а не сбрасываем). В Анархии mineCount мог устареть.
+                // Если mineCount не совпадает — ИСПРАВЛЯЕМ, а не сбрасываем.
                 if (actualMineCount != engine.mineCount) {
+                    android.util.Log.w("MinesweeperSave", "deserialize: mineCount mismatch (saved=${engine.mineCount}, actual=$actualMineCount) — fixing")
                     engine.mineCount = actualMineCount
                 }
+                android.util.Log.d("MinesweeperSave", "deserialize: OK, ${r}x${c}, mines=$actualMineCount, revealed=${engine.revealedCount}")
                 engine
             } catch (e: Exception) {
+                android.util.Log.e("MinesweeperSave", "deserialize: exception", e)
                 null
             }
         }

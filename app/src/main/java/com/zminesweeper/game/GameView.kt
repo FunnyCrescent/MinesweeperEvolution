@@ -367,15 +367,14 @@ class GameView : View {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec)
             return
         }
-        // GameView всегда занимает весь доступный размер (match_parent).
         val availW = MeasureSpec.getSize(widthMeasureSpec)
         val availH = MeasureSpec.getSize(heightMeasureSpec)
         viewW = availW.toFloat()
         viewH = availH.toFloat()
-        // Базовый размер клетки: MAX из availW/cols и availH/rows.
-        // Это гарантирует что поле ЗАПОЛНЯЕТ весь экран по крайней мере по одной оси.
-        // БЕЗ maxCell ограничения — пусть клетки будут большими если экран позволяет.
-        baseCellSize = maxOf(
+        // MIN: поле вписывается в экран целиком — все клетки видны.
+        // Поле центрируется, отступы равномерные (как на скриншоте-примере).
+        // При zoom > 1 поле становится больше экрана — pan позволяет двигать.
+        baseCellSize = minOf(
             availW.toFloat() / engine.cols,
             availH.toFloat() / engine.rows
         )

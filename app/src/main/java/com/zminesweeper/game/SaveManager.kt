@@ -17,7 +17,10 @@ class SaveManager(context: Context) {
     // ---------- Активное сохранение игры ----------
 
     fun saveGame(state: String) {
-        prefs.edit().putString(KEY_GAME_STATE, state).putLong(KEY_SAVE_TIME, System.currentTimeMillis()).apply()
+        // commit() вместо apply() — синхронная запись на диск.
+        // apply() асинхронна и может потерять данные если Activity убивается
+        // быстро (свайп из недавних, OOM kill и т.д.).
+        prefs.edit().putString(KEY_GAME_STATE, state).putLong(KEY_SAVE_TIME, System.currentTimeMillis()).commit()
     }
 
     fun loadGame(): String? = prefs.getString(KEY_GAME_STATE, null)
