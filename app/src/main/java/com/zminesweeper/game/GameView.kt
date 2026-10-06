@@ -53,18 +53,6 @@ class GameView : View {
             val id = res.getIdentifier(name, "drawable", context.packageName)
             if (id == 0) return Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
             val raw = BitmapFactory.decodeResource(res, id)
-<<<<<<< HEAD
-            // Предмасштабирование: увеличиваем маленькие спрайты (16×16) до 256×256
-            // с NEAREST — потом Canvas.drawBitmap масштабирует до нужного размера.
-            // Двойное масштабирование через NEAREST сохраняет чёткие пиксели.
-            val targetSize = 256
-            if (raw.width < targetSize || raw.height < targetSize) {
-                val scaled = Bitmap.createScaledBitmap(raw, targetSize, targetSize, false)
-                raw.recycle()
-                return scaled
-            }
-            return raw
-=======
             // Радикальный фикс мыла: масштабируем спрайт до 512×512 через NEAREST.
             // Из 16×16 → 512×512 — каждый пиксель увеличивается в 32 раза, чёткие границы.
             // Затем Canvas.drawBitmap масштабирует 512→cellSize с filterBitmap=false.
@@ -72,7 +60,6 @@ class GameView : View {
             val scaled = Bitmap.createScaledBitmap(raw, targetSize, targetSize, false)
             if (scaled !== raw) raw.recycle()
             return scaled
->>>>>>> main
         }
         bitmaps["tile_closed"] = load("tile_closed")
         bitmaps["tile_open"] = load("tile_open")
