@@ -2,6 +2,33 @@
 <resources>
     <string name="app_name">Buscaminas: Evolución</string>
     <string name="app_subtitle">Evolución del juego clásico</string>
+
+    <!-- Modes -->
+    <string name="mode_classic">Clásico</string>
+    <string name="mode_drift">Deriva</string>
+    <string name="mode_chaos">Caos</string>
+    <string name="mode_anarchy">Anarquía</string>
+    <string name="mode_avalanche">Avalancha</string>
+
+    <string name="mode_classic_desc">Buscaminas clásico. Minas fijas.</string>
+    <string name="mode_drift_desc">Las minas derivan cada N seg. Bajo banderas — quietas.</string>
+    <string name="mode_chaos_desc">Todas las minas se mueven, banderas reinician.</string>
+    <string name="mode_anarchy_desc">Caos + minas aleatorias. ¡Sin límite!</string>
+    <string name="mode_avalanche_desc">Cada 25s el campo se cierra. ¡Marca todas las minas!</string>
+
+    <!-- Difficulties -->
+    <string name="diff_beginner">Principiante</string>
+    <string name="diff_veteran">Veterano</string>
+    <string name="diff_master">Maestro</string>
+    <string name="diff_custom">Personalizado</string>
+
+    <string name="diff_beginner_desc">8 × 8 · 10 minas</string>
+    <string name="diff_veteran_desc">16 × 16 · 40 minas</string>
+    <string name="diff_master_desc">16 × 30 · 99 minas</string>
+    <string name="diff_custom_desc">Tamaño de campo personalizado</string>
+
+    <!-- UI -->
+    <string name="start_game">Iniciar Partida</string>
     <string name="continue_game">Continuar</string>
     <string name="new_game">Nueva Partida</string>
     <string name="select_mode">Seleccionar modo</string>
@@ -11,35 +38,65 @@
     <string name="restart">Reiniciar</string>
     <string name="flag_mode">Bandera</string>
     <string name="dig_mode">Excavar</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancelar</string>
+    <string name="exit">Salir</string>
+    <string name="close">Cerrar</string>
+
+    <!-- Game -->
     <string name="win">¡Victoria!</string>
     <string name="lose">Derrota</string>
     <string name="game_over">Fin del Juego</string>
     <string name="time">Tiempo</string>
     <string name="mines_left">Minas</string>
-    <string name="shift_in">Cambio</string>
+    <string name="shift_in">Cambio en</string>
     <string name="play_again">Jugar de Nuevo</string>
     <string name="to_menu">Menú</string>
     <string name="no_save">Sin partida guardada</string>
     <string name="save_loaded">Partida cargada</string>
     <string name="game_saved">Partida guardada</string>
     <string name="autosaved">Guardando…</string>
+
+    <!-- Pause dialog -->
+    <string name="pause_title">Pausa</string>
+    <string name="pause_message">La partida se guarda automáticamente.</string>
+    <string name="save_corrupted">Partida corrupta. Iniciando nueva partida.</string>
+    <string name="time_label">Tiempo: %1$s</string>
+    <string name="shifts_label">Cambios: %1$d</string>
+
+    <!-- Settings -->
     <string name="settings">Ajustes</string>
     <string name="vibration">Vibración</string>
     <string name="sound">Sonido</string>
     <string name="long_press_flag">Pulsación larga = bandera</string>
     <string name="shift_interval">Intervalo de cambio (seg)</string>
+    <string name="shift_value">%1$d seg</string>
+    <string name="shift_default_value">10 seg</string>
+
+    <!-- Stats -->
     <string name="stats">Estadísticas</string>
     <string name="best_time">Mejor tiempo</string>
+    <string name="best_label">Mejor</string>
     <string name="games_played">Jugadas</string>
     <string name="games_won">Ganadas</string>
     <string name="reset_stats">Reiniciar estadísticas</string>
-    <string name="start_game">Iniciar Partida</string>
+    <string name="select_mode_required">Elige un modo</string>
+    <string name="select_diff_required">Elige una dificultad</string>
+    <string name="custom_size">Personalizado\n%1$d×%2$d</string>
+    <string name="rows_hint">Filas</string>
+    <string name="cols_hint">Columnas</string>
+    <string name="custom_size_title">Tamaño de campo personalizado</string>
+    <string name="custom_size_message">Las minas se colocan automáticamente (~15% del área).</string>
+
+    <!-- Multiplayer -->
     <string name="mp_host">Crear Partida (P2P)</string>
     <string name="mp_join">Unirse (P2P)</string>
     <string name="mp_relay_host">Crear en Servidor</string>
     <string name="mp_relay_join">Unirse vía Servidor</string>
     <string name="mp_lobby_title">Sala del Anfitrión</string>
     <string name="mp_join_title">Conectar</string>
+    <string name="mp_relay_host_title">Sala en Servidor (Multiplataforma)</string>
+    <string name="mp_relay_join_title">Unirse vía Servidor</string>
     <string name="mp_nickname_hint">Tu apodo</string>
     <string name="mp_host_ip_hint">IP del anfitrión</string>
     <string name="mp_port_hint">Puerto</string>
@@ -48,20 +105,104 @@
     <string name="mp_start_game">Iniciar Partida</string>
     <string name="mp_your_turn">▼ TU TURNO ▼</string>
     <string name="mp_turn_of">Turno: %1$s</string>
-    <string name="mode_classic">Clásico</string>
-    <string name="mode_drift">Deriva</string>
-    <string name="mode_chaos">Caos</string>
-    <string name="mode_anarchy">Anarquía</string>
-    <string name="mode_avalanche">Avalancha</string>
-    <string name="mode_classic_desc">Buscaminas clásico. Minas fijas.</string>
-    <string name="mode_drift_desc">Las minas derivan cada N seg. Bajo banderas — quietas.</string>
-    <string name="mode_chaos_desc">Todas las minas se mueven, banderas reinician.</string>
-    <string name="mode_anarchy_desc">Caos + minas aleatorias. ¡Sin límite!</string>
-    <string name="mode_avalanche_desc">Cada 25s el campo se cierra. ¡Marca todas las minas!</string>
-    <string name="diff_beginner">Principiante</string>
-    <string name="diff_veteran">Veterano</string>
-    <string name="diff_master">Maestro</string>
-    <string name="diff_beginner_desc">8 × 8 · 10 minas</string>
-    <string name="diff_veteran_desc">16 × 16 · 40 minas</string>
-    <string name="diff_master_desc">16 × 30 · 99 minas</string>
+    <string name="mp_mode_title">Modo multijugador</string>
+    <string name="mp_mode_coop">Cooperativo</string>
+    <string name="mp_mode_coop_desc">Por turnos, un campo compartido</string>
+    <string name="mp_mode_competitive">Carrera</string>
+    <string name="mp_mode_competitive_desc">Cada uno en su campo, el más rápido gana</string>
+
+    <!-- Host nickname / lobby -->
+    <string name="host_default_name">Anfitrión</string>
+    <string name="default_player_name">Jugador</string>
+    <string name="your_nickname_hint">Tu apodo</string>
+    <string name="host_nickname_title">Apodo del anfitrión</string>
+    <string name="nickname_for_mp_title">Apodo multijugador</string>
+    <string name="nickname_for_mp_message">Introduce el apodo que verán los demás jugadores.</string>
+    <string name="nickname_format">Apodo: %1$s</string>
+    <string name="mode_format">Modo: %1$s</string>
+    <string name="difficulty_format">Dificultad: %1$s</string>
+    <string name="shift_format">Cambio: %1$d seg</string>
+    <string name="mp_mode_format">Modo de juego: %1$s</string>
+    <string name="mode_picker_title">Modo de juego</string>
+    <string name="difficulty_picker_title">Dificultad</string>
+    <string name="shift_picker_title">Intervalo de cambio</string>
+    <string name="ip_addresses_label">Direcciones IP del anfitrión:</string>
+    <string name="ip_undefined">No definida (usa Wi-Fi/ZeroTier)</string>
+    <string name="port_format">Puerto: %1$d</string>
+    <string name="host_tag">(anfitrión)</string>
+    <string name="player_idx_format">%1$d. %2$s %3$s</string>
+    <string name="lobby_open_log">Sala abierta. Esperando conexiones.</string>
+    <string name="player_connected_waiting">Conectado %1$s (#%2$d), esperando apodo…</string>
+    <string name="player_disconnected">%1$s se desconectó</string>
+    <string name="player_left">%1$s salió</string>
+    <string name="player_joined">%1$s se unió</string>
+    <string name="host_started_game">¡El anfitrión inició la partida!</string>
+    <string name="host_closed_lobby">El anfitrión cerró la sala</string>
+    <string name="host_closed_game">El anfitrión cerró la partida</string>
+    <string name="connected_as">Conectado como %1$s (#%2$d)</string>
+    <string name="disconnected_from_host">Desconectado del anfitrión</string>
+    <string name="connecting_to_addr">Conectando a %1$s:%2$d…</string>
+    <string name="connecting_to_url">Conectando a %1$s…</string>
+    <string name="connecting_to_room">Conectando a %1$s, sala %2$s…</string>
+    <string name="ws_open_creating">WebSocket abierto, creando sala…</string>
+    <string name="ws_open_join">WebSocket abierto, enviando JOIN_ROOM…</string>
+    <string name="ws_closed">WebSocket cerrado</string>
+    <string name="server_closed">El servidor cerró la conexión</string>
+    <string name="error_with_message">Error: %1$s</string>
+    <string name="connection_to_server_lost">Conexión con el servidor perdida</string>
+    <string name="connection_to_host_lost">Conexión con el anfitrión perdida</string>
+    <string name="exit_lobby_question">¿Salir de la sala?</string>
+    <string name="exit_game_question">¿Salir de la partida?</string>
+    <string name="exit_game_message">La partida se interrumpirá para todos.</string>
+    <string name="close_lobby_question">¿Cerrar la sala?</string>
+    <string name="close_lobby_message">Los jugadores serán desconectados.</string>
+    <string name="close_lobby">Cerrar sala</string>
+    <string name="create_room">Crear sala</string>
+    <string name="room_code_format">Código de sala: %1$s</string>
+    <string name="room_code_placeholder">El código de sala aparecerá aquí</string>
+    <string name="room_created_log">Sala creada. Código: %1$s</string>
+    <string name="room_code_hint">Código de sala del anfitrión</string>
+    <string name="relay_url_hint">URL del servidor relay</string>
+    <string name="enter_server_url">Introduce la URL del servidor</string>
+    <string name="enter_host_ip">Introduce la IP del anfitrión</string>
+    <string name="enter_room_code">Introduce el código de sala</string>
+    <string name="invalid_url">La URL debe empezar con ws:// o wss://</string>
+    <string name="port_open_failed">No se pudo abrir el puerto %1$d: %2$s</string>
+    <string name="connect_failed">No se pudo conectar a %1$s:%2$d — %3$s</string>
+    <string name="lobby_full">Sala llena (máx. %1$d jugadores).</string>
+    <string name="game_over_reason">Tiempo: %1$s\nMotivo: %2$s</string>
+
+    <!-- Crash reporter -->
+    <string name="crash_message">Buscaminas falló: %1$s</string>
+
+    <!-- Section headers -->
+    <string name="section_connection">CONEXIÓN</string>
+    <string name="section_game_settings">AJUSTES DE PARTIDA</string>
+    <string name="section_players">JUGADORES EN SALA</string>
+    <string name="section_log">REGISTRO</string>
+    <string name="section_server">SERVIDOR</string>
+    <string name="stats_row_format">  %1$s:  %2$d/%3$d   |   Mejor: %4$s</string>
+    <string name="resume">Continuar</string>
+    <string name="exit_game">Salir</string>
+    <string name="auto_save_msg">El juego se guarda automáticamente.</string>
+    <string name="lobby_opened">Sala abierta. Esperando jugadores.</string>
+    <string name="mode_label">Modo:</string>
+    <string name="difficulty_label">Dificultad:</string>
+    <string name="shift_label">Cambio:</string>
+    <string name="nickname_label">Apodo:</string>
+    <string name="mp_mode_label">Modo de Juego:</string>
+    <string name="custom_size_desc">Minas colocadas automáticamente (~15%% del área).</string>
+    <string name="select_difficulty_required">Selecciona una dificultad</string>
+    <string name="room_code_label">El código de sala aparecerá aquí</string>
+    <string name="race_mode">🏁 CARRERA</string>
+    <string name="new_level">💥 ¡Nuevo nivel!</string>
+    <string name="connection_lost">Conexión con el anfitrión perdida</string>
+    <string name="server_connection_lost">Conexión con el servidor perdida</string>
+    <string name="exit_game_title">¿Salir del juego?</string>
+    <string name="exit_game_msg">El juego se interrumpirá para todos los jugadores.</string>
+    <string name="close_lobby_title">¿Cerrar sala?</string>
+    <string name="close_lobby_msg">Los jugadores serán desconectados.</string>
+    <string name="exit_lobby_title">¿Salir de la sala?</string>
+    <string name="nick_prompt_title">Apodo para Multijugador</string>
+    <string name="nick_prompt_msg">Ingresa tu apodo para que otros jugadores lo vean.</string>
 </resources>

@@ -127,17 +127,12 @@
             android:id="@+id/btnMpRelayJoin"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:layout_marginBottom="20dp"
+            android:layout_marginBottom="12dp"
             android:background="@drawable/bg_button_secondary"
             android:fontFamily="@font/pixelify_sans"
             android:text="@string/mp_relay_join"
             android:textColor="@color/text_primary"
             android:textSize="14sp" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
 
         <!-- Bottom icon buttons: stats + settings -->
         <LinearLayout

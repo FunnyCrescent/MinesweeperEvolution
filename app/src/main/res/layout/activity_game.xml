@@ -5,7 +5,7 @@
     android:background="@color/bg_dark"
     android:orientation="vertical">
 
-    <!-- Top status bar -->
+    <!-- Top status bar: mines, time, shift, pause -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -13,7 +13,7 @@
         android:orientation="horizontal"
         android:padding="12dp"
         android:layout_margin="8dp"
-        android:weightSum="5">
+        android:weightSum="4">
 
         <LinearLayout
             android:layout_width="0dp"
@@ -25,7 +25,6 @@
             <TextView
                 android:id="@+id/tvMines"
                 style="@style/TopBarValue"
-                android:fontFamily="@font/press_start_2p"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0"
@@ -48,7 +47,6 @@
             <TextView
                 android:id="@+id/tvTime"
                 style="@style/TopBarValue"
-                android:fontFamily="@font/press_start_2p"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="0:00"
@@ -72,7 +70,6 @@
             <TextView
                 android:id="@+id/tvShift"
                 style="@style/TopBarValue"
-                android:fontFamily="@font/press_start_2p"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="--"
@@ -93,40 +90,12 @@
             android:gravity="center">
 
             <ImageView
-                android:id="@+id/btnFlagMode"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/bg_button_secondary"
-                android:padding="6dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/item_flag"
-                android:contentDescription="@string/flag_mode"
-                android:clickable="true"
-                android:focusable="true" />
-
-            <TextView
-                style="@style/TopBarLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/flag_mode" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:orientation="vertical"
-            android:gravity="center">
-
-            <ImageView
                 android:id="@+id/btnMenu"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/icon_pause"
                 android:background="@drawable/bg_button_secondary"
                 android:padding="6dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/icon_pause"
-                android:contentDescription="@string/menu"
                 android:clickable="true"
                 android:focusable="true" />
 
@@ -149,14 +118,13 @@
             android:id="@+id/tvModeLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="@font/vt323"
             android:textColor="@color/text_secondary"
             android:textSize="14sp"
-            android:maxLines="1"
+            android:fontFamily="@font/vt323"
             android:text="—" />
     </LinearLayout>
 
-    <!-- FrameLayout: GameView (pinch-to-zoom is the primary zoom control) -->
+    <!-- GameView -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -166,6 +134,59 @@
             android:id="@+id/gameView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
+
+        <!-- Zoom buttons (right side) -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_vertical|end"
+            android:layout_marginEnd="8dp"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/btnZoomIn"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/icon_retry"
+                android:background="@drawable/bg_button_secondary"
+                android:padding="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:layout_marginBottom="6dp"
+                android:rotation="90" />
+
+            <ImageView
+                android:id="@+id/btnZoomOut"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/icon_retry"
+                android:background="@drawable/bg_button_secondary"
+                android:padding="8dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:rotation="-90" />
+        </LinearLayout>
     </FrameLayout>
+
+    <!-- Bottom panel: Pickaxe/Flag toggle -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@color/bg_panel"
+        android:padding="8dp">
+
+        <ImageView
+            android:id="@+id/btnFlagMode"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:src="@drawable/item_pickaxe"
+            android:background="@drawable/bg_button_secondary"
+            android:padding="8dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:scaleType="fitCenter" />
+    </LinearLayout>
 
 </LinearLayout>

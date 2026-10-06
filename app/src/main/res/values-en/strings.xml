@@ -2,6 +2,33 @@
 <resources>
     <string name="app_name">Minesweeper: Evolution</string>
     <string name="app_subtitle">Evolution of the classic game</string>
+
+    <!-- Modes -->
+    <string name="mode_classic">Classic</string>
+    <string name="mode_drift">Drift</string>
+    <string name="mode_chaos">Chaos</string>
+    <string name="mode_anarchy">Anarchy</string>
+    <string name="mode_avalanche">Avalanche</string>
+
+    <string name="mode_classic_desc">Classic minesweeper. Mines don\'t move.</string>
+    <string name="mode_drift_desc">Mines drift every N sec. Under flags — stay.</string>
+    <string name="mode_chaos_desc">All mines move, flags reset.</string>
+    <string name="mode_anarchy_desc">Chaos + random mine count. No limit!</string>
+    <string name="mode_avalanche_desc">Every 25s field closes. Flag all mines!</string>
+
+    <!-- Difficulties -->
+    <string name="diff_beginner">Beginner</string>
+    <string name="diff_veteran">Veteran</string>
+    <string name="diff_master">Master</string>
+    <string name="diff_custom">Custom</string>
+
+    <string name="diff_beginner_desc">8 × 8 · 10 mines</string>
+    <string name="diff_veteran_desc">16 × 16 · 40 mines</string>
+    <string name="diff_master_desc">16 × 30 · 99 mines</string>
+    <string name="diff_custom_desc">Custom field size</string>
+
+    <!-- UI -->
+    <string name="start_game">Start Game</string>
     <string name="continue_game">Continue</string>
     <string name="new_game">New Game</string>
     <string name="select_mode">Select mode</string>
@@ -11,35 +38,65 @@
     <string name="restart">Restart</string>
     <string name="flag_mode">Flag</string>
     <string name="dig_mode">Dig</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="exit">Exit</string>
+    <string name="close">Close</string>
+
+    <!-- Game -->
     <string name="win">Victory!</string>
     <string name="lose">Defeat</string>
     <string name="game_over">Game Over</string>
     <string name="time">Time</string>
     <string name="mines_left">Mines</string>
-    <string name="shift_in">Shift</string>
+    <string name="shift_in">Shift in</string>
     <string name="play_again">Play Again</string>
     <string name="to_menu">Menu</string>
     <string name="no_save">No saved game</string>
     <string name="save_loaded">Save loaded</string>
     <string name="game_saved">Game saved</string>
     <string name="autosaved">Autosaving…</string>
+
+    <!-- Pause dialog -->
+    <string name="pause_title">Pause</string>
+    <string name="pause_message">The game is saved automatically.</string>
+    <string name="save_corrupted">Save file corrupted. Starting a new game.</string>
+    <string name="time_label">Time: %1$s</string>
+    <string name="shifts_label">Shifts: %1$d</string>
+
+    <!-- Settings -->
     <string name="settings">Settings</string>
     <string name="vibration">Vibration</string>
     <string name="sound">Sound</string>
     <string name="long_press_flag">Long press = flag</string>
     <string name="shift_interval">Shift interval (sec)</string>
+    <string name="shift_value">%1$d sec</string>
+    <string name="shift_default_value">10 sec</string>
+
+    <!-- Stats -->
     <string name="stats">Stats</string>
     <string name="best_time">Best time</string>
+    <string name="best_label">Best</string>
     <string name="games_played">Played</string>
     <string name="games_won">Won</string>
     <string name="reset_stats">Reset stats</string>
-    <string name="start_game">Start Game</string>
+    <string name="select_mode_required">Pick a mode</string>
+    <string name="select_diff_required">Pick a difficulty</string>
+    <string name="custom_size">Custom\n%1$d×%2$d</string>
+    <string name="rows_hint">Rows</string>
+    <string name="cols_hint">Columns</string>
+    <string name="custom_size_title">Custom field size</string>
+    <string name="custom_size_message">Mines are placed automatically (~15% of the area).</string>
+
+    <!-- Multiplayer -->
     <string name="mp_host">Host Game (P2P)</string>
     <string name="mp_join">Join (P2P)</string>
     <string name="mp_relay_host">Host on Server</string>
     <string name="mp_relay_join">Join via Server</string>
     <string name="mp_lobby_title">Host Lobby</string>
     <string name="mp_join_title">Connect</string>
+    <string name="mp_relay_host_title">Server Lobby (Cross-platform)</string>
+    <string name="mp_relay_join_title">Join via Server</string>
     <string name="mp_nickname_hint">Your nickname</string>
     <string name="mp_host_ip_hint">Host IP</string>
     <string name="mp_port_hint">Port</string>
@@ -48,20 +105,104 @@
     <string name="mp_start_game">Start Game</string>
     <string name="mp_your_turn">▼ YOUR TURN ▼</string>
     <string name="mp_turn_of">Turn: %1$s</string>
-    <string name="mode_classic">Classic</string>
-    <string name="mode_drift">Drift</string>
-    <string name="mode_chaos">Chaos</string>
-    <string name="mode_anarchy">Anarchy</string>
-    <string name="mode_avalanche">Avalanche</string>
-    <string name="mode_classic_desc">Classic minesweeper. Mines don\'t move.</string>
-    <string name="mode_drift_desc">Mines drift every N sec. Under flags — stay.</string>
-    <string name="mode_chaos_desc">All mines move, flags reset.</string>
-    <string name="mode_anarchy_desc">Chaos + random mine count. No limit!</string>
-    <string name="mode_avalanche_desc">Every 25s field closes. Flag all mines!</string>
-    <string name="diff_beginner">Beginner</string>
-    <string name="diff_veteran">Veteran</string>
-    <string name="diff_master">Master</string>
-    <string name="diff_beginner_desc">8 × 8 · 10 mines</string>
-    <string name="diff_veteran_desc">16 × 16 · 40 mines</string>
-    <string name="diff_master_desc">16 × 30 · 99 mines</string>
+    <string name="mp_mode_title">Multiplayer mode</string>
+    <string name="mp_mode_coop">Co-op</string>
+    <string name="mp_mode_coop_desc">Turn-based, one shared field</string>
+    <string name="mp_mode_competitive">Race</string>
+    <string name="mp_mode_competitive_desc">Each on their own field, fastest wins</string>
+
+    <!-- Host nickname / lobby -->
+    <string name="host_default_name">Host</string>
+    <string name="default_player_name">Player</string>
+    <string name="your_nickname_hint">Your nickname</string>
+    <string name="host_nickname_title">Host nickname</string>
+    <string name="nickname_for_mp_title">Multiplayer nickname</string>
+    <string name="nickname_for_mp_message">Enter the nickname other players will see.</string>
+    <string name="nickname_format">Nick: %1$s</string>
+    <string name="mode_format">Mode: %1$s</string>
+    <string name="difficulty_format">Difficulty: %1$s</string>
+    <string name="shift_format">Shift: %1$d sec</string>
+    <string name="mp_mode_format">Game mode: %1$s</string>
+    <string name="mode_picker_title">Game mode</string>
+    <string name="difficulty_picker_title">Difficulty</string>
+    <string name="shift_picker_title">Shift interval</string>
+    <string name="ip_addresses_label">Host IP addresses:</string>
+    <string name="ip_undefined">Undefined (use Wi-Fi/ZeroTier)</string>
+    <string name="port_format">Port: %1$d</string>
+    <string name="host_tag">(host)</string>
+    <string name="player_idx_format">%1$d. %2$s %3$s</string>
+    <string name="lobby_open_log">Lobby is open. Waiting for connections.</string>
+    <string name="player_connected_waiting">Connected %1$s (#%2$d), waiting for nick…</string>
+    <string name="player_disconnected">%1$s disconnected</string>
+    <string name="player_left">%1$s left</string>
+    <string name="player_joined">%1$s joined</string>
+    <string name="host_started_game">Host started the game!</string>
+    <string name="host_closed_lobby">Host closed the lobby</string>
+    <string name="host_closed_game">Host closed the game</string>
+    <string name="connected_as">Connected as %1$s (#%2$d)</string>
+    <string name="disconnected_from_host">Disconnected from host</string>
+    <string name="connecting_to_addr">Connecting to %1$s:%2$d…</string>
+    <string name="connecting_to_url">Connecting to %1$s…</string>
+    <string name="connecting_to_room">Connecting to %1$s, room %2$s…</string>
+    <string name="ws_open_creating">WebSocket open, creating room…</string>
+    <string name="ws_open_join">WebSocket open, sending JOIN_ROOM…</string>
+    <string name="ws_closed">WebSocket closed</string>
+    <string name="server_closed">Server closed the connection</string>
+    <string name="error_with_message">Error: %1$s</string>
+    <string name="connection_to_server_lost">Connection to server lost</string>
+    <string name="connection_to_host_lost">Connection to host lost</string>
+    <string name="exit_lobby_question">Leave the lobby?</string>
+    <string name="exit_game_question">Leave the game?</string>
+    <string name="exit_game_message">The game will be interrupted for all players.</string>
+    <string name="close_lobby_question">Close the lobby?</string>
+    <string name="close_lobby_message">Players will be disconnected.</string>
+    <string name="close_lobby">Close lobby</string>
+    <string name="create_room">Create room</string>
+    <string name="room_code_format">Room code: %1$s</string>
+    <string name="room_code_placeholder">Room code will appear here</string>
+    <string name="room_created_log">Room created. Code: %1$s</string>
+    <string name="room_code_hint">Host room code</string>
+    <string name="relay_url_hint">Relay server URL</string>
+    <string name="enter_server_url">Enter the server URL</string>
+    <string name="enter_host_ip">Enter the host IP</string>
+    <string name="enter_room_code">Enter the room code</string>
+    <string name="invalid_url">URL must start with ws:// or wss://</string>
+    <string name="port_open_failed">Failed to open port %1$d: %2$s</string>
+    <string name="connect_failed">Failed to connect to %1$s:%2$d — %3$s</string>
+    <string name="lobby_full">Lobby is full (max %1$d players).</string>
+    <string name="game_over_reason">Time: %1$s\nReason: %2$s</string>
+
+    <!-- Crash reporter -->
+    <string name="crash_message">Minesweeper crashed: %1$s</string>
+
+    <!-- Section headers -->
+    <string name="section_connection">CONNECTION</string>
+    <string name="section_game_settings">GAME SETTINGS</string>
+    <string name="section_players">PLAYERS IN LOBBY</string>
+    <string name="section_log">LOG</string>
+    <string name="section_server">SERVER</string>
+    <string name="stats_row_format">  %1$s:  %2$d/%3$d   |   Best: %4$s</string>
+    <string name="resume">Resume</string>
+    <string name="exit_game">Exit</string>
+    <string name="auto_save_msg">Game saves automatically.</string>
+    <string name="lobby_opened">Lobby open. Waiting for players.</string>
+    <string name="mode_label">Mode:</string>
+    <string name="difficulty_label">Difficulty:</string>
+    <string name="shift_label">Shift:</string>
+    <string name="nickname_label">Nick:</string>
+    <string name="mp_mode_label">Game Mode:</string>
+    <string name="custom_size_desc">Mines placed automatically (~15%% of area).</string>
+    <string name="select_difficulty_required">Select a difficulty</string>
+    <string name="room_code_label">Room code will appear here</string>
+    <string name="race_mode">🏁 RACE</string>
+    <string name="new_level">💥 New level!</string>
+    <string name="connection_lost">Connection to host lost</string>
+    <string name="server_connection_lost">Server connection lost</string>
+    <string name="exit_game_title">Exit game?</string>
+    <string name="exit_game_msg">Game will be interrupted for all players.</string>
+    <string name="close_lobby_title">Close lobby?</string>
+    <string name="close_lobby_msg">Players will be disconnected.</string>
+    <string name="exit_lobby_title">Leave lobby?</string>
+    <string name="nick_prompt_title">Multiplayer Nickname</string>
+    <string name="nick_prompt_msg">Enter your nickname for other players to see.</string>
 </resources>

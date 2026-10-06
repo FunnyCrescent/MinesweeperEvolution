@@ -45,13 +45,13 @@
             android:id="@+id/etRelayHostUrl"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:background="@color/bg_panel"
+            android:background="@drawable/bg_edittext"
             android:padding="12dp"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_dim"
             android:textSize="14sp"
+            android:fontFamily="@font/vt323"
             android:inputType="textUri"
-            android:fontFamily="monospace"
             android:layout_marginBottom="12dp" />
 
         <Button

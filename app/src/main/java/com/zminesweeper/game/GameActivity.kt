@@ -155,12 +155,15 @@ class GameActivity : AppCompatActivity() {
         findViewById<ImageView>(R.id.btnFlagMode).setOnClickListener {
             gameView.flagMode = !gameView.flagMode
             it.isSelected = gameView.flagMode
-            // Меняем иконку: флажок / кирка (dig mode).
-            val resId = if (gameView.flagMode)
-                R.drawable.item_flag  // в режиме флажка показываем флажок
-            else
-                R.drawable.tile_open  // в режиме копания — открытая плитка
-            (it as ImageView).setImageResource(resId)
+            // Меняем иконку и фон: dig (кирка, серый) ↔ flag (флажок, красный).
+            val btn = it as ImageView
+            if (gameView.flagMode) {
+                btn.setImageResource(R.drawable.item_flag)
+                btn.setBackgroundResource(R.drawable.bg_flag_mode)
+            } else {
+                btn.setImageResource(R.drawable.item_pickaxe)
+                btn.setBackgroundResource(R.drawable.bg_button_secondary)
+            }
             sound?.play(SoundManager.Type.CLICK)
         }
         findViewById<ImageView>(R.id.btnMenu).setOnClickListener {
