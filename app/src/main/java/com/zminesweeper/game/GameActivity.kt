@@ -35,6 +35,16 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
+    /** Автосохранение каждые 5 секунд во время игры. */
+    private val autoSaveRunnable = object : Runnable {
+        override fun run() {
+            if (!engine.gameOver) {
+                save.saveGame(engine.serialize())
+            }
+            handler.postDelayed(this, 5000)
+        }
+    }
+
     private var shiftRemainingSec: Int = 0
     private val shiftRunnable = object : Runnable {
         override fun run() {
@@ -173,7 +183,9 @@ class GameActivity : AppCompatActivity() {
         // Убираем все предыдущие runnable, чтобы не было дублей
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(shiftRunnable)
+        handler.removeCallbacks(autoSaveRunnable)
         handler.post(tickRunnable)
+        handler.postDelayed(autoSaveRunnable, 5000)  // автосохранение каждые 5с
         if (engine.mode.shifts) {
             shiftRemainingSec = if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()
             handler.post(shiftRunnable)
@@ -184,7 +196,8 @@ class GameActivity : AppCompatActivity() {
         super.onPause()
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(shiftRunnable)
-        // Автосохранение при выходе — только если игра ещё идёт.
+        // Автосохранение при любом выходе (сворачивание, переключение приложения,
+        // кнопка Home и т.д.) — только если игра ещё идёт.
         if (!engine.gameOver) {
             save.saveGame(engine.serialize())
         } else if (savedFromLoaded) {
@@ -192,12 +205,26 @@ class GameActivity : AppCompatActivity() {
         }
     }
 
+    override fun onStop() {
+        super.onStop()
+        // Дополнительное сохранение в onStop — Activity может быть убита
+        // между onPause и onDestroy без возвращения.
+        if (!engine.gameOver) {
+            save.saveGame(engine.serialize())
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(shiftRunnable)
+        handler.removeCallbacks(autoSaveRunnable)
         sound?.release()
         sound = null
+        // Финальное сохранение — на всякий случай.
+        if (!engine.gameOver) {
+            save.saveGame(engine.serialize())
+        }
     }
 
     @Suppress("DEPRECATION")

@@ -404,15 +404,23 @@ class GameView : View {
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val engine = engine ?: return
-        // Очищаем фон.
         canvas.drawColor(Color.parseColor("#101418"))
         val pad = 1f
         val flashAlpha = shiftFlashAlpha()
 
-        // Применяем pan (смещение поля) и центрирование.
+        // Поле всегда центрируется. Pan добавляет смещение, но ОГРАНИЧЕН:
+        // поле не может выйти за края экрана по горизонтали, если оно меньше экрана.
         val fieldW = cellSize * engine.cols
         val fieldH = cellSize * engine.rows
-        // Центрируем поле в View, плюс pan.
+
+        // Ограничиваем pan: поле не должно выходить за края View.
+        // Если поле меньше View (zoom=1) — pan не нужен, оно центрировано.
+        // Если поле больше View (zoom>1) — pan позволяет увидеть все края.
+        val maxPanX = if (fieldW > viewW) (fieldW - viewW) / 2f else 0f
+        val maxPanY = if (fieldH > viewH) (fieldH - viewH) / 2f else 0f
+        panX = panX.coerceIn(-maxPanX, maxPanX)
+        panY = panY.coerceIn(-maxPanY, maxPanY)
+
         val offsetX = (viewW - fieldW) / 2f + panX
         val offsetY = (viewH - fieldH) / 2f + panY
         canvas.save()
