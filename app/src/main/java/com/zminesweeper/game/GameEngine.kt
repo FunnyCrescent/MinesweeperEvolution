@@ -121,6 +121,7 @@ class GameEngine {
             1 + rng.nextInt(total)   // 1..total включительно
         }
         placeMinesRandomly(emptyList())
+        enforceNoFullySurroundedMines()
         if (this.mineCount == 0) {
             forcePlaceOneMine()
         }
@@ -173,6 +174,34 @@ class GameEngine {
             mines[r][c] = true
         }
         mineCount = actual
+    }
+
+
+    /**
+     * ПРАВИЛО: мина не может быть окружена минами со всех сторон.
+     * Хотя бы одна соседняя клетка должна быть безопасной.
+     * Вызывается ТОЛЬКО при генерации поля и при сдвиге — НЕ во время игры.
+     */
+    private fun enforceNoFullySurroundedMines() {
+        for (r in 0 until rows) {
+            for (c in 0 until cols) {
+                if (!mines[r][c]) continue
+                val neighbors = ArrayList<Pair<Int, Int>>()
+                for (dr in -1..1) for (dc in -1..1) {
+                    if (dr == 0 && dc == 0) continue
+                    val nr = r + dr; val nc = c + dc
+                    if (nr in 0 until rows && nc in 0 until cols) {
+                        neighbors.add(nr to nc)
+                    }
+                }
+                if (neighbors.isEmpty()) continue
+                if (neighbors.all { (nr, nc) -> mines[nr][nc] }) {
+                    val (mr, mc) = neighbors[rng.nextInt(neighbors.size)]
+                    mines[mr][mc] = false
+                    mineCount--
+                }
+            }
+        }
     }
 
     /** Сдвиг мин в соответствии с режимом. Вызывается по таймеру. */
