@@ -2,38 +2,83 @@ package com.zminesweeper.game
 
 import android.content.Context
 import android.content.SharedPreferences
+import java.io.File
 
 /**
- * Менеджер сохранений и статистики через SharedPreferences.
- *  - autosave: автоматическое сохранение при выходе из GameActivity
- *  - manualSave: ручное сохранение
- *  - statsPerMode: победы/игры/лучшее время для каждой пары (mode, difficulty)
+ * Менеджер сохранений.
+ *
+ * Игровое состояние хранится В ФАЛЕ: /data/data/com.zminesweeper.game/files/save/game.txt
+ * НЕ в SharedPreferences. Файл — надёжнее: данные гарантированно на диске.
+ *
+ * Настройки (звук, вибрация, ник) — в SharedPreferences, это нормально.
+ * Игровое состояние (поле, мины, флаги) — в файле.
  */
 class SaveManager(context: Context) {
 
+    private val appContext = context.applicationContext
     private val prefs: SharedPreferences =
-        context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    // ---------- Активное сохранение игры ----------
+    // ---------- Файловое сохранение игры ----------
 
+    /** Папка для сохранений: /data/data/.../files/save/ */
+    private val saveDir: File by lazy {
+        File(appContext.filesDir, "save").also { it.mkdirs() }
+    }
+    /** Файл сохранения: save/game.txt */
+    private val saveFile: File by lazy { File(saveDir, "game.txt") }
+
+    /**
+     * Сохранить игровое состояние в файл.
+     * Использует writeText() — синхронная запись на диск.
+     */
     fun saveGame(state: String) {
-        // commit() вместо apply() — синхронная запись на диск.
-        // apply() асинхронна и может потерять данные если Activity убивается
-        // быстро (свайп из недавних, OOM kill и т.д.).
-        prefs.edit().putString(KEY_GAME_STATE, state).putLong(KEY_SAVE_TIME, System.currentTimeMillis()).commit()
+        try {
+            saveDir.mkdirs()
+            saveFile.writeText(state)
+            android.util.Log.d("MinesweeperSave", "saveGame: written ${state.length} chars to ${saveFile.absolutePath}")
+        } catch (e: Exception) {
+            android.util.Log.e("MinesweeperSave", "saveGame: FAILED", e)
+        }
     }
 
-    fun loadGame(): String? = prefs.getString(KEY_GAME_STATE, null)
+    /**
+     * Загрузить игровое состояние из файла.
+     * Возвращает null если файла нет или он пустой.
+     */
+    fun loadGame(): String? {
+        return try {
+            if (!saveFile.exists()) {
+                android.util.Log.d("MinesweeperSave", "loadGame: file not found at ${saveFile.absolutePath}")
+                return null
+            }
+            val data = saveFile.readText()
+            if (data.isBlank()) {
+                android.util.Log.d("MinesweeperSave", "loadGame: file is empty")
+                return null
+            }
+            android.util.Log.d("MinesweeperSave", "loadGame: read ${data.length} chars from ${saveFile.absolutePath}")
+            data
+        } catch (e: Exception) {
+            android.util.Log.e("MinesweeperSave", "loadGame: FAILED", e)
+            null
+        }
+    }
 
-    fun hasSavedGame(): Boolean = prefs.getString(KEY_GAME_STATE, null) != null
+    fun hasSavedGame(): Boolean = saveFile.exists() && saveFile.length() > 0
 
     fun clearSavedGame() {
-        prefs.edit().remove(KEY_GAME_STATE).remove(KEY_SAVE_TIME).apply()
+        try {
+            if (saveFile.exists()) saveFile.delete()
+            android.util.Log.d("MinesweeperSave", "clearSavedGame: deleted")
+        } catch (e: Exception) {
+            android.util.Log.e("MinesweeperSave", "clearSavedGame: FAILED", e)
+        }
     }
 
-    fun lastSaveTime(): Long = prefs.getLong(KEY_SAVE_TIME, 0L)
+    fun lastSaveTime(): Long = if (saveFile.exists()) saveFile.lastModified() else 0L
 
-    // ---------- Настройки ----------
+    // ---------- Настройки (в SharedPreferences — это нормально) ----------
 
     fun setVibration(enabled: Boolean) = prefs.edit().putBoolean(KEY_VIBRATION, enabled).apply()
     fun isVibration(): Boolean = prefs.getBoolean(KEY_VIBRATION, true)
@@ -47,7 +92,7 @@ class SaveManager(context: Context) {
     fun setShiftInterval(sec: Int) = prefs.edit().putInt(KEY_SHIFT_INTERVAL, sec).apply()
     fun shiftInterval(): Int = prefs.getInt(KEY_SHIFT_INTERVAL, 10)
 
-    // ---------- Никнейм для мультиплеера ----------
+    // ---------- Никнейм ----------
 
     fun setNickname(name: String?) {
         if (name.isNullOrBlank()) {
@@ -58,31 +103,26 @@ class SaveManager(context: Context) {
     }
     fun nickname(): String? = prefs.getString(KEY_NICKNAME, null)?.takeIf { it.isNotBlank() }
 
-    // ---------- Последний IP хоста для мультиплеера ----------
+    // ---------- Последний режим/сложность ----------
+
+    fun setLastMode(mode: GameMode) = prefs.edit().putString(KEY_LAST_MODE, mode.key).apply()
+    fun lastMode(): GameMode = GameMode.fromKey(prefs.getString(KEY_LAST_MODE, null))
+
+    fun setLastDifficulty(diff: Difficulty) = prefs.edit().putString(KEY_LAST_DIFF, diff.key).apply()
+    fun lastDifficulty(): Difficulty = Difficulty.fromKey(prefs.getString(KEY_LAST_DIFF, null))
+
+    fun setCustomSize(rows: Int, cols: Int) =
+        prefs.edit().putInt(KEY_CUSTOM_ROWS, rows).putInt(KEY_CUSTOM_COLS, cols).apply()
+    fun customRows(): Int = prefs.getInt(KEY_CUSTOM_ROWS, 16)
+    fun customCols(): Int = prefs.getInt(KEY_CUSTOM_COLS, 30)
+
+    // ---------- Сетевые настройки ----------
 
     fun setLastHostIp(ip: String?) =
         prefs.edit().apply {
             if (ip.isNullOrBlank()) remove(KEY_LAST_HOST_IP) else putString(KEY_LAST_HOST_IP, ip)
         }.apply()
     fun lastHostIp(): String? = prefs.getString(KEY_LAST_HOST_IP, null)
-
-    // ---------- Последний режим/сложность для «Быстрой игры» ----------
-
-    fun setLastMode(mode: GameMode) = prefs.edit().putString(KEY_LAST_MODE, mode.key).apply()
-    fun lastMode(): GameMode =
-        GameMode.fromKey(prefs.getString(KEY_LAST_MODE, null))
-
-    fun setLastDifficulty(diff: Difficulty) = prefs.edit().putString(KEY_LAST_DIFF, diff.key).apply()
-    fun lastDifficulty(): Difficulty =
-        Difficulty.fromKey(prefs.getString(KEY_LAST_DIFF, null))
-
-    /** Кастомная сложность: rows × cols (mines вычисляются по формуле). */
-    fun setCustomSize(rows: Int, cols: Int) =
-        prefs.edit().putInt(KEY_CUSTOM_ROWS, rows).putInt(KEY_CUSTOM_COLS, cols).apply()
-    fun customRows(): Int = prefs.getInt(KEY_CUSTOM_ROWS, 16)
-    fun customCols(): Int = prefs.getInt(KEY_CUSTOM_COLS, 30)
-
-    // ---------- URL relay-сервера для кроссплатформенного мультиплеера ----------
 
     fun setLastRelayUrl(url: String?) =
         prefs.edit().apply {
@@ -125,8 +165,6 @@ class SaveManager(context: Context) {
 
     companion object {
         private const val PREFS = "minesweeper_prefs"
-        private const val KEY_GAME_STATE = "game_state"
-        private const val KEY_SAVE_TIME = "save_time"
         private const val KEY_VIBRATION = "vibration"
         private const val KEY_SOUND = "sound"
         private const val KEY_LONG_PRESS = "long_press_flag"

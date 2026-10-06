@@ -531,9 +531,7 @@ class GameEngine {
     // ---- Сериализация для сохранений ----
 
     fun serialize(): String {
-        // Пересчитываем фактическое число мин, чтобы оно всегда совпадало
-        // с тем, что в массиве mines[][]. В Анархии mineCount может
-        // рассинхронизироваться после shiftMines + enforceNumberedInvariant.
+        // Пересчитываем фактическое число мин.
         var actualMines = 0
         for (r in 0 until rows) {
             for (c in 0 until cols) {
@@ -541,6 +539,8 @@ class GameEngine {
             }
         }
         mineCount = actualMines
+
+        android.util.Log.d("MinesweeperSave", "serialize: ${rows}x${cols}, mines=$actualMines, revealed=$revealedCount, flagged=$flaggedCount, firstClick=$firstClickDone, mode=${mode.key}")
 
         val sb = StringBuilder()
         sb.append(mode.key).append('\n')
@@ -558,7 +558,9 @@ class GameEngine {
             }
             sb.append('\n')
         }
-        return sb.toString()
+        val result = sb.toString()
+        android.util.Log.d("MinesweeperSave", "serialize: result length=${result.length}, first 100 chars: ${result.take(100)}")
+        return result
     }
 
     companion object {
