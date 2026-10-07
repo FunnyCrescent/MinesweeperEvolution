@@ -350,8 +350,10 @@ class MainActivity : AppCompatActivity() {
      *
      * Рецепт:
      *  1. inScaled=false при декодировании PNG — берём как есть, без масштабирования по density.
-     *  2. createScaledBitmap(raw, w, h, false) — NEAREST, без билинейного сглаживания.
+     *  2. createScaledBitmap(raw, w*scale, h*scale, false) — NEAREST с ФИКСИРОВАННЫМ масштабом.
+     *     Не растягиваем на всю карточку — иначе края не видны и кнопка выглядит огромной.
      *  3. BitmapDrawable с paint.isFilterBitmap=false, isAntiAlias=false — чёткие пиксели при draw.
+     *  4. gravity=CENTER — кнопка по центру карточки, края карточки видны.
      *
      * Без этого карточка использует XML-селектор с <bitmap gravity="fill">, который по умолчанию
      * применяет билинейную фильтрацию → «мыло».
@@ -371,15 +373,16 @@ class MainActivity : AppCompatActivity() {
             val normalRaw = BitmapFactory.decodeResource(resources, R.drawable.ui_button_normal, opts)
                 ?: return@post
 
-            // NEAREST scaling — сохраняет чёткие пиксели.
-            // Целочисленный коэффициент: max(1, min(w/rawW, h/rawH)) — квадратные пиксели, центрирование.
-            val scaleActive = maxOf(1, minOf(w / activeRaw.width, h / activeRaw.height))
-            val scaleNormal = maxOf(1, minOf(w / normalRaw.width, h / normalRaw.height))
+            // Фиксированный масштаб (3x) — компактная кнопка по центру, края карточки видны.
+            // ui_button_normal: 71x20 → 213x60 (на карточке ~300x80 выглядит как кнопка,
+            //   а не как растянутая на всю ширину плашка).
+            // ui_button_active: 53x24 → 159x72.
+            val scale = 3
             val activeScaled = Bitmap.createScaledBitmap(
-                activeRaw, activeRaw.width * scaleActive, activeRaw.height * scaleActive, false
+                activeRaw, activeRaw.width * scale, activeRaw.height * scale, false
             )
             val normalScaled = Bitmap.createScaledBitmap(
-                normalRaw, normalRaw.width * scaleNormal, normalRaw.height * scaleNormal, false
+                normalRaw, normalRaw.width * scale, normalRaw.height * scale, false
             )
 
             val activeDrawable = BitmapDrawable(resources, activeScaled).apply {
