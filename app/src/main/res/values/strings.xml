@@ -22,10 +22,10 @@
     <string name="diff_master">Мастер</string>
     <string name="diff_custom">Своя</string>
 
-    <string name="diff_beginner_desc">8 × 8 · 10 мин</string>
-    <string name="diff_veteran_desc">16 × 16 · 40 мин</string>
-    <string name="diff_master_desc">16 × 30 · 99 мин</string>
-    <string name="diff_custom_desc">Свой размер поля</string>
+    <string name="diff_beginner_desc">8×8 · 10</string>
+    <string name="diff_veteran_desc">16×16 · 40</string>
+    <string name="diff_master_desc">16×30 · 99</string>
+    <string name="diff_custom_desc">Свой размер</string>
 
     <!-- UI -->
     <string name="start_game">Начать игру</string>
@@ -82,16 +82,17 @@
     <string name="reset_stats">Сбросить статистику</string>
     <string name="select_mode_required">Выбери режим</string>
     <string name="select_diff_required">Выбери сложность</string>
-    <string name="custom_size">Своя\n%1$d×%2$d</string>
+    <string name="custom_size">Своя %1$d×%2$d</string>
     <string name="rows_hint">Строки</string>
     <string name="cols_hint">Столбцы</string>
     <string name="custom_size_title">Свой размер поля</string>
     <string name="custom_size_message">Мины расставляются автоматически (~15% от площади).</string>
 
     <!-- Multiplayer -->
-    <string name="mp_host">Создать игру (P2P)</string>
+    <string name="mp_section">Мультиплеер</string>
+    <string name="mp_host">Создать (P2P)</string>
     <string name="mp_join">Подключиться (P2P)</string>
-    <string name="mp_relay_host">Создать игру на сервере (кроссплат)</string>
+    <string name="mp_relay_host">Создать на сервере</string>
     <string name="mp_relay_join">Подключиться через сервер</string>
     <string name="mp_lobby_title">Лобби хоста</string>
     <string name="mp_join_title">Подключение</string>

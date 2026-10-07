@@ -22,10 +22,10 @@
     <string name="diff_master">Maestro</string>
     <string name="diff_custom">Personalizado</string>
 
-    <string name="diff_beginner_desc">8 × 8 · 10 minas</string>
-    <string name="diff_veteran_desc">16 × 16 · 40 minas</string>
-    <string name="diff_master_desc">16 × 30 · 99 minas</string>
-    <string name="diff_custom_desc">Tamaño de campo personalizado</string>
+    <string name="diff_beginner_desc">8×8 · 10</string>
+    <string name="diff_veteran_desc">16×16 · 40</string>
+    <string name="diff_master_desc">16×30 · 99</string>
+    <string name="diff_custom_desc">Tamaño personalizado</string>
 
     <!-- UI -->
     <string name="start_game">Iniciar Partida</string>
@@ -82,14 +82,15 @@
     <string name="reset_stats">Reiniciar estadísticas</string>
     <string name="select_mode_required">Elige un modo</string>
     <string name="select_diff_required">Elige una dificultad</string>
-    <string name="custom_size">Personalizado\n%1$d×%2$d</string>
+    <string name="custom_size">Personalizado %1$d×%2$d</string>
     <string name="rows_hint">Filas</string>
     <string name="cols_hint">Columnas</string>
     <string name="custom_size_title">Tamaño de campo personalizado</string>
     <string name="custom_size_message">Las minas se colocan automáticamente (~15% del área).</string>
 
     <!-- Multiplayer -->
-    <string name="mp_host">Crear Partida (P2P)</string>
+    <string name="mp_section">Multijugador</string>
+    <string name="mp_host">Crear (P2P)</string>
     <string name="mp_join">Unirse (P2P)</string>
     <string name="mp_relay_host">Crear en Servidor</string>
     <string name="mp_relay_join">Unirse vía Servidor</string>

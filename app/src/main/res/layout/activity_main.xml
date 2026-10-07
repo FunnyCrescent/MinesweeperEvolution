@@ -81,7 +81,7 @@
             android:id="@+id/btnNewGame"
             android:layout_width="match_parent"
             android:layout_height="56dp"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="16dp"
             android:background="@drawable/bg_button_primary"
             android:fontFamily="@font/pixelify_sans"
             android:text="@string/new_game"
@@ -89,50 +89,77 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
-        <!-- Multiplayer buttons -->
-        <Button
-            android:id="@+id/btnMpHost"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
+        <!-- Multiplayer section: 2x2 grid -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="@font/press_start_2p"
+            android:text="@string/mp_section"
+            android:textColor="@color/text_secondary"
+            android:textSize="10sp"
             android:layout_marginBottom="8dp"
-            android:background="@drawable/bg_button_secondary"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="@string/mp_host"
-            android:textColor="@color/text_primary"
-            android:textSize="14sp" />
+            android:layout_gravity="center" />
 
-        <Button
-            android:id="@+id/btnMpJoin"
+        <GridLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="8dp"
-            android:background="@drawable/bg_button_secondary"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="@string/mp_join"
-            android:textColor="@color/text_primary"
-            android:textSize="14sp" />
+            android:layout_height="wrap_content"
+            android:columnCount="2"
+            android:rowCount="2"
+            android:useDefaultMargins="true"
+            android:layout_marginBottom="12dp">
 
-        <Button
-            android:id="@+id/btnMpRelayHost"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="8dp"
-            android:background="@drawable/bg_button_secondary"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="@string/mp_relay_host"
-            android:textColor="@color/text_primary"
-            android:textSize="14sp" />
+            <Button
+                android:id="@+id/btnMpHost"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_columnWeight="1"
+                android:background="@drawable/bg_button_secondary"
+                android:fontFamily="@font/pixelify_sans"
+                android:text="@string/mp_host"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
 
-        <Button
-            android:id="@+id/btnMpRelayJoin"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginBottom="12dp"
-            android:background="@drawable/bg_button_secondary"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="@string/mp_relay_join"
-            android:textColor="@color/text_primary"
-            android:textSize="14sp" />
+            <Button
+                android:id="@+id/btnMpJoin"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_columnWeight="1"
+                android:background="@drawable/bg_button_secondary"
+                android:fontFamily="@font/pixelify_sans"
+                android:text="@string/mp_join"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <Button
+                android:id="@+id/btnMpRelayHost"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_columnWeight="1"
+                android:background="@drawable/bg_button_secondary"
+                android:fontFamily="@font/pixelify_sans"
+                android:text="@string/mp_relay_host"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <Button
+                android:id="@+id/btnMpRelayJoin"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_columnWeight="1"
+                android:background="@drawable/bg_button_secondary"
+                android:fontFamily="@font/pixelify_sans"
+                android:text="@string/mp_relay_join"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:maxLines="1"
+                android:ellipsize="end" />
+        </GridLayout>
 
         <!-- Bottom icon buttons: stats + settings -->
         <LinearLayout

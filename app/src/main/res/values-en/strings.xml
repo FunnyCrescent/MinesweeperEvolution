@@ -22,10 +22,10 @@
     <string name="diff_master">Master</string>
     <string name="diff_custom">Custom</string>
 
-    <string name="diff_beginner_desc">8 × 8 · 10 mines</string>
-    <string name="diff_veteran_desc">16 × 16 · 40 mines</string>
-    <string name="diff_master_desc">16 × 30 · 99 mines</string>
-    <string name="diff_custom_desc">Custom field size</string>
+    <string name="diff_beginner_desc">8×8 · 10</string>
+    <string name="diff_veteran_desc">16×16 · 40</string>
+    <string name="diff_master_desc">16×30 · 99</string>
+    <string name="diff_custom_desc">Custom size</string>
 
     <!-- UI -->
     <string name="start_game">Start Game</string>
@@ -82,14 +82,15 @@
     <string name="reset_stats">Reset stats</string>
     <string name="select_mode_required">Pick a mode</string>
     <string name="select_diff_required">Pick a difficulty</string>
-    <string name="custom_size">Custom\n%1$d×%2$d</string>
+    <string name="custom_size">Custom %1$d×%2$d</string>
     <string name="rows_hint">Rows</string>
     <string name="cols_hint">Columns</string>
     <string name="custom_size_title">Custom field size</string>
     <string name="custom_size_message">Mines are placed automatically (~15% of the area).</string>
 
     <!-- Multiplayer -->
-    <string name="mp_host">Host Game (P2P)</string>
+    <string name="mp_section">Multiplayer</string>
+    <string name="mp_host">Host (P2P)</string>
     <string name="mp_join">Join (P2P)</string>
     <string name="mp_relay_host">Host on Server</string>
     <string name="mp_relay_join">Join via Server</string>

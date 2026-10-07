@@ -110,20 +110,26 @@ class MainActivity : AppCompatActivity() {
 
         // Строим кнопки сложности
         diffContainer.removeAllViews()
+        val pixelFont = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.pixelify_sans)
         for (diff in Difficulty.entries) {
             val btn = android.widget.Button(this)
-            val lp = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            // Фиксированная высота — кнопки не "пляшут" от переносов.
+            val lp = LinearLayout.LayoutParams(0, (48 * resources.displayMetrics.density).toInt(), 1f)
             lp.setMargins(4, 0, 4, 0)
             btn.layoutParams = lp
+            // Текст в одну строку: "Principiante · 8×8 · 10" — без переносов.
             btn.text = if (diff == Difficulty.CUSTOM) {
                 getString(R.string.custom_size, MinesweeperApp.customRows, MinesweeperApp.customCols)
             } else {
-                "${diff.display}\n${diff.shortDesc}"
+                "${diff.display} · ${diff.shortDesc}"
             }
             btn.textSize = 11f
+            btn.typeface = pixelFont
+            btn.maxLines = 1
+            btn.ellipsize = android.text.TextUtils.TruncateAt.END
             btn.setBackgroundResource(R.drawable.bg_diff_button)
             btn.setTextColor(getColor(R.color.text_primary))
-            btn.setPadding(4, 12, 4, 12)
+            btn.setPadding(6, 0, 6, 0)
             btn.gravity = Gravity.CENTER
             btn.isAllCaps = false
             btn.setOnClickListener {
