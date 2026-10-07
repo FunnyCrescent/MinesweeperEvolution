@@ -1,6 +1,11 @@
 package com.zminesweeper.game
 
 import android.content.Intent
+import android.content.res.ColorStateList
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
@@ -98,6 +103,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             modesContainer.addView(card)
+            // Применяем пиксель-арт фон как у цифр в GameView:
+            // inScaled=false + createScaledBitmap NEAREST + filterBitmap=false.
+            applyPixelArtButtonBackground(card)
         }
 
         // Строим кнопки сложности
@@ -335,5 +343,64 @@ class MainActivity : AppCompatActivity() {
         val m = sec / 60
         val s = sec % 60
         return "%d:%02d".format(m, s)
+    }
+
+    /**
+     * Применяет пиксель-арт фон к карточке режима (как у цифр в GameView).
+     *
+     * Рецепт:
+     *  1. inScaled=false при декодировании PNG — берём как есть, без масштабирования по density.
+     *  2. createScaledBitmap(raw, w, h, false) — NEAREST, без билинейного сглаживания.
+     *  3. BitmapDrawable с paint.isFilterBitmap=false, isAntiAlias=false — чёткие пиксели при draw.
+     *
+     * Без этого карточка использует XML-селектор с <bitmap gravity="fill">, который по умолчанию
+     * применяет билинейную фильтрацию → «мыло».
+     *
+     * Вызывается после addView, но реальная подстановка фона — в card.post{}, когда уже известны
+     * ширина и высота карточки (post-layout).
+     */
+    private fun applyPixelArtButtonBackground(view: View) {
+        view.post {
+            val w = view.width
+            val h = view.height
+            if (w <= 0 || h <= 0) return@post
+
+            val opts = BitmapFactory.Options().apply { inScaled = false }
+            val activeRaw = BitmapFactory.decodeResource(resources, R.drawable.ui_button_active, opts)
+                ?: return@post
+            val normalRaw = BitmapFactory.decodeResource(resources, R.drawable.ui_button_normal, opts)
+                ?: return@post
+
+            // NEAREST scaling — сохраняет чёткие пиксели.
+            // Целочисленный коэффициент: max(1, min(w/rawW, h/rawH)) — квадратные пиксели, центрирование.
+            val scaleActive = maxOf(1, minOf(w / activeRaw.width, h / activeRaw.height))
+            val scaleNormal = maxOf(1, minOf(w / normalRaw.width, h / normalRaw.height))
+            val activeScaled = Bitmap.createScaledBitmap(
+                activeRaw, activeRaw.width * scaleActive, activeRaw.height * scaleActive, false
+            )
+            val normalScaled = Bitmap.createScaledBitmap(
+                normalRaw, normalRaw.width * scaleNormal, normalRaw.height * scaleNormal, false
+            )
+
+            val activeDrawable = BitmapDrawable(resources, activeScaled).apply {
+                gravity = Gravity.CENTER
+                paint.isFilterBitmap = false
+                paint.isAntiAlias = false
+            }
+            val normalDrawable = BitmapDrawable(resources, normalScaled).apply {
+                gravity = Gravity.CENTER
+                paint.isFilterBitmap = false
+                paint.isAntiAlias = false
+            }
+
+            val sld = StateListDrawable().apply {
+                addState(intArrayOf(android.R.attr.state_activated, android.R.attr.state_pressed), activeDrawable)
+                addState(intArrayOf(android.R.attr.state_activated), activeDrawable)
+                addState(intArrayOf(android.R.attr.state_pressed), activeDrawable)
+                addState(intArrayOf(), normalDrawable)
+            }
+
+            view.background = sld
+        }
     }
 }
