@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Карточка режима с пиксель-арт активной/неактивной кнопкой.
+    state_activated надёжнее state_selected на всех версиях AndroidX.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_activated="true">
+        <bitmap android:src="@drawable/ui_button_active" android:gravity="fill"/>
+    </item>
+    <item android:state_pressed="true">
+        <bitmap android:src="@drawable/ui_button_active" android:gravity="fill"/>
+    </item>
+    <item>
+        <bitmap android:src="@drawable/ui_button_normal" android:gravity="fill"/>
+    </item>
+</selector>

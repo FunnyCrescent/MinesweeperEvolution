@@ -92,7 +92,9 @@ class MainActivity : AppCompatActivity() {
             card.setOnClickListener {
                 selectedMode = mode
                 for (i in 0 until modesContainer.childCount) {
-                    modesContainer.getChildAt(i).isSelected = (modesContainer.getChildAt(i) === card)
+                    val child = modesContainer.getChildAt(i)
+                    child.isActivated = (child === card)
+                    child.isSelected = (child === card) // дублируем для надёжности на старых API
                 }
             }
             modesContainer.addView(card)
@@ -122,17 +124,23 @@ class MainActivity : AppCompatActivity() {
                     showCustomSizeDialog { _ ->
                         selectedDiff = Difficulty.CUSTOM
                         for (i in 0 until diffContainer.childCount) {
-                            (diffContainer.getChildAt(i) as android.widget.Button).isSelected = false
+                            val b = diffContainer.getChildAt(i) as android.widget.Button
+                            b.isActivated = false
+                            b.isSelected = false
                         }
+                        btn.isActivated = true
                         btn.isSelected = true
                         btn.text = getString(R.string.custom_size, MinesweeperApp.customRows, MinesweeperApp.customCols)
                     }
                 } else {
                     selectedDiff = diff
                     for (i in 0 until diffContainer.childCount) {
-                        (diffContainer.getChildAt(i) as android.widget.Button).isSelected = false
+                        val b = diffContainer.getChildAt(i) as android.widget.Button
+                        b.isActivated = false
+                        b.isSelected = false
                     }
-                    btn.isSelected = true
+                    btn.isActivated = true
+                    btn.isSelected = true // дублируем для надёжности на старых API
                 }
             }
             diffContainer.addView(btn)
