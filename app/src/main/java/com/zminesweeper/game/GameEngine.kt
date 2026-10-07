@@ -362,6 +362,10 @@ class GameEngine {
         if (!firstClickDone) {
             firstClickDone = true
             ensureSafeStart(row, col)
+            // Превентивная генерация без софтлоков: перебираем раскладки мин,
+            // пока после виртуального открытия клетки NoGuessSolver не найдёт
+            // логический ход. Заменяет реактивный reshuffleMinesForLogicalMove.
+            ensureNoSoftlockOnFirstClick(row, col)
         }
 
         _lastRevealed.clear()
@@ -426,6 +430,145 @@ class GameEngine {
         for (i in 0 until minOf(needed, available.size)) {
             val (r, c) = available[i]
             mines[r][c] = true
+        }
+    }
+
+    /**
+     * Превентивная генерация без софтлоков для первого клика.
+     *
+     * После [ensureSafeStart] мины расставлены с учётом safe zone, но раскладка
+     * может оказаться софтлоком (нет логического хода). Эта функция перебирает
+     * разные раскладки мин (сохраняя safe zone) и проверяет NoGuessSolver на
+     * виртуально открытом поле (клетка + floodReveal зона).
+     *
+     * Алгоритм:
+     *  1. Сохраняем snapshot массивов mines и revealed.
+     *  2. В цикле до [MAX_PREVENTIVE_ATTEMPTS]:
+     *     a. Перегенерируем мины вне safe zone (если не первая попытка).
+     *     b. Виртуально открываем клетку (row, col) + floodReveal зону.
+     *     c. Проверяем NoGuessSolver.findLogicalMove().
+     *     d. Откатываем виртуальное открытие.
+     *     e. Если есть логический ход — выходим, мины оставляем.
+     *  3. Если за N попыток не получилось — оставляем последнюю раскладку
+     *     (софтлок, но не критично — reshuffleMinesForLogicalMove в onRevealListener
+     *     сделает вторую попытку с сохранением чисел).
+     *
+     * Важно: функция НЕ должна менять `revealed` или `revealedCount` — она работает
+     * с виртуальным открытием, которое откатывается.
+     */
+    private fun ensureNoSoftlockOnFirstClick(row: Int, col: Int) {
+        // Safe zone — клетки, где не должно быть мин (клик + 8 соседей).
+        val safeZone = ArrayList<Pair<Int, Int>>()
+        safeZone.add(row to col)
+        for (dr in -1..1) for (dc in -1..1) {
+            val nr = row + dr; val nc = col + dc
+            if (nr in 0 until rows && nc in 0 until cols) safeZone.add(nr to nc)
+        }
+
+        // Считаем сколько мин должно быть вне safe zone.
+        // mineCount — общее число мин. Замороженные (под флагами в safe zone) не трогаем.
+        var frozenInSafe = 0
+        for ((r, c) in safeZone) if (flagged[r][c] && mines[r][c]) frozenInSafe++
+        val targetMinesOutside = mineCount - frozenInSafe
+
+        // Кандидаты для размещения мин: не в safe zone, не открытые, не под флагами.
+        val candidates = ArrayList<Pair<Int, Int>>()
+        for (r in 0 until rows) for (c in 0 until cols) {
+            if (safeZone.any { it.first == r && it.second == c }) continue
+            if (revealed[r][c]) continue
+            if (flagged[r][c]) continue
+            candidates.add(r to c)
+        }
+        if (candidates.isEmpty() || targetMinesOutside <= 0) return
+
+        // Сохраняем snapshot revealed для отката виртуального открытия.
+        val revealedSnapshot = Array(rows) { r -> revealed[r].copyOf() }
+        val savedRevealedCount = revealedCount
+
+        // Сохраняем snapshot mines для отката перегенерации.
+        val minesSnapshot = Array(rows) { r -> mines[r].copyOf() }
+
+        var bestAttempt = -1  // индекс попытки с логическим ходом, -1 = не найдено
+
+        for (attempt in 0 until MAX_PREVENTIVE_ATTEMPTS) {
+            // Перегенерируем мины вне safe zone (на первой попытке оставляем как есть —
+            // ensureSafeStart уже расставил, проверим эту раскладку).
+            if (attempt > 0) {
+                // Сбрасываем мины вне safe zone.
+                for ((r, c) in candidates) mines[r][c] = false
+                // Случайно расставляем targetMinesOutside мин.
+                candidates.shuffle(rng)
+                for (i in 0 until minOf(targetMinesOutside, candidates.size)) {
+                    val (r, c) = candidates[i]
+                    mines[r][c] = true
+                }
+            }
+
+            // Виртуально открываем клетку (row, col).
+            revealed[row][col] = true
+            revealedCount++
+            // Если 0 мин вокруг — виртуальный floodReveal.
+            if (adjacentMines(row, col) == 0) {
+                virtualFloodReveal(row, col)
+            }
+
+            // Проверяем NoGuessSolver.
+            val hasLogicalMove = NoGuessSolver(this).findLogicalMove() != null
+
+            // Откатываем виртуальное открытие.
+            for (r in 0 until rows) {
+                revealed[r] = revealedSnapshot[r].copyOf()
+            }
+            revealedCount = savedRevealedCount
+
+            if (hasLogicalMove) {
+                bestAttempt = attempt
+                break  // успех — мины оставляем как есть
+            }
+            // Иначе — пробуем другую раскладку.
+        }
+
+        // Если ни одна попытка не удалась — восстанавливаем исходные мины.
+        // Это лучше, чем оставлять случайную раскладку: поле останется корректным.
+        if (bestAttempt == -1) {
+            for (r in 0 until rows) {
+                mines[r] = minesSnapshot[r].copyOf()
+            }
+        }
+    }
+
+    /**
+     * Виртуальный floodReveal для симуляции открытия клетки с 0 мин вокруг.
+     * Используется в [ensureNoSoftlockOnFirstClick]. Помечает клетки как открытые
+     * в массиве `revealed` (откатывается вызывающим кодом через snapshot).
+     *
+     * В отличие от [floodReveal], НЕ обновляет `_lastRevealed` — это симуляция.
+     */
+    private fun virtualFloodReveal(row: Int, col: Int) {
+        val queue = ArrayDeque<Pair<Int, Int>>()
+        queue.addLast(row to col)
+        val visited = HashSet<Pair<Int, Int>>()
+        visited.add(row to col)
+        while (queue.isNotEmpty()) {
+            val (r, c) = queue.removeFirst()
+            if (mines[r][c]) continue
+            if (!revealed[r][c]) {
+                revealed[r][c] = true
+                revealedCount++
+            }
+            if (adjacentMines(r, c) == 0) {
+                for (dr in -1..1) for (dc in -1..1) {
+                    if (dr == 0 && dc == 0) continue
+                    val nr = r + dr; val nc = c + dc
+                    if (nr in 0 until rows && nc in 0 until cols) {
+                        val key = nr to nc
+                        if (!visited.contains(key) && !revealed[nr][nc] && !flagged[nr][nc] && !mines[nr][nc]) {
+                            visited.add(key)
+                            queue.addLast(key)
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -523,10 +666,17 @@ class GameEngine {
      *
      * ВНИМАНИЕ: вызывается только если analyzeSoftlock() == Deadlock.
      * При PlayerError перетасовка НЕ делается.
+     *
+     * ВАЖНО (v1.2.3): перетасовка сохраняет числа открытых клеток.
+     * Если за [MAX_RESHUFFLE_ATTEMPTS] попыток не удалось найти раскладку,
+     * которая (а) сохраняет все числа открытых клеток и (б) даёт логический
+     * ход — мины возвращаются в исходные позиции. Это лучше, чем сломать
+     * цифры (софтлок остаётся, но поле не «дёргается»).
      */
     fun reshuffleMinesForLogicalMove() {
         if (gameOver || won) return
-        // Собираем скрытые клетки без флага.
+
+        // 1. Собираем скрытые клетки без флага (кандидаты для перемещения).
         val candidates = ArrayList<Pair<Int, Int>>()
         for (r in 0 until rows) {
             for (c in 0 until cols) {
@@ -535,33 +685,64 @@ class GameEngine {
         }
         if (candidates.isEmpty()) return
 
-        // Считаем текущие мины, которые не под флагами и не открыты.
-        var currentMines = 0
-        for ((r, c) in candidates) if (mines[r][c]) currentMines++
+        // 2. Сохраняем SNAPSHOT чисел всех открытых клеток (до любых изменений).
+        //    После перетасовки каждая открытая клетка должна иметь то же число.
+        val originalNumbers = HashMap<Pair<Int, Int>, Int>()
+        for (r in 0 until rows) {
+            for (c in 0 until cols) {
+                if (revealed[r][c]) {
+                    originalNumbers[r to c] = adjacentMines(r, c)
+                }
+            }
+        }
 
-        // Снимаем все мины с кандидатов.
+        // 3. Сохраняем исходные позиции мин на кандидатах (для отката).
+        val originalMinePositions = ArrayList<Pair<Int, Int>>()
+        for ((r, c) in candidates) {
+            if (mines[r][c]) originalMinePositions.add(r to c)
+        }
+        val currentMines = originalMinePositions.size
+
+        // 4. Снимаем все мины с кандидатов.
         for ((r, c) in candidates) mines[r][c] = false
 
-        // Пытаемся расставить currentMines мин случайно, проверяя логический ход.
-        for (attempt in 0 until 50) {
-            // Перетасовываем кандидатов.
+        // 5. Пытаемся расставить currentMines мин случайно, проверяя:
+        //    (а) числа открытых клеток совпадают с snapshot
+        //    (б) есть логический ход
+        for (attempt in 0 until MAX_RESHUFFLE_ATTEMPTS) {
             candidates.shuffle(rng)
             for (i in 0 until currentMines) {
                 val (r, c) = candidates[i]
                 mines[r][c] = true
             }
-            // Проверяем, есть ли логический ход.
-            if (NoGuessSolver(this).findLogicalMove() != null) {
-                return  // успех
+
+            if (numbersMatchSnapshot(originalNumbers) &&
+                NoGuessSolver(this).findLogicalMove() != null) {
+                return  // успех — мины оставляем как есть
             }
+
             // Сбрасываем мины для следующей попытки.
             for ((r, c) in candidates) mines[r][c] = false
         }
-        // Не получилось за 50 попыток — расставляем последние мины как есть.
-        for (i in 0 until currentMines) {
-            val (r, c) = candidates[i]
+
+        // 6. Не получилось за 50 попыток — ОТКАТ к исходным позициям.
+        //    Софтлок остаётся, но числа не ломаются.
+        for ((r, c) in originalMinePositions) {
             mines[r][c] = true
         }
+    }
+
+    /**
+     * Проверяет, что текущие числа открытых клеток совпадают с [snapshot].
+     * Используется в [reshuffleMinesForLogicalMove] для гарантии, что
+     * перетасовка не меняет видимые игроку цифры.
+     */
+    private fun numbersMatchSnapshot(snapshot: Map<Pair<Int, Int>, Int>): Boolean {
+        for ((key, expected) in snapshot) {
+            val (r, c) = key
+            if (adjacentMines(r, c) != expected) return false
+        }
+        return true
     }
 
     enum class RevealResult {
@@ -604,6 +785,9 @@ class GameEngine {
     }
 
     companion object {
+        private const val MAX_RESHUFFLE_ATTEMPTS = 50
+        private const val MAX_PREVENTIVE_ATTEMPTS = 30
+
         fun deserialize(data: String): GameEngine? {
             return try {
                 val lines = data.split('\n')

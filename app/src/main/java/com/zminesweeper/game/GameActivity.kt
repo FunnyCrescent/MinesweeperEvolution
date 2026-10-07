@@ -136,13 +136,10 @@ class GameActivity : AppCompatActivity() {
                 sound?.play(SoundManager.Type.WIN)
             } else {
                 sound?.play(SoundManager.Type.REVEAL)
-                // No-Guess Solver: проверить на софтлок после открытия.
-                val state = engine.analyzeSoftlock()
-                if (state is com.zminesweeper.game.NoGuessSolver.SoftlockState.Deadlock) {
-                    // Чистый софтлок генерации — перетасовываем мины.
-                    engine.reshuffleMinesForLogicalMove()
-                    gameView.invalidate()
-                }
+                // v1.2.3: превентивная генерация без софтлоков делается в
+                // GameEngine.ensureNoSoftlockOnFirstClick ПЕРЕД открытием клетки.
+                // Реактивный reshuffleMinesForLogicalMove убран — он менял числа
+                // открытых клеток (баг "цифра 3 → 1").
             }
             if (exploded || won) showGameOver(won)
             updateMinesLabel()
