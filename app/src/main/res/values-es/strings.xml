@@ -10,11 +10,11 @@
     <string name="mode_anarchy">Anarquía</string>
     <string name="mode_avalanche">Avalancha</string>
 
-    <string name="mode_classic_desc">Buscaminas clásico. Minas fijas.</string>
-    <string name="mode_drift_desc">Las minas derivan cada N seg. Bajo banderas — quietas.</string>
-    <string name="mode_chaos_desc">Todas las minas se mueven, banderas reinician.</string>
-    <string name="mode_anarchy_desc">Caos + minas aleatorias. ¡Sin límite!</string>
-    <string name="mode_avalanche_desc">Cada 25s el campo se cierra. ¡Marca todas las minas!</string>
+    <string name="mode_classic_desc">Clásico. Minas fijas.</string>
+    <string name="mode_drift_desc">Minas derivan. Bajo banderas quietas.</string>
+    <string name="mode_chaos_desc">Todas derivan. Banderas reinician.</string>
+    <string name="mode_anarchy_desc">Caos. Minas aleatorias.</string>
+    <string name="mode_avalanche_desc">Cada 25s campo se cierra.</string>
 
     <!-- Difficulties -->
     <string name="diff_beginner">Principiante</string>

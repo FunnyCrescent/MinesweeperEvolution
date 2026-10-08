@@ -10,11 +10,11 @@
     <string name="mode_anarchy">Anarchy</string>
     <string name="mode_avalanche">Avalanche</string>
 
-    <string name="mode_classic_desc">Classic minesweeper. Mines don\'t move.</string>
-    <string name="mode_drift_desc">Mines drift every N sec. Under flags — stay.</string>
-    <string name="mode_chaos_desc">All mines move, flags reset.</string>
-    <string name="mode_anarchy_desc">Chaos + random mine count. No limit!</string>
-    <string name="mode_avalanche_desc">Every 25s field closes. Flag all mines!</string>
+    <string name="mode_classic_desc">Classic. Mines don\'t move.</string>
+    <string name="mode_drift_desc">Mines drift. Under flags stay.</string>
+    <string name="mode_chaos_desc">All mines drift. Flags reset.</string>
+    <string name="mode_anarchy_desc">Chaos. Random mine count.</string>
+    <string name="mode_avalanche_desc">Every 25s field closes.</string>
 
     <!-- Difficulties -->
     <string name="diff_beginner">Beginner</string>

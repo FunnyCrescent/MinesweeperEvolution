@@ -5,105 +5,108 @@
     android:background="@color/bg_dark"
     android:orientation="vertical">
 
-    <!-- Top row: HUD frame (mines/time/shift) + pause button outside frame -->
+    <!-- Top status bar: mines, time, shift, pause (all inside HUD frame) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@drawable/bg_top_bar"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
-        android:padding="8dp">
+        android:padding="12dp"
+        android:layout_margin="8dp"
+        android:weightSum="4"
+        android:gravity="center_vertical">
 
-        <!-- HUD frame with 3 cells -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@drawable/bg_top_bar"
-            android:orientation="horizontal"
-            android:padding="12dp"
-            android:weightSum="3"
-            android:gravity="center_vertical">
+            android:orientation="vertical"
+            android:gravity="center">
 
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                android:id="@+id/tvMines"
+                style="@style/TopBarValue"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center">
+                android:text="0"
+                android:textColor="@color/danger" />
 
-                <TextView
-                    android:id="@+id/tvMines"
-                    style="@style/TopBarValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0"
-                    android:textColor="@color/danger" />
-
-                <TextView
-                    style="@style/TopBarLabel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/mines_left" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="0dp"
+            <TextView
+                style="@style/TopBarLabel"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center">
-
-                <TextView
-                    android:id="@+id/tvTime"
-                    style="@style/TopBarValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0:00"
-                    android:textColor="@color/accent" />
-
-                <TextView
-                    style="@style/TopBarLabel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/time" />
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/llShift"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="vertical"
-                android:gravity="center">
-
-                <TextView
-                    android:id="@+id/tvShift"
-                    style="@style/TopBarValue"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="--"
-                    android:textColor="@color/warning" />
-
-                <TextView
-                    style="@style/TopBarLabel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@string/shift_in" />
-            </LinearLayout>
+                android:text="@string/mines_left" />
         </LinearLayout>
 
-        <!-- Pause button — OUTSIDE the HUD frame, standalone -->
-        <ImageView
-            android:id="@+id/btnMenu"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginStart="8dp"
-            android:src="@drawable/icon_pause"
-            android:background="@android:color/transparent"
-            android:padding="4dp"
-            android:clickable="true"
-            android:focusable="true"
-            android:contentDescription="@string/menu" />
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/tvTime"
+                style="@style/TopBarValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0:00"
+                android:textColor="@color/accent" />
+
+            <TextView
+                style="@style/TopBarLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/time" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/llShift"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/tvShift"
+                style="@style/TopBarValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--"
+                android:textColor="@color/warning" />
+
+            <TextView
+                style="@style/TopBarLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/shift_in" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <ImageView
+                android:id="@+id/btnMenu"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/icon_pause"
+                android:background="@android:color/transparent"
+                android:padding="4dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:contentDescription="@string/menu" />
+
+            <TextView
+                style="@style/TopBarLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/menu" />
+        </LinearLayout>
     </LinearLayout>
 
     <LinearLayout

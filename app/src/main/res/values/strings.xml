@@ -10,11 +10,11 @@
     <string name="mode_anarchy">Анархия</string>
     <string name="mode_avalanche">Лавина</string>
 
-    <string name="mode_classic_desc">Классический сапёр. Мины стоят на месте.</string>
-    <string name="mode_drift_desc">Мины дрейфуют каждые 10 сек. Под флажком — остаются.</string>
-    <string name="mode_chaos_desc">Все мины перемещаются, флажки сбрасываются.</string>
-    <string name="mode_anarchy_desc">Хаос + случайное число мин. Лимита нет!</string>
-    <string name="mode_avalanche_desc">Каждые 25 сек всё поле закрывается. Мины под флажком остаются.</string>
+    <string name="mode_classic_desc">Классика. Мины стоят на месте.</string>
+    <string name="mode_drift_desc">Мины дрейфуют. Под флажком стоят.</string>
+    <string name="mode_chaos_desc">Все мины дрейфуют. Флажки сброс.</string>
+    <string name="mode_anarchy_desc">Хаос. Случайное число мин.</string>
+    <string name="mode_avalanche_desc">Каждые 25с поле закрывается.</string>
 
     <!-- Difficulties -->
     <string name="diff_beginner">Новичок</string>

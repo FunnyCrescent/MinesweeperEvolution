@@ -62,6 +62,13 @@ class GameView : View {
         rawBitmaps["tile_closed"] = load("tile_closed")
         rawBitmaps["tile_open"] = load("tile_open")
         rawBitmaps["tile_exploded"] = load("tile_exploded")
+        // v1.2.9: новые спрайты — единые клетки с содержимым (44×46).
+        // tile_bomb = клетка с миной, tile_flag = клетка с флагом,
+        // tile_bomb_wrong = клетка с неверной миной (после поражения).
+        rawBitmaps["tile_bomb"] = load("tile_bomb")
+        rawBitmaps["tile_flag"] = load("tile_flag")
+        rawBitmaps["tile_bomb_wrong"] = load("tile_bomb_wrong")
+        // item_* — отдельные иконки (для UI кнопок, не клеток).
         rawBitmaps["bomb"] = load("item_bomb")
         rawBitmaps["flag"] = load("item_flag")
         rawBitmaps["flag_wrong"] = load("item_flag_wrong")
@@ -493,21 +500,19 @@ class GameView : View {
                 when {
                     engine.isRevealed(r, c) && engine.isMine(r, c) -> {
                         // Открытая мина: лёгкая пульсация при первом открытии.
-                        // Берём tile_exploded + bomb с alpha по reveal-анимации.
+                        // v1.2.9: используем tile_bomb (единая клетка с миной).
                         canvas.save()
                         val cx = rect.centerX()
                         val cy = rect.centerY()
                         val sc = 0.5f + 0.5f * revealProg
                         canvas.scale(sc, sc, cx, cy)
                         val alpha = (255 * revealProg).toInt().coerceIn(0, 255)
-                        drawBitmapAlpha(canvas, "tile_exploded", left, top, right, bottom, alpha)
-                        drawBitmapAlpha(canvas, "bomb", left, top, right, bottom, alpha)
+                        drawBitmapAlpha(canvas, "tile_bomb", left, top, right, bottom, alpha)
                         canvas.restore()
                     }
                     engine.gameOver && engine.isMine(r, c) && !engine.isFlagged(r, c) -> {
                         // После поражения — показать ВСЕ мины, даже не открытые.
-                        drawBitmap(canvas, "tile_exploded", left, top, right, bottom)
-                        drawBitmap(canvas, "bomb", left, top, right, bottom)
+                        drawBitmap(canvas, "tile_bomb", left, top, right, bottom)
                     }
                     engine.isRevealed(r, c) -> {
                         // Анимация открытия: масштаб + альфа.
@@ -526,14 +531,14 @@ class GameView : View {
                     }
                     engine.isFlagged(r, c) -> {
                         // Пульсация флажка при постановке.
+                        // v1.2.9: используем tile_flag (единая клетка с флагом).
+                        // При поражении и неверном флаге — tile_bomb_wrong.
                         canvas.save()
                         val cx = rect.centerX()
                         val cy = rect.centerY()
                         canvas.scale(flagScale, flagScale, cx, cy)
-                        drawBitmap(canvas, "tile_closed", left, top, right, bottom)
-                        // Если поражение и флаг стоит НЕ на мине — перечёркнутый флаг.
                         val wrong = engine.gameOver && !engine.isMine(r, c)
-                        drawBitmap(canvas, if (wrong) "flag_wrong" else "flag", left, top, right, bottom)
+                        drawBitmap(canvas, if (wrong) "tile_bomb_wrong" else "tile_flag", left, top, right, bottom)
                         canvas.restore()
                     }
                     else -> {

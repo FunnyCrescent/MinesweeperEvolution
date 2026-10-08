@@ -380,20 +380,14 @@ class MainActivity : AppCompatActivity() {
             val normalRaw = BitmapFactory.decodeResource(resources, R.drawable.ui_button_normal, opts)
                 ?: return@post
 
-            // Фиксированный масштаб 4x + выравнивание высоты.
-            // ui_button_normal: 71×20 → 284×80
-            // ui_button_active: 53×24 → 212×96 — ВЫШЕ нормальной.
-            // Чтобы активная не была меньше нормальной по ширине и не дёргалась
-            // по высоте при переключении — масштабируем обе до ОДИНАКОВОЙ высоты 80px.
-            // Ширину сохраняем пропорционально (NEAREST, целочисленный масштаб).
-            val targetH = 80
-            val activeScale = maxOf(1, targetH / activeRaw.height)  // 80/24 = 3
-            val normalScale = maxOf(1, targetH / normalRaw.height)  // 80/20 = 4
+            // v1.2.9: обе кнопки теперь одинакового размера (72×20) и стиля.
+            // Простой целочисленный масштаб 4x → 288×80, центрируется по gravity=CENTER.
+            val scale = 4
             val activeScaled = Bitmap.createScaledBitmap(
-                activeRaw, activeRaw.width * activeScale, targetH, false
+                activeRaw, activeRaw.width * scale, activeRaw.height * scale, false
             )
             val normalScaled = Bitmap.createScaledBitmap(
-                normalRaw, normalRaw.width * normalScale, targetH, false
+                normalRaw, normalRaw.width * scale, normalRaw.height * scale, false
             )
 
             val activeDrawable = BitmapDrawable(resources, activeScaled).apply {
