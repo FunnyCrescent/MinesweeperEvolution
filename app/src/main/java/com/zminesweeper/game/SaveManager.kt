@@ -40,15 +40,15 @@ class SaveManager(context: Context) {
     fun saveGame(data: ByteArray) {
         try {
             saveDir.mkdirs()
-            val tmpFile = File(saveDir, "game.json.tmp")
-            tmpFile.writeBytes(data)
-            // sync — гарантия что данные на диске.
-            java.io.FileOutputStream(tmpFile).fd.sync()
-            if (!tmpFile.renameTo(saveFile)) {
-                tmpFile.copyTo(saveFile, overwrite = true)
-                tmpFile.delete()
-            }
-            android.util.Log.d("MinesweeperSave", "saveGame: written ${data.size} bytes to ${saveFile.absolutePath}")
+            // Удаляем старый файл сохранения (если есть) перед записью нового.
+            if (saveFile.exists()) saveFile.delete()
+            // Пишем напрямую в финальный файл с явным flush + sync.
+            val fos = java.io.FileOutputStream(saveFile)
+            fos.write(data)
+            fos.flush()
+            fos.fd.sync()
+            fos.close()
+            android.util.Log.d("MinesweeperSave", "saveGame: written ${data.size} bytes to ${saveFile.absolutePath}, exists=${saveFile.exists()}, size=${saveFile.length()}")
         } catch (e: Exception) {
             android.util.Log.e("MinesweeperSave", "saveGame: FAILED", e)
         }
@@ -116,7 +116,13 @@ class SaveManager(context: Context) {
         }
     }
 
-    fun hasSavedGame(): Boolean = saveFile.exists() && saveFile.length() > 0
+    fun hasSavedGame(): Boolean {
+        val exists = saveFile.exists()
+        val size = if (exists) saveFile.length() else 0L
+        val result = exists && size > 0
+        android.util.Log.d("MinesweeperSave", "hasSavedGame: file=${saveFile.absolutePath}, exists=$exists, size=$size, result=$result")
+        return result
+    }
 
     fun clearSavedGame() {
         try {

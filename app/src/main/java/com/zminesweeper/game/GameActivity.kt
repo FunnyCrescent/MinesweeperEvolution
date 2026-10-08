@@ -230,26 +230,13 @@ class GameActivity : AppCompatActivity() {
         super.onPause()
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(shiftRunnable)
-        // Автосохранение при любом выходе (сворачивание, переключение приложения,
-        // кнопка Home и т.д.) — только если игра ещё идёт И был сделан хотя бы один ход.
-        if (!engine.gameOver && engine.firstClickDone) {
-            engine.elapsedSec = elapsedSec
-            engine.shiftRemainingSec = shiftRemainingSec
-            save.saveGame(engine.serializeToJson())
-        } else if (savedFromLoaded) {
-            save.clearSavedGame()
-        }
+        // Сохранение в onPause убрано — дублировало confirmExit и могло конфликтовать.
+        // Сохранение делается ТОЛЬКО в confirmExit (кнопка Salir) и автосохранении.
     }
 
     override fun onStop() {
         super.onStop()
-        // Дополнительное сохранение в onStop — Activity может быть убита
-        // между onPause и onDestroy без возвращения.
-        if (!engine.gameOver && engine.firstClickDone) {
-            engine.elapsedSec = elapsedSec
-            engine.shiftRemainingSec = shiftRemainingSec
-            save.saveGame(engine.serializeToJson())
-        }
+        // Сохранение в onStop убрано по той же причине.
     }
 
     override fun onDestroy() {
@@ -259,12 +246,8 @@ class GameActivity : AppCompatActivity() {
         handler.removeCallbacks(autoSaveRunnable)
         sound?.release()
         sound = null
-        // Финальное сохранение — на всякий случай.
-        if (!engine.gameOver && engine.firstClickDone) {
-            engine.elapsedSec = elapsedSec
-            engine.shiftRemainingSec = shiftRemainingSec
-            save.saveGame(engine.serializeToJson())
-        }
+        // Сохранение в onDestroy убрано — Activity может быть убита после finish(),
+        // и сохранение здесь бессмысленно (уже сделано в confirmExit).
     }
 
     @Suppress("DEPRECATION")
@@ -301,13 +284,21 @@ class GameActivity : AppCompatActivity() {
         container.addView(title)
         container.addView(message)
 
-        AlertDialog.Builder(this)
+        val pixelFont = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.pixelify_sans)
+
+        val dialog = AlertDialog.Builder(this)
             .setView(container)
             .setPositiveButton(R.string.exit, DialogInterface.OnClickListener { _, _ ->
+                android.util.Log.d("MinesweeperSave", "Exit button: gameOver=${engine.gameOver}, firstClickDone=${engine.firstClickDone}, revealedCount=${engine.revealedCount}")
                 if (!engine.gameOver && engine.firstClickDone) {
                     engine.elapsedSec = elapsedSec
                     engine.shiftRemainingSec = shiftRemainingSec
-                    save.saveGame(engine.serializeToJson())
+                    val json = engine.serializeToJson()
+                    android.util.Log.d("MinesweeperSave", "Exit: saving JSON length=${json.length}")
+                    save.saveGame(json)
+                    android.util.Log.d("MinesweeperSave", "Exit: after saveGame, hasSavedGame=${save.hasSavedGame()}")
+                } else {
+                    android.util.Log.d("MinesweeperSave", "Exit: NOT saving (gameOver or !firstClickDone)")
                 }
                 finish()
             })
@@ -322,7 +313,12 @@ class GameActivity : AppCompatActivity() {
                 restartGame()
             })
             .setCancelable(false)
-            .show()
+            .create()
+        dialog.show()
+        // Применяем пиксельный шрифт к кнопкам диалога.
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.typeface = pixelFont
+        dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.typeface = pixelFont
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL)?.typeface = pixelFont
     }
 
     private fun restartGame() {

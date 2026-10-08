@@ -261,7 +261,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateContinueButton() {
         val btn = findViewById<android.widget.Button>(R.id.btnContinue)
-        if (save.hasSavedGame()) {
+        val has = save.hasSavedGame()
+        android.util.Log.d("MinesweeperSave", "updateContinueButton: hasSavedGame=$has")
+        if (has) {
             btn.visibility = View.VISIBLE
             btn.setOnClickListener {
                 val intent = Intent(this, GameActivity::class.java)
