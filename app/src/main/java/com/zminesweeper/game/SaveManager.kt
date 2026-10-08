@@ -19,48 +19,79 @@ class SaveManager(context: Context) {
     private val prefs: SharedPreferences =
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    // ---------- Файловое сохранение игры ----------
+    // ---------- Файловое сохранение игры (бинарный формат v1.2.8) ----------
 
     /** Папка для сохранений: /data/data/.../files/save/ */
     private val saveDir: File by lazy {
         File(appContext.filesDir, "save").also { it.mkdirs() }
     }
-    /** Файл сохранения: save/game.txt */
-    private val saveFile: File by lazy { File(saveDir, "game.txt") }
+    /** Файл сохранения: save/game.bin (бинарный формат) */
+    private val saveFile: File by lazy { File(saveDir, "game.bin") }
+    /** Старый текстовый файл (для миграции) */
+    private val legacyFile: File by lazy { File(saveDir, "game.txt") }
 
     /**
-     * Сохранить игровое состояние в файл.
-     * Использует writeText() — синхронная запись на диск.
+     * Сохранить игровое состояние в бинарный файл.
+     * Атомарная запись: временный файл + rename — защищает от повреждений
+     * при сбоях во время записи.
      */
-    fun saveGame(state: String) {
+    fun saveGame(data: ByteArray) {
         try {
             saveDir.mkdirs()
-            saveFile.writeText(state)
-            android.util.Log.d("MinesweeperSave", "saveGame: written ${state.length} chars to ${saveFile.absolutePath}")
+            // Пишем во временный файл, потом атомарно переименовываем.
+            val tmpFile = File(saveDir, "game.bin.tmp")
+            tmpFile.writeBytes(data)
+            // renameTo — атомарная операция на большинстве ФС.
+            if (!tmpFile.renameTo(saveFile)) {
+                // Если rename не удался — fallback: копируем.
+                tmpFile.copyTo(saveFile, overwrite = true)
+                tmpFile.delete()
+            }
+            android.util.Log.d("MinesweeperSave", "saveGame: written ${data.size} bytes to ${saveFile.absolutePath}")
         } catch (e: Exception) {
             android.util.Log.e("MinesweeperSave", "saveGame: FAILED", e)
         }
     }
 
+    /** Legacy — для старого текстового формата. Не используется в v1.2.8+. */
+    fun saveGame(state: String) {
+        // Пробуем интерпретировать как бинарный (если строка содержит бинарные данные).
+        // На практике не вызывается — GameActivity использует saveGame(ByteArray).
+        try {
+            saveDir.mkdirs()
+            saveFile.writeBytes(state.toByteArray())
+        } catch (e: Exception) {
+            android.util.Log.e("MinesweeperSave", "saveGame(legacy): FAILED", e)
+        }
+    }
+
     /**
-     * Загрузить игровое состояние из файла.
-     * Возвращает null если файла нет или он пустой.
+     * Загрузить игровое состояние из бинарного файла.
+     * Возвращает null если файла нет или он повреждён.
      */
-    fun loadGame(): String? {
+    fun loadGame(): ByteArray? {
         return try {
-            if (!saveFile.exists()) {
-                android.util.Log.d("MinesweeperSave", "loadGame: file not found at ${saveFile.absolutePath}")
+            if (!saveFile.exists() || saveFile.length() == 0L) {
+                android.util.Log.d("MinesweeperSave", "loadGame: binary file not found, trying legacy")
                 return null
             }
-            val data = saveFile.readText()
-            if (data.isBlank()) {
-                android.util.Log.d("MinesweeperSave", "loadGame: file is empty")
-                return null
-            }
-            android.util.Log.d("MinesweeperSave", "loadGame: read ${data.length} chars from ${saveFile.absolutePath}")
+            val data = saveFile.readBytes()
+            android.util.Log.d("MinesweeperSave", "loadGame: read ${data.size} bytes from ${saveFile.absolutePath}")
             data
         } catch (e: Exception) {
             android.util.Log.e("MinesweeperSave", "loadGame: FAILED", e)
+            null
+        }
+    }
+
+    /** Legacy — загрузка текстового формата. Для миграции со старых версий. */
+    fun loadLegacyGame(): String? {
+        return try {
+            if (!legacyFile.exists() || legacyFile.length() == 0L) return null
+            val data = legacyFile.readText()
+            android.util.Log.d("MinesweeperSave", "loadLegacyGame: read ${data.length} chars from ${legacyFile.absolutePath}")
+            data
+        } catch (e: Exception) {
             null
         }
     }
@@ -70,6 +101,7 @@ class SaveManager(context: Context) {
     fun clearSavedGame() {
         try {
             if (saveFile.exists()) saveFile.delete()
+            if (legacyFile.exists()) legacyFile.delete()
             android.util.Log.d("MinesweeperSave", "clearSavedGame: deleted")
         } catch (e: Exception) {
             android.util.Log.e("MinesweeperSave", "clearSavedGame: FAILED", e)

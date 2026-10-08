@@ -1,5 +1,9 @@
 package com.zminesweeper.game
 
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.DataInputStream
+import java.io.DataOutputStream
 import java.util.Random
 
 /**
@@ -755,9 +759,25 @@ class GameEngine {
         NO_CHANGE, REVEALED, EXPLODED, WON
     }
 
-    // ---- Сериализация для сохранений ----
+    // ---- Сериализация для сохранений (бинарный формат v1.2.8) ----
 
-    fun serialize(): String {
+    /**
+     * Бинарная сериализация. Надёжнее текстовой: нет проблем с парсингом,
+     * есть magic number + CRC32 для проверки целостности.
+     *
+     * Формат:
+     *   MAGIC (4 bytes): "MSEM"
+     *   VERSION (4 bytes): Int = 1
+     *   modeKey (UTF-8 with length prefix)
+     *   diffKey (UTF-8 with length prefix)
+     *   rows (Int), cols (Int)
+     *   mineCount (Int), flaggedCount (Int)
+     *   gameOver (Boolean), won (Boolean), firstClickDone (Boolean)
+     *   shiftsCount (Int), elapsedSec (Int), shiftRemainingSec (Int)
+     *   grid: rows*cols bytes (bit 2 = mine, bit 1 = revealed, bit 0 = flag)
+     *   CRC32 (8 bytes): Long
+     */
+    fun serializeToBytes(): ByteArray {
         // Пересчитываем фактическое число мин.
         var actualMines = 0
         for (r in 0 until rows) {
@@ -767,55 +787,162 @@ class GameEngine {
         }
         mineCount = actualMines
 
-        android.util.Log.d("MinesweeperSave", "serialize: ${rows}x${cols}, mines=$actualMines, revealed=$revealedCount, flagged=$flaggedCount, firstClick=$firstClickDone, mode=${mode.key}, elapsedSec=$elapsedSec, shiftRemainingSec=$shiftRemainingSec")
-
-        val sb = StringBuilder()
-        sb.append(mode.key).append('\n')
-        sb.append(difficulty.key).append('\n')
-        sb.append(rows).append(',').append(cols).append('\n')
-        // мета: mineCount, flaggedCount, gameOver, won, firstClickDone, shiftsCount, elapsedSec, shiftRemainingSec
-        sb.append(mineCount).append(',').append(flaggedCount).append(',')
-        sb.append(if (gameOver) 1 else 0).append(',').append(if (won) 1 else 0).append(',')
-        sb.append(if (firstClickDone) 1 else 0).append(',').append(shiftsCount).append(',')
-        sb.append(elapsedSec).append(',').append(shiftRemainingSec).append('\n')
+        val baos = ByteArrayOutputStream()
+        val dos = DataOutputStream(baos)
+        // MAGIC
+        dos.writeBytes("MSEM")
+        // VERSION
+        dos.writeInt(1)
+        // mode + diff
+        dos.writeUTF(mode.key)
+        dos.writeUTF(difficulty.key)
+        // dimensions
+        dos.writeInt(rows)
+        dos.writeInt(cols)
+        // meta
+        dos.writeInt(mineCount)
+        dos.writeInt(flaggedCount)
+        dos.writeBoolean(gameOver)
+        dos.writeBoolean(won)
+        dos.writeBoolean(firstClickDone)
+        dos.writeInt(shiftsCount)
+        dos.writeInt(elapsedSec)
+        dos.writeInt(shiftRemainingSec)
+        // grid
         for (r in 0 until rows) {
             for (c in 0 until cols) {
                 val v = (if (mines[r][c]) 1 else 0) shl 2 or
                         (if (revealed[r][c]) 1 else 0) shl 1 or
                         (if (flagged[r][c]) 1 else 0)
-                sb.append(v)
+                dos.writeByte(v)
             }
-            sb.append('\n')
         }
-        val result = sb.toString()
-        android.util.Log.d("MinesweeperSave", "serialize: result length=${result.length}, first 100 chars: ${result.take(100)}")
+        dos.flush()
+        val data = baos.toByteArray()
+        // CRC32
+        val crc = java.util.zip.CRC32()
+        crc.update(data)
+        val crcValue = crc.value
+        // Append CRC as 8 bytes (Long)
+        val result = ByteArray(data.size + 8)
+        System.arraycopy(data, 0, result, 0, data.size)
+        for (i in 0 until 8) {
+            result[data.size + i] = (crcValue ushr (i * 8)).toByte()
+        }
+        android.util.Log.d("MinesweeperSave", "serializeToBytes: ${rows}x${cols}, mines=$actualMines, size=${result.size} bytes")
         return result
+    }
+
+    fun serialize(): String {
+        // Legacy — не используется в v1.2.8+, оставлен для совместимости.
+        // Возвращает пустую строку (не должна вызываться).
+        return ""
     }
 
     companion object {
         private const val MAX_RESHUFFLE_ATTEMPTS = 50
         private const val MAX_PREVENTIVE_ATTEMPTS = 30
+        private const val SAVE_MAGIC = "MSEM"
+        private const val SAVE_VERSION = 1
 
+        /** Бинарная десериализация. Возвращает null при любой ошибке. */
+        fun deserializeFromBytes(data: ByteArray): GameEngine? {
+            return try {
+                if (data.size < 4 + 4 + 8) {
+                    android.util.Log.e("MinesweeperSave", "deserializeFromBytes: data too small (${data.size})")
+                    return null
+                }
+                // Проверка CRC32
+                val dataPart = data.copyOfRange(0, data.size - 8)
+                val crcExpected = (0 until 8).fold(0L) { acc, i ->
+                    acc or ((data[data.size - 8 + i].toLong() and 0xFF) shl (i * 8))
+                }
+                val crc = java.util.zip.CRC32()
+                crc.update(dataPart)
+                if (crc.value != crcExpected) {
+                    android.util.Log.e("MinesweeperSave", "deserializeFromBytes: CRC mismatch (expected=$crcExpected, actual=${crc.value})")
+                    return null
+                }
+
+                val bais = ByteArrayInputStream(dataPart)
+                val dis = DataInputStream(bais)
+                // MAGIC
+                val magic = ByteArray(4)
+                dis.readFully(magic)
+                if (String(magic) != SAVE_MAGIC) {
+                    android.util.Log.e("MinesweeperSave", "deserializeFromBytes: bad magic '${String(magic)}'")
+                    return null
+                }
+                // VERSION
+                val version = dis.readInt()
+                if (version != SAVE_VERSION) {
+                    android.util.Log.e("MinesweeperSave", "deserializeFromBytes: bad version $version")
+                    return null
+                }
+                // mode + diff
+                val modeKey = dis.readUTF()
+                val diffKey = dis.readUTF()
+                val mode = GameMode.fromKey(modeKey)
+                val diff = Difficulty.fromKey(diffKey)
+                // dimensions
+                val r = dis.readInt()
+                val c = dis.readInt()
+                if (r <= 0 || c <= 0 || r > 100 || c > 100) {
+                    android.util.Log.e("MinesweeperSave", "deserializeFromBytes: bad dimensions $r x $c")
+                    return null
+                }
+                // meta
+                val engine = GameEngine()
+                engine.mode = mode
+                engine.difficulty = diff
+                engine.rows = r
+                engine.cols = c
+                engine.mineCount = dis.readInt()
+                engine.flaggedCount = dis.readInt()
+                engine.gameOver = dis.readBoolean()
+                engine.won = dis.readBoolean()
+                engine.firstClickDone = dis.readBoolean()
+                engine.shiftsCount = dis.readInt()
+                engine.elapsedSec = dis.readInt()
+                engine.shiftRemainingSec = dis.readInt()
+                engine.mines.clear(); engine.revealed.clear(); engine.flagged.clear()
+                var actualMineCount = 0
+                for (rr in 0 until r) {
+                    engine.mines.add(BooleanArray(c))
+                    engine.revealed.add(BooleanArray(c))
+                    engine.flagged.add(BooleanArray(c))
+                    for (cc in 0 until c) {
+                        val v = dis.readByte().toInt()
+                        engine.mines[rr][cc] = (v shr 2) and 1 == 1
+                        engine.revealed[rr][cc] = (v shr 1) and 1 == 1
+                        engine.flagged[rr][cc] = v and 1 == 1
+                        if (engine.mines[rr][cc]) actualMineCount++
+                        if (engine.revealed[rr][cc]) engine.revealedCount++
+                    }
+                }
+                if (actualMineCount != engine.mineCount) {
+                    android.util.Log.w("MinesweeperSave", "deserializeFromBytes: mineCount mismatch (saved=${engine.mineCount}, actual=$actualMineCount) — fixing")
+                    engine.mineCount = actualMineCount
+                }
+                android.util.Log.d("MinesweeperSave", "deserializeFromBytes: OK, ${r}x${c}, mines=$actualMineCount, revealed=${engine.revealedCount}, firstClick=${engine.firstClickDone}, elapsed=${engine.elapsedSec}, shiftRem=${engine.shiftRemainingSec}")
+                engine
+            } catch (e: Exception) {
+                android.util.Log.e("MinesweeperSave", "deserializeFromBytes: exception", e)
+                null
+            }
+        }
+
+        /** Legacy текстовая десериализация — для совместимости со старыми сохранениями. */
         fun deserialize(data: String): GameEngine? {
             return try {
                 val lines = data.split('\n')
-                android.util.Log.d("MinesweeperSave", "deserialize: ${lines.size} lines, mode=${lines[0]}, diff=${lines[1]}")
-                if (lines.size < 5) {
-                    android.util.Log.e("MinesweeperSave", "deserialize: too few lines (${lines.size})")
-                    return null
-                }
+                if (lines.size < 5) return null
                 val mode = GameMode.fromKey(lines[0])
                 val diff = Difficulty.fromKey(lines[1])
                 val (r, c) = lines[2].split(',').let { it[0].toInt() to it[1].toInt() }
-                if (r <= 0 || c <= 0 || r > 100 || c > 100) {
-                    android.util.Log.e("MinesweeperSave", "deserialize: bad dimensions $r x $c")
-                    return null
-                }
+                if (r <= 0 || c <= 0 || r > 100 || c > 100) return null
                 val meta = lines[3].split(',')
-                if (meta.size < 6) {
-                    android.util.Log.e("MinesweeperSave", "deserialize: meta too short (${meta.size})")
-                    return null
-                }
+                if (meta.size < 6) return null
                 val engine = GameEngine()
                 engine.mode = mode
                 engine.difficulty = diff
@@ -827,38 +954,24 @@ class GameEngine {
                 engine.won = meta[3].toInt() == 1
                 engine.firstClickDone = meta[4].toInt() == 1
                 engine.shiftsCount = meta[5].toInt()
-                // Таймеры — добавлены в v1.2.7. Старые сохранения (6 полей) — значения 0.
                 engine.elapsedSec = if (meta.size > 6) meta[6].toInt() else 0
                 engine.shiftRemainingSec = if (meta.size > 7) meta[7].toInt() else 0
                 engine.mines.clear(); engine.revealed.clear(); engine.flagged.clear()
-                var actualMineCount = 0
                 for (rr in 0 until r) {
                     engine.mines.add(BooleanArray(c))
                     engine.revealed.add(BooleanArray(c))
                     engine.flagged.add(BooleanArray(c))
                     val line = lines[4 + rr]
-                    if (line.length < c) {
-                        android.util.Log.e("MinesweeperSave", "deserialize: line $rr too short (${line.length} < $c)")
-                        return null
-                    }
+                    if (line.length < c) return null
                     for (cc in 0 until c) {
                         val v = line[cc].digitToInt()
                         engine.mines[rr][cc] = (v shr 2) and 1 == 1
                         engine.revealed[rr][cc] = (v shr 1) and 1 == 1
                         engine.flagged[rr][cc] = v and 1 == 1
-                        if (engine.mines[rr][cc]) actualMineCount++
-                        if (engine.revealed[rr][cc]) engine.revealedCount++
                     }
                 }
-                // Если mineCount не совпадает — ИСПРАВЛЯЕМ, а не сбрасываем.
-                if (actualMineCount != engine.mineCount) {
-                    android.util.Log.w("MinesweeperSave", "deserialize: mineCount mismatch (saved=${engine.mineCount}, actual=$actualMineCount) — fixing")
-                    engine.mineCount = actualMineCount
-                }
-                android.util.Log.d("MinesweeperSave", "deserialize: OK, ${r}x${c}, mines=$actualMineCount, revealed=${engine.revealedCount}")
                 engine
             } catch (e: Exception) {
-                android.util.Log.e("MinesweeperSave", "deserialize: exception", e)
                 null
             }
         }
