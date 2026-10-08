@@ -1,6 +1,7 @@
 package com.zminesweeper.game
 
 import android.content.Intent
+import android.content.DialogInterface
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -10,6 +11,7 @@ import android.os.Vibrator
 import android.os.VibratorManager
 import android.view.View
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -38,7 +40,10 @@ class GameActivity : AppCompatActivity() {
     /** Автосохранение каждые 5 секунд во время игры. */
     private val autoSaveRunnable = object : Runnable {
         override fun run() {
-            if (!engine.gameOver) {
+            if (!engine.gameOver && engine.firstClickDone) {
+                // Копируем таймеры в engine перед сериализацией.
+                engine.elapsedSec = elapsedSec
+                engine.shiftRemainingSec = shiftRemainingSec
                 save.saveGame(engine.serialize())
             }
             handler.postDelayed(this, 5000)
@@ -101,6 +106,14 @@ class GameActivity : AppCompatActivity() {
             // Мины уже загружены из файла. Ничего не должно их менять.
             if (engine != null) {
                 android.util.Log.d("MinesweeperSave", "Engine loaded: ${engine!!.rows}x${engine!!.cols}, mines=${engine!!.mineCount}, revealed=${engine!!.revealedCount}, firstClick=${engine!!.firstClickDone}")
+                // Восстанавливаем таймеры из engine.
+                elapsedSec = engine!!.elapsedSec
+                shiftRemainingSec = engine!!.shiftRemainingSec
+                // startTimeMs — чтобы tickRunnable продолжил с восстановленного времени.
+                startTimeMs = System.currentTimeMillis() - elapsedSec * 1000L
+                // Обновляем UI таймеров.
+                findViewById<TextView>(R.id.tvTime).text = formatTime(elapsedSec)
+                findViewById<TextView>(R.id.tvShift).text = if (engine!!.mode.shifts) shiftRemainingSec.toString() else "—"
             }
             savedFromLoaded = true
         } else {
@@ -214,8 +227,10 @@ class GameActivity : AppCompatActivity() {
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(shiftRunnable)
         // Автосохранение при любом выходе (сворачивание, переключение приложения,
-        // кнопка Home и т.д.) — только если игра ещё идёт.
-        if (!engine.gameOver) {
+        // кнопка Home и т.д.) — только если игра ещё идёт И был сделан хотя бы один ход.
+        if (!engine.gameOver && engine.firstClickDone) {
+            engine.elapsedSec = elapsedSec
+            engine.shiftRemainingSec = shiftRemainingSec
             save.saveGame(engine.serialize())
         } else if (savedFromLoaded) {
             save.clearSavedGame()
@@ -226,7 +241,9 @@ class GameActivity : AppCompatActivity() {
         super.onStop()
         // Дополнительное сохранение в onStop — Activity может быть убита
         // между onPause и onDestroy без возвращения.
-        if (!engine.gameOver) {
+        if (!engine.gameOver && engine.firstClickDone) {
+            engine.elapsedSec = elapsedSec
+            engine.shiftRemainingSec = shiftRemainingSec
             save.saveGame(engine.serialize())
         }
     }
@@ -239,7 +256,9 @@ class GameActivity : AppCompatActivity() {
         sound?.release()
         sound = null
         // Финальное сохранение — на всякий случай.
-        if (!engine.gameOver) {
+        if (!engine.gameOver && engine.firstClickDone) {
+            engine.elapsedSec = elapsedSec
+            engine.shiftRemainingSec = shiftRemainingSec
             save.saveGame(engine.serialize())
         }
     }
@@ -253,24 +272,51 @@ class GameActivity : AppCompatActivity() {
         // Пауза: останавливаем таймеры пока диалог открыт.
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(shiftRunnable)
+
+        // Custom view с пиксельным шрифтом (вместо системного AlertDialog).
+        val container = LinearLayout(this)
+        container.orientation = LinearLayout.VERTICAL
+        container.setPadding(48, 40, 48, 24)
+
+        val title = TextView(this)
+        title.text = getString(R.string.pause_title)
+        title.typeface = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.press_start_2p)
+        title.textSize = 16f
+        title.setTextColor(getColor(R.color.accent))
+        title.gravity = android.view.Gravity.CENTER
+        title.setPadding(0, 0, 0, 16)
+
+        val message = TextView(this)
+        message.text = getString(R.string.pause_message)
+        message.typeface = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.pixelify_sans)
+        message.textSize = 14f
+        message.setTextColor(getColor(R.color.text_secondary))
+        message.gravity = android.view.Gravity.CENTER
+        message.setPadding(0, 0, 0, 24)
+
+        container.addView(title)
+        container.addView(message)
+
         AlertDialog.Builder(this)
-            .setTitle(R.string.pause_title)
-            .setMessage(R.string.pause_message)
-            .setPositiveButton(R.string.exit) { _, _ ->
-                if (!engine.gameOver) save.saveGame(engine.serialize())
+            .setView(container)
+            .setPositiveButton(R.string.exit, DialogInterface.OnClickListener { _, _ ->
+                if (!engine.gameOver && engine.firstClickDone) {
+                    engine.elapsedSec = elapsedSec
+                    engine.shiftRemainingSec = shiftRemainingSec
+                    save.saveGame(engine.serialize())
+                }
                 finish()
-            }
-            .setNegativeButton(R.string.continue_game) { _, _ ->
-                // Возобновляем таймеры с учётом паузы.
+            })
+            .setNegativeButton(R.string.continue_game, DialogInterface.OnClickListener { _, _ ->
                 startTimeMs = System.currentTimeMillis() - elapsedSec * 1000L
                 handler.post(tickRunnable)
                 if (engine.mode.shifts && !engine.gameOver) {
                     handler.post(shiftRunnable)
                 }
-            }
-            .setNeutralButton(R.string.restart) { _, _ ->
+            })
+            .setNeutralButton(R.string.restart, DialogInterface.OnClickListener { _, _ ->
                 restartGame()
-            }
+            })
             .setCancelable(false)
             .show()
     }

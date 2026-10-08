@@ -44,7 +44,7 @@ class GameEngine {
 
     /** Первый клик ещё не сделан — мины будут размещены после него (безопасный старт). */
     var firstClickDone: Boolean = false
-        private set
+        internal set
 
     /** Сколько сдвигов уже произошло (для статистики и UI). */
     var shiftsCount: Int = 0
@@ -53,6 +53,12 @@ class GameEngine {
     /** Была ли хотя бы одна открытая клетка до текущего сдвига. */
     var revealedCount: Int = 0
         private set
+
+    /** Прошедшее время в секундах (для сериализации). GameActivity обновляет. */
+    var elapsedSec: Int = 0
+
+    /** Оставшееся время до сдвига в секундах (для сериализации). GameActivity обновляет. */
+    var shiftRemainingSec: Int = 0
 
     private val mines = ArrayList<BooleanArray>()   // [row][col]
     private val revealed = ArrayList<BooleanArray>()
@@ -761,15 +767,17 @@ class GameEngine {
         }
         mineCount = actualMines
 
-        android.util.Log.d("MinesweeperSave", "serialize: ${rows}x${cols}, mines=$actualMines, revealed=$revealedCount, flagged=$flaggedCount, firstClick=$firstClickDone, mode=${mode.key}")
+        android.util.Log.d("MinesweeperSave", "serialize: ${rows}x${cols}, mines=$actualMines, revealed=$revealedCount, flagged=$flaggedCount, firstClick=$firstClickDone, mode=${mode.key}, elapsedSec=$elapsedSec, shiftRemainingSec=$shiftRemainingSec")
 
         val sb = StringBuilder()
         sb.append(mode.key).append('\n')
         sb.append(difficulty.key).append('\n')
         sb.append(rows).append(',').append(cols).append('\n')
+        // мета: mineCount, flaggedCount, gameOver, won, firstClickDone, shiftsCount, elapsedSec, shiftRemainingSec
         sb.append(mineCount).append(',').append(flaggedCount).append(',')
         sb.append(if (gameOver) 1 else 0).append(',').append(if (won) 1 else 0).append(',')
-        sb.append(if (firstClickDone) 1 else 0).append(',').append(shiftsCount).append('\n')
+        sb.append(if (firstClickDone) 1 else 0).append(',').append(shiftsCount).append(',')
+        sb.append(elapsedSec).append(',').append(shiftRemainingSec).append('\n')
         for (r in 0 until rows) {
             for (c in 0 until cols) {
                 val v = (if (mines[r][c]) 1 else 0) shl 2 or
@@ -819,6 +827,9 @@ class GameEngine {
                 engine.won = meta[3].toInt() == 1
                 engine.firstClickDone = meta[4].toInt() == 1
                 engine.shiftsCount = meta[5].toInt()
+                // Таймеры — добавлены в v1.2.7. Старые сохранения (6 полей) — значения 0.
+                engine.elapsedSec = if (meta.size > 6) meta[6].toInt() else 0
+                engine.shiftRemainingSec = if (meta.size > 7) meta[7].toInt() else 0
                 engine.mines.clear(); engine.revealed.clear(); engine.flagged.clear()
                 var actualMineCount = 0
                 for (rr in 0 until r) {
