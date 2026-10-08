@@ -166,6 +166,18 @@ class GameActivity : AppCompatActivity() {
         findViewById<ImageView>(R.id.btnMenu).setOnClickListener {
             confirmExit()
         }
+        // Зум-кнопки: + и −. Раньше были стрелки (icon_retry с rotation) и НЕ были
+        // подключены к GameView.zoomIn()/zoomOut() — поэтому не работали.
+        findViewById<View>(R.id.btnZoomIn).setOnClickListener {
+            gameView.zoomIn()
+            gameView.invalidate()
+            sound?.play(SoundManager.Type.CLICK)
+        }
+        findViewById<View>(R.id.btnZoomOut).setOnClickListener {
+            gameView.zoomOut()
+            gameView.invalidate()
+            sound?.play(SoundManager.Type.CLICK)
+        }
 
         updateModeLabel()
         updateMinesLabel()

@@ -113,23 +113,24 @@ class MainActivity : AppCompatActivity() {
         val pixelFont = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.pixelify_sans)
         for (diff in Difficulty.entries) {
             val btn = android.widget.Button(this)
-            // Фиксированная высота — кнопки не "пляшут" от переносов.
-            val lp = LinearLayout.LayoutParams(0, (48 * resources.displayMetrics.density).toInt(), 1f)
+            // Фиксированная высота 64dp — вмещает 2 строки текста.
+            val density = resources.displayMetrics.density
+            val lp = LinearLayout.LayoutParams(0, (64 * density).toInt(), 1f)
             lp.setMargins(4, 0, 4, 0)
             btn.layoutParams = lp
-            // Текст в одну строку: "Principiante · 8×8 · 10" — без переносов.
+            // 2 строки: сверху название, под ним характеристика.
+            // Для CUSTOM — "Custom\n16×30" (размер обновляется при выборе).
             btn.text = if (diff == Difficulty.CUSTOM) {
-                getString(R.string.custom_size, MinesweeperApp.customRows, MinesweeperApp.customCols)
+                "${diff.display}\n${MinesweeperApp.customRows}×${MinesweeperApp.customCols}"
             } else {
-                "${diff.display} · ${diff.shortDesc}"
+                "${diff.display}\n${diff.shortDesc}"
             }
             btn.textSize = 11f
             btn.typeface = pixelFont
-            btn.maxLines = 1
-            btn.ellipsize = android.text.TextUtils.TruncateAt.END
+            btn.maxLines = 2
             btn.setBackgroundResource(R.drawable.bg_diff_button)
             btn.setTextColor(getColor(R.color.text_primary))
-            btn.setPadding(6, 0, 6, 0)
+            btn.setPadding(6, 4, 6, 4)
             btn.gravity = Gravity.CENTER
             btn.isAllCaps = false
             btn.setOnClickListener {
@@ -144,7 +145,7 @@ class MainActivity : AppCompatActivity() {
                         }
                         btn.isActivated = true
                         btn.isSelected = true
-                        btn.text = getString(R.string.custom_size, MinesweeperApp.customRows, MinesweeperApp.customCols)
+                        btn.text = "${diff.display}\n${MinesweeperApp.customRows}×${MinesweeperApp.customCols}"
                     }
                 } else {
                     selectedDiff = diff
@@ -379,16 +380,20 @@ class MainActivity : AppCompatActivity() {
             val normalRaw = BitmapFactory.decodeResource(resources, R.drawable.ui_button_normal, opts)
                 ?: return@post
 
-            // Фиксированный масштаб (3x) — компактная кнопка по центру, края карточки видны.
-            // ui_button_normal: 71x20 → 213x60 (на карточке ~300x80 выглядит как кнопка,
-            //   а не как растянутая на всю ширину плашка).
-            // ui_button_active: 53x24 → 159x72.
-            val scale = 3
+            // Фиксированный масштаб 4x + выравнивание высоты.
+            // ui_button_normal: 71×20 → 284×80
+            // ui_button_active: 53×24 → 212×96 — ВЫШЕ нормальной.
+            // Чтобы активная не была меньше нормальной по ширине и не дёргалась
+            // по высоте при переключении — масштабируем обе до ОДИНАКОВОЙ высоты 80px.
+            // Ширину сохраняем пропорционально (NEAREST, целочисленный масштаб).
+            val targetH = 80
+            val activeScale = maxOf(1, targetH / activeRaw.height)  // 80/24 = 3
+            val normalScale = maxOf(1, targetH / normalRaw.height)  // 80/20 = 4
             val activeScaled = Bitmap.createScaledBitmap(
-                activeRaw, activeRaw.width * scale, activeRaw.height * scale, false
+                activeRaw, activeRaw.width * activeScale, targetH, false
             )
             val normalScaled = Bitmap.createScaledBitmap(
-                normalRaw, normalRaw.width * scale, normalRaw.height * scale, false
+                normalRaw, normalRaw.width * normalScale, targetH, false
             )
 
             val activeDrawable = BitmapDrawable(resources, activeScaled).apply {
