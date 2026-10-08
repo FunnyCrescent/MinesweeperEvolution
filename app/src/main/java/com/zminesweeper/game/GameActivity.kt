@@ -44,7 +44,7 @@ class GameActivity : AppCompatActivity() {
                 // Копируем таймеры в engine перед сериализацией.
                 engine.elapsedSec = elapsedSec
                 engine.shiftRemainingSec = shiftRemainingSec
-                save.saveGame(engine.serializeToBytes())
+                save.saveGame(engine.serializeToJson())
             }
             handler.postDelayed(this, 5000)
         }
@@ -90,24 +90,16 @@ class GameActivity : AppCompatActivity() {
 
         val loadSave = intent.getBooleanExtra(EXTRA_LOAD_SAVE, false)
         if (loadSave && save.hasSavedGame()) {
-            // Бинарный формат (v1.2.8+), с fallback на старый текстовый.
+            // JSON формат (v1.3.0). SaveManager уже удалил несовместимые старые файлы.
             var loadedEngine: GameEngine? = null
-            val binaryState = save.loadGame()
-            if (binaryState != null) {
-                loadedEngine = GameEngine.deserializeFromBytes(binaryState)
-                if (loadedEngine == null) {
-                    android.util.Log.w("MinesweeperSave", "Binary load failed — trying legacy text")
-                }
-            }
-            if (loadedEngine == null) {
-                val legacyState = save.loadLegacyGame()
-                if (legacyState != null) {
-                    loadedEngine = GameEngine.deserialize(legacyState)
-                }
+            val state = save.loadGame()
+            if (state != null) {
+                val jsonStr = String(state, Charsets.UTF_8)
+                loadedEngine = GameEngine.deserializeFromJson(jsonStr)
             }
             if (loadedEngine != null) {
                 engine = loadedEngine
-                android.util.Log.d("MinesweeperSave", "Engine loaded: ${engine.rows}x${engine.cols}, mines=${engine.mineCount}, revealed=${engine.revealedCount}, firstClick=${engine.firstClickDone}")
+                android.util.Log.d("MinesweeperSave", "Engine loaded: ${engine.rows}x${engine.cols}, mines=${engine.mineCount}, revealed=${engine.revealedCount}, flags=${engine.flaggedCount}, firstClick=${engine.firstClickDone}")
                 // Восстанавливаем таймеры из engine.
                 elapsedSec = engine.elapsedSec
                 shiftRemainingSec = engine.shiftRemainingSec
@@ -115,7 +107,7 @@ class GameActivity : AppCompatActivity() {
                 findViewById<TextView>(R.id.tvTime).text = formatTime(elapsedSec)
                 findViewById<TextView>(R.id.tvShift).text = if (engine.mode.shifts) shiftRemainingSec.toString() else "—"
             } else {
-                android.util.Log.e("MinesweeperSave", "All load attempts failed — starting new game")
+                android.util.Log.e("MinesweeperSave", "Load failed — starting new game")
                 android.widget.Toast.makeText(this,
                     getString(R.string.save_corrupted),
                     android.widget.Toast.LENGTH_LONG
@@ -225,7 +217,11 @@ class GameActivity : AppCompatActivity() {
         handler.post(tickRunnable)
         handler.postDelayed(autoSaveRunnable, 5000)  // автосохранение каждые 5с
         if (engine.mode.shifts) {
-            shiftRemainingSec = if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()
+            // Если загружено сохранение — shiftRemainingSec уже восстановлен из engine.
+            // Иначе (новая игра) — ставим дефолт.
+            if (!savedFromLoaded) {
+                shiftRemainingSec = if (engine.mode.coversAllAfterShift) 25 else save.shiftInterval()
+            }
             handler.post(shiftRunnable)
         }
     }
@@ -239,7 +235,7 @@ class GameActivity : AppCompatActivity() {
         if (!engine.gameOver && engine.firstClickDone) {
             engine.elapsedSec = elapsedSec
             engine.shiftRemainingSec = shiftRemainingSec
-            save.saveGame(engine.serializeToBytes())
+            save.saveGame(engine.serializeToJson())
         } else if (savedFromLoaded) {
             save.clearSavedGame()
         }
@@ -252,7 +248,7 @@ class GameActivity : AppCompatActivity() {
         if (!engine.gameOver && engine.firstClickDone) {
             engine.elapsedSec = elapsedSec
             engine.shiftRemainingSec = shiftRemainingSec
-            save.saveGame(engine.serializeToBytes())
+            save.saveGame(engine.serializeToJson())
         }
     }
 
@@ -267,7 +263,7 @@ class GameActivity : AppCompatActivity() {
         if (!engine.gameOver && engine.firstClickDone) {
             engine.elapsedSec = elapsedSec
             engine.shiftRemainingSec = shiftRemainingSec
-            save.saveGame(engine.serializeToBytes())
+            save.saveGame(engine.serializeToJson())
         }
     }
 
@@ -311,7 +307,7 @@ class GameActivity : AppCompatActivity() {
                 if (!engine.gameOver && engine.firstClickDone) {
                     engine.elapsedSec = elapsedSec
                     engine.shiftRemainingSec = shiftRemainingSec
-                    save.saveGame(engine.serializeToBytes())
+                    save.saveGame(engine.serializeToJson())
                 }
                 finish()
             })

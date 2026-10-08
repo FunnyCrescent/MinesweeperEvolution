@@ -19,31 +19,32 @@ class SaveManager(context: Context) {
     private val prefs: SharedPreferences =
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    // ---------- Файловое сохранение игры (бинарный формат v1.2.8) ----------
+    // ---------- Файловое сохранение игры (JSON формат v1.3.0) ----------
 
     /** Папка для сохранений: /data/data/.../files/save/ */
     private val saveDir: File by lazy {
         File(appContext.filesDir, "save").also { it.mkdirs() }
     }
-    /** Файл сохранения: save/game.bin (бинарный формат) */
-    private val saveFile: File by lazy { File(saveDir, "game.bin") }
-    /** Старый текстовый файл (для миграции) */
-    private val legacyFile: File by lazy { File(saveDir, "game.txt") }
+    /** Файл сохранения: save/game.json (JSON формат v1.3.0) */
+    private val saveFile: File by lazy { File(saveDir, "game.json") }
+    /** Старый бинарный файл (v1.2.8) */
+    private val legacyBinFile: File by lazy { File(saveDir, "game.bin") }
+    /** Старый текстовый файл (v1.2.7 и ранее) */
+    private val legacyTxtFile: File by lazy { File(saveDir, "game.txt") }
 
     /**
-     * Сохранить игровое состояние в бинарный файл.
+     * Сохранить игровое состояние в JSON файл.
      * Атомарная запись: временный файл + rename — защищает от повреждений
      * при сбоях во время записи.
      */
     fun saveGame(data: ByteArray) {
         try {
             saveDir.mkdirs()
-            // Пишем во временный файл, потом атомарно переименовываем.
-            val tmpFile = File(saveDir, "game.bin.tmp")
+            val tmpFile = File(saveDir, "game.json.tmp")
             tmpFile.writeBytes(data)
-            // renameTo — атомарная операция на большинстве ФС.
+            // sync — гарантия что данные на диске.
+            java.io.FileOutputStream(tmpFile).fd.sync()
             if (!tmpFile.renameTo(saveFile)) {
-                // Если rename не удался — fallback: копируем.
                 tmpFile.copyTo(saveFile, overwrite = true)
                 tmpFile.delete()
             }
@@ -53,43 +54,62 @@ class SaveManager(context: Context) {
         }
     }
 
-    /** Legacy — для старого текстового формата. Не используется в v1.2.8+. */
+    /** Legacy — для старого текстового/бинарного формата. */
     fun saveGame(state: String) {
-        // Пробуем интерпретировать как бинарный (если строка содержит бинарные данные).
-        // На практике не вызывается — GameActivity использует saveGame(ByteArray).
-        try {
-            saveDir.mkdirs()
-            saveFile.writeBytes(state.toByteArray())
-        } catch (e: Exception) {
-            android.util.Log.e("MinesweeperSave", "saveGame(legacy): FAILED", e)
-        }
+        saveGame(state.toByteArray(Charsets.UTF_8))
     }
 
     /**
-     * Загрузить игровое состояние из бинарного файла.
+     * Загрузить игровое состояние из JSON файла.
      * Возвращает null если файла нет или он повреждён.
+     * Пробует: game.json → game.bin (v1.2.8 binary) → game.txt (v1.2.7 text).
      */
     fun loadGame(): ByteArray? {
-        return try {
-            if (!saveFile.exists() || saveFile.length() == 0L) {
-                android.util.Log.d("MinesweeperSave", "loadGame: binary file not found, trying legacy")
+        // 1. JSON (v1.3.0)
+        try {
+            if (saveFile.exists() && saveFile.length() > 0L) {
+                val data = saveFile.readBytes()
+                android.util.Log.d("MinesweeperSave", "loadGame: read ${data.size} bytes from game.json")
+                return data
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MinesweeperSave", "loadGame: game.json FAILED", e)
+        }
+        // 2. Legacy binary (v1.2.8) — читаем, но помечаем для миграции
+        try {
+            if (legacyBinFile.exists() && legacyBinFile.length() > 0L) {
+                val data = legacyBinFile.readBytes()
+                android.util.Log.d("MinesweeperSave", "loadGame: read ${data.size} bytes from legacy game.bin")
+                // Удаляем старый бинарный — он несовместим с v1.3.0 JSON.
+                legacyBinFile.delete()
+                return null  // возвращаем null, чтобы начать новую игру
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MinesweeperSave", "loadGame: game.bin FAILED", e)
+        }
+        // 3. Legacy text (v1.2.7) — читаем, но помечаем для миграции
+        try {
+            if (legacyTxtFile.exists() && legacyTxtFile.length() > 0L) {
+                val data = legacyTxtFile.readBytes()
+                android.util.Log.d("MinesweeperSave", "loadGame: read ${data.size} bytes from legacy game.txt")
+                // Удаляем старый текстовый — он несовместим с v1.3.0.
+                legacyTxtFile.delete()
                 return null
             }
-            val data = saveFile.readBytes()
-            android.util.Log.d("MinesweeperSave", "loadGame: read ${data.size} bytes from ${saveFile.absolutePath}")
-            data
         } catch (e: Exception) {
-            android.util.Log.e("MinesweeperSave", "loadGame: FAILED", e)
-            null
+            android.util.Log.e("MinesweeperSave", "loadGame: game.txt FAILED", e)
         }
+        return null
     }
 
-    /** Legacy — загрузка текстового формата. Для миграции со старых версий. */
+    /** Legacy — загрузка текстового формата. Для миграции. */
     fun loadLegacyGame(): String? {
         return try {
-            if (!legacyFile.exists() || legacyFile.length() == 0L) return null
-            val data = legacyFile.readText()
-            android.util.Log.d("MinesweeperSave", "loadLegacyGame: read ${data.length} chars from ${legacyFile.absolutePath}")
+            if (!legacyTxtFile.exists() || legacyTxtFile.length() == 0L) return null
+            val data = legacyTxtFile.readText()
+            android.util.Log.d("MinesweeperSave", "loadLegacyGame: read ${data.length} chars")
+            // Удаляем после чтения — миграция выполнена.
+            legacyTxtFile.delete()
             data
         } catch (e: Exception) {
             null
@@ -101,8 +121,9 @@ class SaveManager(context: Context) {
     fun clearSavedGame() {
         try {
             if (saveFile.exists()) saveFile.delete()
-            if (legacyFile.exists()) legacyFile.delete()
-            android.util.Log.d("MinesweeperSave", "clearSavedGame: deleted")
+            if (legacyBinFile.exists()) legacyBinFile.delete()
+            if (legacyTxtFile.exists()) legacyTxtFile.delete()
+            android.util.Log.d("MinesweeperSave", "clearSavedGame: all save files deleted")
         } catch (e: Exception) {
             android.util.Log.e("MinesweeperSave", "clearSavedGame: FAILED", e)
         }
