@@ -90,11 +90,10 @@ class GameActivity : AppCompatActivity() {
 
         val loadSave = intent.getBooleanExtra(EXTRA_LOAD_SAVE, false)
         if (loadSave && save.hasSavedGame()) {
-            // JSON формат (v1.3.0). SaveManager уже удалил несовместимые старые файлы.
+            // v1.2.9.2: SharedPreferences + JSON.
             var loadedEngine: GameEngine? = null
-            val state = save.loadGame()
-            if (state != null) {
-                val jsonStr = String(state, Charsets.UTF_8)
+            val jsonStr = save.loadGame()
+            if (jsonStr != null) {
                 loadedEngine = GameEngine.deserializeFromJson(jsonStr)
             }
             if (loadedEngine != null) {

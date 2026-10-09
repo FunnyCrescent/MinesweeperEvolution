@@ -97,4 +97,25 @@
         android:max="27"
         android:progress="7" />
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginVertical="12dp"
+        android:background="@color/text_dim" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/language"
+        android:fontFamily="@font/pixelify_sans"
+        android:textColor="@color/text_primary"
+        android:textSize="15sp"
+        android:layout_marginBottom="8dp" />
+
+    <Spinner
+        android:id="@+id/spLanguage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:fontFamily="@font/pixelify_sans" />
+
 </LinearLayout>

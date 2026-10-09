@@ -19,125 +19,60 @@ class SaveManager(context: Context) {
     private val prefs: SharedPreferences =
         appContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
-    // ---------- Файловое сохранение игры (JSON формат v1.3.0) ----------
+    // ---------- Сохранение игры в SharedPreferences (v1.2.9.2) ----------
+    // Прозрачно, надёжно, синхронная запись через commit().
+    // Состояние: JSON строка в SharedPreferences.
 
-    /** Папка для сохранений: /data/data/.../files/save/ */
-    private val saveDir: File by lazy {
-        File(appContext.filesDir, "save").also { it.mkdirs() }
-    }
-    /** Файл сохранения: save/game.json (JSON формат v1.3.0) */
-    private val saveFile: File by lazy { File(saveDir, "game.json") }
-    /** Старый бинарный файл (v1.2.8) */
-    private val legacyBinFile: File by lazy { File(saveDir, "game.bin") }
-    /** Старый текстовый файл (v1.2.7 и ранее) */
-    private val legacyTxtFile: File by lazy { File(saveDir, "game.txt") }
-
-    /**
-     * Сохранить игровое состояние в JSON файл.
-     * Атомарная запись: временный файл + rename — защищает от повреждений
-     * при сбоях во время записи.
-     */
-    fun saveGame(data: ByteArray) {
+    /** Сохранить игровое состояние (JSON строка) в SharedPreferences. */
+    fun saveGame(jsonStr: String) {
         try {
-            saveDir.mkdirs()
-            // Удаляем старый файл сохранения (если есть) перед записью нового.
-            if (saveFile.exists()) saveFile.delete()
-            // Пишем напрямую в финальный файл с явным flush + sync.
-            val fos = java.io.FileOutputStream(saveFile)
-            fos.write(data)
-            fos.flush()
-            fos.fd.sync()
-            fos.close()
-            android.util.Log.d("MinesweeperSave", "saveGame: written ${data.size} bytes to ${saveFile.absolutePath}, exists=${saveFile.exists()}, size=${saveFile.length()}")
+            prefs.edit().putString(KEY_GAME_STATE, jsonStr).commit()
+            android.util.Log.d("MinesweeperSave", "saveGame: committed ${jsonStr.length} chars to SharedPreferences")
         } catch (e: Exception) {
             android.util.Log.e("MinesweeperSave", "saveGame: FAILED", e)
         }
     }
 
-    /** Legacy — для старого текстового/бинарного формата. */
-    fun saveGame(state: String) {
-        saveGame(state.toByteArray(Charsets.UTF_8))
+    /** Legacy — для ByteArray. */
+    fun saveGame(data: ByteArray) {
+        saveGame(String(data, Charsets.UTF_8))
     }
 
-    /**
-     * Загрузить игровое состояние из JSON файла.
-     * Возвращает null если файла нет или он повреждён.
-     * Пробует: game.json → game.bin (v1.2.8 binary) → game.txt (v1.2.7 text).
-     */
-    fun loadGame(): ByteArray? {
-        // 1. JSON (v1.3.0)
-        try {
-            if (saveFile.exists() && saveFile.length() > 0L) {
-                val data = saveFile.readBytes()
-                android.util.Log.d("MinesweeperSave", "loadGame: read ${data.size} bytes from game.json")
-                return data
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("MinesweeperSave", "loadGame: game.json FAILED", e)
-        }
-        // 2. Legacy binary (v1.2.8) — читаем, но помечаем для миграции
-        try {
-            if (legacyBinFile.exists() && legacyBinFile.length() > 0L) {
-                val data = legacyBinFile.readBytes()
-                android.util.Log.d("MinesweeperSave", "loadGame: read ${data.size} bytes from legacy game.bin")
-                // Удаляем старый бинарный — он несовместим с v1.3.0 JSON.
-                legacyBinFile.delete()
-                return null  // возвращаем null, чтобы начать новую игру
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("MinesweeperSave", "loadGame: game.bin FAILED", e)
-        }
-        // 3. Legacy text (v1.2.7) — читаем, но помечаем для миграции
-        try {
-            if (legacyTxtFile.exists() && legacyTxtFile.length() > 0L) {
-                val data = legacyTxtFile.readBytes()
-                android.util.Log.d("MinesweeperSave", "loadGame: read ${data.size} bytes from legacy game.txt")
-                // Удаляем старый текстовый — он несовместим с v1.3.0.
-                legacyTxtFile.delete()
-                return null
-            }
-        } catch (e: Exception) {
-            android.util.Log.e("MinesweeperSave", "loadGame: game.txt FAILED", e)
-        }
-        return null
-    }
-
-    /** Legacy — загрузка текстового формата. Для миграции. */
-    fun loadLegacyGame(): String? {
+    /** Загрузить игровое состояние из SharedPreferences. Возвращает JSON строку или null. */
+    fun loadGame(): String? {
         return try {
-            if (!legacyTxtFile.exists() || legacyTxtFile.length() == 0L) return null
-            val data = legacyTxtFile.readText()
-            android.util.Log.d("MinesweeperSave", "loadLegacyGame: read ${data.length} chars")
-            // Удаляем после чтения — миграция выполнена.
-            legacyTxtFile.delete()
-            data
+            val state = prefs.getString(KEY_GAME_STATE, null)
+            android.util.Log.d("MinesweeperSave", "loadGame: read ${state?.length ?: 0} chars from SharedPreferences")
+            state
         } catch (e: Exception) {
+            android.util.Log.e("MinesweeperSave", "loadGame: FAILED", e)
             null
         }
     }
 
     fun hasSavedGame(): Boolean {
-        val exists = saveFile.exists()
-        val size = if (exists) saveFile.length() else 0L
-        val result = exists && size > 0
-        android.util.Log.d("MinesweeperSave", "hasSavedGame: file=${saveFile.absolutePath}, exists=$exists, size=$size, result=$result")
+        val state = prefs.getString(KEY_GAME_STATE, null)
+        val result = !state.isNullOrBlank()
+        android.util.Log.d("MinesweeperSave", "hasSavedGame: state is ${if (state.isNullOrBlank()) "null/blank" else "${state.length} chars"}, result=$result")
         return result
     }
 
     fun clearSavedGame() {
         try {
-            if (saveFile.exists()) saveFile.delete()
-            if (legacyBinFile.exists()) legacyBinFile.delete()
-            if (legacyTxtFile.exists()) legacyTxtFile.delete()
-            android.util.Log.d("MinesweeperSave", "clearSavedGame: all save files deleted")
+            prefs.edit().remove(KEY_GAME_STATE).commit()
+            android.util.Log.d("MinesweeperSave", "clearSavedGame: removed from SharedPreferences")
         } catch (e: Exception) {
             android.util.Log.e("MinesweeperSave", "clearSavedGame: FAILED", e)
         }
     }
 
-    fun lastSaveTime(): Long = if (saveFile.exists()) saveFile.lastModified() else 0L
+    fun lastSaveTime(): Long = 0L  // Не используется в v1.2.9.2
 
     // ---------- Настройки (в SharedPreferences — это нормально) ----------
+
+    // Язык: "system" (по умолчанию), "ru", "en", "es".
+    fun setLanguage(lang: String) = prefs.edit().putString(KEY_LANGUAGE, lang).apply()
+    fun language(): String = prefs.getString(KEY_LANGUAGE, "system") ?: "system"
 
     fun setVibration(enabled: Boolean) = prefs.edit().putBoolean(KEY_VIBRATION, enabled).apply()
     fun isVibration(): Boolean = prefs.getBoolean(KEY_VIBRATION, true)
@@ -224,6 +159,8 @@ class SaveManager(context: Context) {
 
     companion object {
         private const val PREFS = "minesweeper_prefs"
+        private const val KEY_GAME_STATE = "game_state_json"
+        private const val KEY_LANGUAGE = "language"
         private const val KEY_VIBRATION = "vibration"
         private const val KEY_SOUND = "sound"
         private const val KEY_LONG_PRESS = "long_press_flag"

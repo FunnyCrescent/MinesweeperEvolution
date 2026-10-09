@@ -65,7 +65,9 @@
     <string name="shifts_label">Cambios: %1$d</string>
 
     <!-- Settings -->
+    <string name="language">Idioma</string>
     <string name="settings">Ajustes</string>
+    <string name="lang_system">Sistema</string>
     <string name="vibration">Vibración</string>
     <string name="sound">Sonido</string>
     <string name="long_press_flag">Pulsación larga = bandera</string>

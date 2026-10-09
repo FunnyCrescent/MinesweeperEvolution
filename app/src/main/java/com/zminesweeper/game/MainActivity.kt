@@ -282,6 +282,7 @@ class MainActivity : AppCompatActivity() {
         val swLongPress = view.findViewById<SwitchCompat>(R.id.swLongPress)
         val sliderShift = view.findViewById<SeekBar>(R.id.sliderShift)
         val tvShiftVal = view.findViewById<TextView>(R.id.tvShiftVal)
+        val spLanguage = view.findViewById<android.widget.Spinner>(R.id.spLanguage)
 
         swVibration.isChecked = save.isVibration()
         swSound.isChecked = save.isSound()
@@ -297,6 +298,18 @@ class MainActivity : AppCompatActivity() {
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
 
+        // Spinner выбора языка: Системный / Русский / English / Español.
+        val langOptions = arrayOf(
+            getString(R.string.lang_system), "Русский", "English", "Español"
+        )
+        val langKeys = arrayOf("system", "ru", "en", "es")
+        val langAdapter = android.widget.ArrayAdapter(this, android.R.layout.simple_spinner_item, langOptions)
+        langAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        spLanguage.adapter = langAdapter
+        val currentLang = save.language()
+        val langIdx = langKeys.indexOf(currentLang).coerceAtLeast(0)
+        spLanguage.setSelection(langIdx)
+
         AlertDialog.Builder(this)
             .setTitle(R.string.settings)
             .setView(view)
@@ -305,6 +318,14 @@ class MainActivity : AppCompatActivity() {
                 save.setSound(swSound.isChecked)
                 save.setLongPressFlag(swLongPress.isChecked)
                 save.setShiftInterval(sliderShift.progress + 3)
+                // Язык
+                val newLang = langKeys[spLanguage.selectedItemPosition]
+                if (newLang != currentLang) {
+                    save.setLanguage(newLang)
+                    MinesweeperApp.applyLanguage(newLang)
+                    // Пересоздаём Activity чтобы применить язык.
+                    recreate()
+                }
             }
             .setNegativeButton(R.string.cancel, null)
             .show()
