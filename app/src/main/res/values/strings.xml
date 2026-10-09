@@ -16,6 +16,13 @@
     <string name="mode_anarchy_desc">Хаос. Случайное число мин.</string>
     <string name="mode_avalanche_desc">Каждые 25с поле закрывается.</string>
 
+    <!-- Подробные правила режимов -->
+    <string name="mode_classic_rules">Классический сапёр. Мины стоят на месте.\n\nОткрывай клетки логически по цифрам. Цифра показывает сколько мин вокруг. Поставь флажок чтобы отметить мину. Победа — все не-минные клетки открыты.</string>
+    <string name="mode_drift_rules">Дрейф: мины перемещаются каждые N секунд.\n\nМины под флажками остаются на месте — ставь флажки чтобы зафиксировать мины. Цифры пересчитываются после сдвига. Побеждает тот кто откроет все безопасные клетки.</string>
+    <string name="mode_chaos_rules">Хаос: все мины перемещаются каждые N секунд.\n\nФлажки сбрасываются при каждом сдвиге. Поле полностью меняется — нужно быстро адаптироваться. Цифры пересчитываются.</string>
+    <string name="mode_anarchy_rules">Анархия: Хаос + случайное число мин каждый сдвиг.\n\nКоличество мин меняется случайно от 1 до размера поля. Лимита нет. Самый непредсказуемый режим.</string>
+    <string name="mode_avalanche_rules">Лавина: каждые 25 секунд всё поле закрывается заново.\n\nЦель — поставить флажки на все мины. Мины под флажками остаются. Неверный флаг = поражение. Первый клик после покрытия безопасен.</string>
+
     <!-- Difficulties -->
     <string name="diff_beginner">Новичок</string>
     <string name="diff_veteran">Ветеран</string>
@@ -67,6 +74,8 @@
     <!-- Settings -->
     <string name="language">Язык</string>
     <string name="settings">Настройки</string>
+    <string name="info">Правила</string>
+    <string name="telegram">Telegram</string>
     <string name="lang_system">Системный</string>
     <string name="vibration">Вибрация</string>
     <string name="sound">Звук</string>

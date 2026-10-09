@@ -16,6 +16,13 @@
     <string name="mode_anarchy_desc">Chaos. Random mine count.</string>
     <string name="mode_avalanche_desc">Every 25s field closes.</string>
 
+    <!-- Detailed mode rules -->
+    <string name="mode_classic_rules">Classic minesweeper. Mines stay in place.\n\nOpen cells logically by numbers. Number shows how many mines around. Place a flag to mark a mine. Win — all non-mine cells opened.</string>
+    <string name="mode_drift_rules">Drift: mines move every N seconds.\n\nMines under flags stay in place — place flags to lock mines. Numbers recalculate after shift. Win by opening all safe cells.</string>
+    <string name="mode_chaos_rules">Chaos: all mines move every N seconds.\n\nFlags reset on each shift. Field completely changes — adapt quickly. Numbers recalculate.</string>
+    <string name="mode_anarchy_rules">Anarchy: Chaos + random mine count each shift.\n\nMine count changes randomly from 1 to field size. No limit. Most unpredictable mode.</string>
+    <string name="mode_avalanche_rules">Avalanche: every 25 seconds the field closes again.\n\nGoal — place flags on all mines. Mines under flags stay. Wrong flag = lose. First click after cover is safe.</string>
+
     <!-- Difficulties -->
     <string name="diff_beginner">Beginner</string>
     <string name="diff_veteran">Veteran</string>
@@ -67,6 +74,8 @@
     <!-- Settings -->
     <string name="language">Language</string>
     <string name="settings">Settings</string>
+    <string name="info">Rules</string>
+    <string name="telegram">Telegram</string>
     <string name="lang_system">System</string>
     <string name="vibration">Vibration</string>
     <string name="sound">Sound</string>

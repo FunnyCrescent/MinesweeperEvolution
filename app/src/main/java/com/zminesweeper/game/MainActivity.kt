@@ -24,6 +24,25 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var save: SaveManager
 
+    // v1.2.9.5: attachBaseContext применяет язык ДО создания View.
+    // Раньше applyLanguage в onCreate не работал — View уже созданы с системным языком.
+    override fun attachBaseContext(newBase: android.content.Context) {
+        val save = SaveManager(newBase)
+        val lang = save.language()
+        val locale = when (lang) {
+            "ru" -> java.util.Locale("ru")
+            "en" -> java.util.Locale("en")
+            "es" -> java.util.Locale("es")
+            else -> null  // system
+        }
+        if (locale != null) {
+            val config = android.content.res.Configuration(newBase.resources.configuration)
+            config.setLocale(locale)
+            applyOverrideConfiguration(config)
+        }
+        super.attachBaseContext(newBase)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -52,6 +71,14 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnStats).setOnClickListener {
             showStatsDialog()
         }
+        findViewById<View>(R.id.btnInfo).setOnClickListener {
+            showInfoDialog()
+        }
+        findViewById<View>(R.id.btnTelegram).setOnClickListener {
+            // Открываем Telegram @crescentfunny
+            val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://t.me/crescentfunny"))
+            startActivity(intent)
+        }
         findViewById<android.widget.Button>(R.id.btnMpHost).setOnClickListener {
             ensureNicknameThen { startActivity(Intent(this, LobbyHostActivity::class.java)) }
         }
@@ -64,6 +91,52 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.widget.Button>(R.id.btnMpRelayJoin).setOnClickListener {
             ensureNicknameThen { startActivity(Intent(this, RelayJoinActivity::class.java)) }
         }
+    }
+
+    /** Диалог с правилами всех режимов. */
+    private fun showInfoDialog() {
+        val container = LinearLayout(this)
+        container.orientation = LinearLayout.VERTICAL
+        container.setPadding(48, 32, 48, 16)
+
+        val title = TextView(this)
+        title.text = getString(R.string.info)
+        title.typeface = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.press_start_2p)
+        title.textSize = 14f
+        title.setTextColor(getColor(R.color.accent))
+        title.gravity = android.view.Gravity.CENTER
+        title.setPadding(0, 0, 0, 20)
+        container.addView(title)
+
+        val scroll = android.widget.ScrollView(this)
+        val innerLayout = LinearLayout(this)
+        innerLayout.orientation = LinearLayout.VERTICAL
+        for (mode in GameMode.entries) {
+            val modeTitle = TextView(this)
+            modeTitle.text = mode.display
+            modeTitle.typeface = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.press_start_2p)
+            modeTitle.textSize = 11f
+            modeTitle.setTextColor(getColor(R.color.warning))
+            modeTitle.setPadding(0, 16, 0, 6)
+            innerLayout.addView(modeTitle)
+
+            val rulesText = TextView(this)
+            val rulesResId = resources.getIdentifier("mode_${mode.key}_rules", "string", packageName)
+            rulesText.text = if (rulesResId != 0) getString(rulesResId) else mode.shortDesc
+            rulesText.typeface = androidx.core.content.res.ResourcesCompat.getFont(this, R.font.pixelify_sans)
+            rulesText.textSize = 13f
+            rulesText.setTextColor(getColor(R.color.text_primary))
+            rulesText.setPadding(8, 0, 8, 12)
+            rulesText.setLineSpacing(2f, 1f)
+            innerLayout.addView(rulesText)
+        }
+        scroll.addView(innerLayout)
+        container.addView(scroll)
+
+        AlertDialog.Builder(this)
+            .setView(container)
+            .setPositiveButton(R.string.ok, null)
+            .show()
     }
 
     /** Диалог выбора режима и сложности с подтверждением «Начать игру». */
@@ -322,9 +395,13 @@ class MainActivity : AppCompatActivity() {
                 val newLang = langKeys[spLanguage.selectedItemPosition]
                 if (newLang != currentLang) {
                     save.setLanguage(newLang)
-                    MinesweeperApp.applyLanguage(newLang)
-                    // Пересоздаём Activity чтобы применить язык.
-                    recreate()
+                    // v1.2.9.5: полный перезапуск приложения для применения языка.
+                    // recreate() недостаточно — attachBaseContext нужен для нового языка.
+                    val intent = Intent(this, MainActivity::class.java)
+                    intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
+                    startActivity(intent)
+                    finish()
+                    android.os.Process.killProcess(android.os.Process.myPid())
                 }
             }
             .setNegativeButton(R.string.cancel, null)
