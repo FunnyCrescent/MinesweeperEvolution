@@ -1,232 +1,245 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_dark"
-    android:fillViewport="true">
+    android:background="@color/bg_dark">
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="20dp">
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-        <!-- Header -->
-        <TextView
-            android:id="@+id/title"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="24dp"
-            android:fontFamily="@font/press_start_2p"
-            android:text="@string/app_name"
-            android:textColor="@color/text_primary"
-            android:textSize="20sp"
-            android:maxLines="2"
-            android:gravity="center" />
-
-        <TextView
-            android:id="@+id/subtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:layout_marginTop="8dp"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="@string/app_subtitle"
-            android:textColor="@color/text_secondary"
-            android:textSize="14sp" />
-
-        <!-- Mascot -->
-        <ImageView
-            android:id="@+id/mascotImage"
-            android:layout_width="120dp"
-            android:layout_height="120dp"
-            android:layout_gravity="center"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="16dp"
-            android:contentDescription="@string/app_name"
-            android:src="@drawable/mascot_idle" />
-
-        <!-- Continue + Quick game on one row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="8dp">
+            android:orientation="vertical"
+            android:padding="20dp">
 
+            <!-- Header -->
+            <TextView
+                android:id="@+id/title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="24dp"
+                android:fontFamily="@font/press_start_2p"
+                android:text="@string/app_name"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:maxLines="2"
+                android:gravity="center" />
+
+            <TextView
+                android:id="@+id/subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginTop="8dp"
+                android:fontFamily="@font/pixelify_sans"
+                android:text="@string/app_subtitle"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp" />
+
+            <!-- Mascot -->
+            <ImageView
+                android:id="@+id/mascotImage"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:layout_gravity="center"
+                android:layout_marginTop="12dp"
+                android:layout_marginBottom="16dp"
+                android:contentDescription="@string/app_name"
+                android:src="@drawable/mascot_idle" />
+
+            <!-- Continue + Quick game on one row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <Button
+                    android:id="@+id/btnContinue"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="8dp"
+                    android:background="@drawable/bg_button_primary"
+                    android:fontFamily="@font/pixelify_sans"
+                    android:text="@string/continue_game"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/btnQuickGame"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_button_secondary"
+                    android:padding="8dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/icon_retry"
+                    android:contentDescription="@string/restart"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
+            <!-- New game -->
             <Button
-                android:id="@+id/btnContinue"
-                android:layout_width="0dp"
+                android:id="@+id/btnNewGame"
+                android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="16dp"
                 android:background="@drawable/bg_button_primary"
                 android:fontFamily="@font/pixelify_sans"
-                android:text="@string/continue_game"
+                android:text="@string/new_game"
                 android:textColor="@color/text_primary"
                 android:textSize="16sp"
-                android:textStyle="bold"
-                android:visibility="gone" />
+                android:textStyle="bold" />
 
-            <!-- Quick game icon: starts with last used mode+difficulty -->
-            <ImageView
-                android:id="@+id/btnQuickGame"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/bg_button_secondary"
-                android:padding="8dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/icon_retry"
-                android:contentDescription="@string/restart"
-                android:clickable="true"
-                android:focusable="true" />
+            <!-- Multiplayer section: 2x2 grid -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/press_start_2p"
+                android:text="@string/mp_section"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:layout_marginBottom="8dp"
+                android:layout_gravity="center" />
 
-            <!-- Info button (rules of modes) -->
-            <ImageView
-                android:id="@+id/btnInfo"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_button_secondary"
-                android:padding="8dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/icon_warning"
-                android:contentDescription="@string/info"
-                android:clickable="true"
-                android:focusable="true" />
+            <GridLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:columnCount="2"
+                android:rowCount="2"
+                android:useDefaultMargins="true"
+                android:layout_marginBottom="12dp">
+
+                <Button
+                    android:id="@+id/btnMpHost"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_columnWeight="1"
+                    android:background="@drawable/bg_button_secondary"
+                    android:fontFamily="@font/pixelify_sans"
+                    android:text="@string/mp_host"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <Button
+                    android:id="@+id/btnMpJoin"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_columnWeight="1"
+                    android:background="@drawable/bg_button_secondary"
+                    android:fontFamily="@font/pixelify_sans"
+                    android:text="@string/mp_join"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <Button
+                    android:id="@+id/btnMpRelayHost"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_columnWeight="1"
+                    android:background="@drawable/bg_button_secondary"
+                    android:fontFamily="@font/pixelify_sans"
+                    android:text="@string/mp_relay_host"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+
+                <Button
+                    android:id="@+id/btnMpRelayJoin"
+                    android:layout_width="0dp"
+                    android:layout_height="48dp"
+                    android:layout_columnWeight="1"
+                    android:background="@drawable/bg_button_secondary"
+                    android:fontFamily="@font/pixelify_sans"
+                    android:text="@string/mp_relay_join"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:maxLines="1"
+                    android:ellipsize="end" />
+            </GridLayout>
+
+            <!-- Bottom icon buttons: stats + settings -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <ImageView
+                    android:id="@+id/btnStats"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_marginEnd="24dp"
+                    android:background="@drawable/bg_button_secondary"
+                    android:padding="8dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/icon_stats"
+                    android:contentDescription="@string/stats"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+                <ImageView
+                    android:id="@+id/btnSettings"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:background="@drawable/bg_button_secondary"
+                    android:padding="8dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/icon_settings"
+                    android:contentDescription="@string/settings"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
         </LinearLayout>
+    </ScrollView>
 
-        <!-- New game -->
-        <Button
-            android:id="@+id/btnNewGame"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:layout_marginBottom="16dp"
-            android:background="@drawable/bg_button_primary"
-            android:fontFamily="@font/pixelify_sans"
-            android:text="@string/new_game"
-            android:textColor="@color/text_primary"
-            android:textSize="16sp"
-            android:textStyle="bold" />
+    <!-- Info + Telegram buttons — BOTTOM-RIGHT corner (overlay, grouped) -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_marginBottom="12dp"
+        android:layout_marginEnd="12dp"
+        android:orientation="horizontal">
 
-        <!-- Multiplayer section: 2x2 grid -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFamily="@font/press_start_2p"
-            android:text="@string/mp_section"
-            android:textColor="@color/text_secondary"
-            android:textSize="10sp"
-            android:layout_marginBottom="8dp"
-            android:layout_gravity="center" />
+        <ImageView
+            android:id="@+id/btnInfo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginEnd="8dp"
+            android:background="@android:color/transparent"
+            android:padding="4dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/icon_warning"
+            android:contentDescription="@string/info"
+            android:clickable="true"
+            android:focusable="true" />
 
-        <GridLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:columnCount="2"
-            android:rowCount="2"
-            android:useDefaultMargins="true"
-            android:layout_marginBottom="12dp">
-
-            <Button
-                android:id="@+id/btnMpHost"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_columnWeight="1"
-                android:background="@drawable/bg_button_secondary"
-                android:fontFamily="@font/pixelify_sans"
-                android:text="@string/mp_host"
-                android:textColor="@color/text_primary"
-                android:textSize="13sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
-
-            <Button
-                android:id="@+id/btnMpJoin"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_columnWeight="1"
-                android:background="@drawable/bg_button_secondary"
-                android:fontFamily="@font/pixelify_sans"
-                android:text="@string/mp_join"
-                android:textColor="@color/text_primary"
-                android:textSize="13sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
-
-            <Button
-                android:id="@+id/btnMpRelayHost"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_columnWeight="1"
-                android:background="@drawable/bg_button_secondary"
-                android:fontFamily="@font/pixelify_sans"
-                android:text="@string/mp_relay_host"
-                android:textColor="@color/text_primary"
-                android:textSize="13sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
-
-            <Button
-                android:id="@+id/btnMpRelayJoin"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_columnWeight="1"
-                android:background="@drawable/bg_button_secondary"
-                android:fontFamily="@font/pixelify_sans"
-                android:text="@string/mp_relay_join"
-                android:textColor="@color/text_primary"
-                android:textSize="13sp"
-                android:maxLines="1"
-                android:ellipsize="end" />
-        </GridLayout>
-
-        <!-- Bottom icon buttons: stats + telegram + settings -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center">
-
-            <ImageView
-                android:id="@+id/btnStats"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginEnd="24dp"
-                android:background="@drawable/bg_button_secondary"
-                android:padding="8dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/icon_stats"
-                android:contentDescription="@string/stats"
-                android:clickable="true"
-                android:focusable="true" />
-
-            <ImageView
-                android:id="@+id/btnTelegram"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="@drawable/bg_button_secondary"
-                android:padding="8dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/icon_telegram"
-                android:contentDescription="@string/telegram"
-                android:clickable="true"
-                android:focusable="true" />
-
-            <ImageView
-                android:id="@+id/btnSettings"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginStart="24dp"
-                android:background="@drawable/bg_button_secondary"
-                android:padding="8dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/icon_settings"
-                android:contentDescription="@string/settings"
-                android:clickable="true"
-                android:focusable="true" />
-        </LinearLayout>
-
+        <ImageView
+            android:id="@+id/btnTelegram"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@android:color/transparent"
+            android:padding="4dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/icon_telegram"
+            android:contentDescription="@string/telegram"
+            android:clickable="true"
+            android:focusable="true" />
     </LinearLayout>
-</ScrollView>
+
+</FrameLayout>
