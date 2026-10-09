@@ -91,6 +91,33 @@ class MainActivity : AppCompatActivity() {
         findViewById<android.widget.Button>(R.id.btnMpRelayJoin).setOnClickListener {
             ensureNicknameThen { startActivity(Intent(this, RelayJoinActivity::class.java)) }
         }
+
+        // v1.2.9.6: пиксель-арт отрисовка для иконок Info и Telegram (без мыла).
+        applyPixelArtIcon(R.id.btnInfo, R.drawable.icon_warning)
+        applyPixelArtIcon(R.id.btnTelegram, R.drawable.icon_telegram)
+    }
+
+    /** Применяет пиксель-арт отрисовку к ImageView (NEAREST scaling, filterBitmap=false). */
+    private fun applyPixelArtIcon(viewId: Int, drawableId: Int) {
+        val view = findViewById<android.widget.ImageView>(viewId) ?: return
+        view.post {
+            val w = view.width
+            val h = view.height
+            if (w <= 0 || h <= 0) return@post
+            val opts = android.graphics.BitmapFactory.Options().apply { inScaled = false }
+            val raw = android.graphics.BitmapFactory.decodeResource(resources, drawableId, opts) ?: return@post
+            // NEAREST scaling с целочисленным коэффициентом.
+            val scale = maxOf(1, minOf(w / raw.width, h / raw.height))
+            val scaled = android.graphics.Bitmap.createScaledBitmap(
+                raw, raw.width * scale, raw.height * scale, false
+            )
+            val drawable = android.graphics.drawable.BitmapDrawable(resources, scaled).apply {
+                gravity = android.view.Gravity.CENTER
+                paint.isFilterBitmap = false
+                paint.isAntiAlias = false
+            }
+            view.setImageDrawable(drawable)
+        }
     }
 
     /** Диалог с правилами всех режимов. */

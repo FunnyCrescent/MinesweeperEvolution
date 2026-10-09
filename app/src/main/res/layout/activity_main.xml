@@ -51,32 +51,33 @@
                 android:contentDescription="@string/app_name"
                 android:src="@drawable/mascot_idle" />
 
-            <!-- Continue + Quick game on one row -->
+            <!-- Continue button — full width on top (as before) -->
+            <Button
+                android:id="@+id/btnContinue"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_button_primary"
+                android:fontFamily="@font/pixelify_sans"
+                android:text="@string/continue_game"
+                android:textColor="@color/text_primary"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:visibility="gone" />
+
+            <!-- Quick game + New game on one row -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:layout_marginBottom="8dp">
-
-                <Button
-                    android:id="@+id/btnContinue"
-                    android:layout_width="0dp"
-                    android:layout_height="56dp"
-                    android:layout_weight="1"
-                    android:layout_marginEnd="8dp"
-                    android:background="@drawable/bg_button_primary"
-                    android:fontFamily="@font/pixelify_sans"
-                    android:text="@string/continue_game"
-                    android:textColor="@color/text_primary"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:visibility="gone" />
+                android:layout_marginBottom="16dp">
 
                 <ImageView
                     android:id="@+id/btnQuickGame"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="8dp"
                     android:background="@drawable/bg_button_secondary"
                     android:padding="8dp"
                     android:scaleType="fitCenter"
@@ -84,20 +85,19 @@
                     android:contentDescription="@string/restart"
                     android:clickable="true"
                     android:focusable="true" />
-            </LinearLayout>
 
-            <!-- New game -->
-            <Button
-                android:id="@+id/btnNewGame"
-                android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginBottom="16dp"
-                android:background="@drawable/bg_button_primary"
-                android:fontFamily="@font/pixelify_sans"
-                android:text="@string/new_game"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
-                android:textStyle="bold" />
+                <Button
+                    android:id="@+id/btnNewGame"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_button_primary"
+                    android:fontFamily="@font/pixelify_sans"
+                    android:text="@string/new_game"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
 
             <!-- Multiplayer section: 2x2 grid -->
             <TextView
@@ -207,22 +207,20 @@
         </LinearLayout>
     </ScrollView>
 
-    <!-- Info + Telegram buttons — BOTTOM-RIGHT corner (overlay, grouped) -->
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+    <!-- Info + Telegram — BOTTOM-RIGHT corner, stacked (Telegram ON TOP of Info) -->
+    <FrameLayout
+        android:layout_width="56dp"
+        android:layout_height="56dp"
         android:layout_gravity="bottom|end"
-        android:layout_marginBottom="12dp"
-        android:layout_marginEnd="12dp"
-        android:orientation="horizontal">
+        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="16dp">
 
         <ImageView
             android:id="@+id/btnInfo"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:layout_marginEnd="8dp"
-            android:background="@android:color/transparent"
-            android:padding="4dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="@drawable/bg_button_secondary"
+            android:padding="10dp"
             android:scaleType="fitCenter"
             android:src="@drawable/icon_warning"
             android:contentDescription="@string/info"
@@ -231,15 +229,14 @@
 
         <ImageView
             android:id="@+id/btnTelegram"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:background="@android:color/transparent"
-            android:padding="4dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:padding="10dp"
             android:scaleType="fitCenter"
             android:src="@drawable/icon_telegram"
             android:contentDescription="@string/telegram"
             android:clickable="true"
             android:focusable="true" />
-    </LinearLayout>
+    </FrameLayout>
 
 </FrameLayout>
