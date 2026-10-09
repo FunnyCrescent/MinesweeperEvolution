@@ -781,6 +781,24 @@ class GameEngine {
         }
         mineCount = actualMines
 
+        // ДИАГНОСТИКА: проверяем что mines/revealed/flagged массивы не пустые.
+        android.util.Log.d("MinesweeperSave", "serializeToJson: START rows=$rows cols=$cols mines_array_size=${mines.size} revealed_array_size=${revealed.size} flagged_array_size=${flagged.size}")
+        if (mines.isEmpty() || revealed.isEmpty() || flagged.isEmpty()) {
+            android.util.Log.e("MinesweeperSave", "serializeToJson: ARRAYS EMPTY! mines=${mines.size} revealed=${revealed.size} flagged=${flagged.size}")
+        }
+        // Дамп первых 5 клеток.
+        val dump = StringBuilder()
+        for (r in 0 until minOf(2, rows)) {
+            for (c in 0 until minOf(5, cols)) {
+                val m = if (mines[r][c]) "M" else "."
+                val rv = if (revealed[r][c]) "R" else "."
+                val fl = if (flagged[r][c]) "F" else "."
+                dump.append("$m$rv$fl ")
+            }
+            dump.append("| ")
+        }
+        android.util.Log.d("MinesweeperSave", "serializeToJson: dump first cells: $dump")
+
         // Собираем grid в ByteArray.
         val gridBytes = ByteArray(rows * cols)
         var idx = 0
@@ -811,7 +829,7 @@ class GameEngine {
         json.put("grid", gridBase64)
 
         val result = json.toString()
-        android.util.Log.d("MinesweeperSave", "serializeToJson: ${rows}x${cols}, mines=$actualMines, revealed=$revealedCount, flags=$flaggedCount, firstClick=$firstClickDone, elapsed=$elapsedSec, shiftRem=$shiftRemainingSec, json length=${result.length}")
+        android.util.Log.d("MinesweeperSave", "serializeToJson: DONE ${rows}x${cols}, mines=$actualMines, revealed=$revealedCount, flags=$flaggedCount, firstClick=$firstClickDone, elapsed=$elapsedSec, shiftRem=$shiftRemainingSec, grid_b64_len=${gridBase64.length}, json_len=${result.length}")
         return result
     }
 
@@ -887,6 +905,18 @@ class GameEngine {
                 }
                 engine.revealedCount = actualRevealedCount
 
+                // ДИАГНОСТИКА: дамп первых клеток после загрузки.
+                val dump = StringBuilder()
+                for (rr in 0 until minOf(2, r)) {
+                    for (cc in 0 until minOf(5, c)) {
+                        val m = if (engine.mines[rr][cc]) "M" else "."
+                        val rv = if (engine.revealed[rr][cc]) "R" else "."
+                        val fl = if (engine.flagged[rr][cc]) "F" else "."
+                        dump.append("$m$rv$fl ")
+                    }
+                    dump.append("| ")
+                }
+                android.util.Log.d("MinesweeperSave", "deserializeFromJson: dump first cells: $dump")
                 android.util.Log.d("MinesweeperSave", "deserializeFromJson: OK ${r}x${c}, mines=$actualMineCount (saved=${engine.mineCount}), revealed=$actualRevealedCount, flags=$actualFlagCount (saved=${engine.flaggedCount}), firstClick=${engine.firstClickDone}, elapsed=${engine.elapsedSec}, shiftRem=${engine.shiftRemainingSec}")
 
                 // ЗАЩИТА 1: если есть открытые клетки, но firstClickDone=false — исправляем.

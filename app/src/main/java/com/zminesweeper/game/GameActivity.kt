@@ -98,13 +98,24 @@ class GameActivity : AppCompatActivity() {
             }
             if (loadedEngine != null) {
                 engine = loadedEngine
-                android.util.Log.d("MinesweeperSave", "Engine loaded: ${engine.rows}x${engine.cols}, mines=${engine.mineCount}, revealed=${engine.revealedCount}, flags=${engine.flaggedCount}, firstClick=${engine.firstClickDone}")
+                android.util.Log.d("MinesweeperSave", "Engine loaded: ${engine.rows}x${engine.cols}, mines=${engine.mineCount}, revealed=${engine.revealedCount}, flags=${engine.flaggedCount}, firstClick=${engine.firstClickDone}, elapsed=${engine.elapsedSec}, shiftRem=${engine.shiftRemainingSec}")
+                // ДИАГНОСТИКА: проверим adjacentMines для первой открытой клетки.
+                for (r in 0 until engine.rows) {
+                    for (c in 0 until engine.cols) {
+                        if (engine.isRevealed(r, c) && !engine.isMine(r, c)) {
+                            val n = engine.adjacentMines(r, c)
+                            android.util.Log.d("MinesweeperSave", "DIAG: first revealed cell ($r,$c) adjacentMines=$n")
+                            break
+                        }
+                    }
+                }
                 // Восстанавливаем таймеры из engine.
                 elapsedSec = engine.elapsedSec
                 shiftRemainingSec = engine.shiftRemainingSec
                 startTimeMs = System.currentTimeMillis() - elapsedSec * 1000L
                 findViewById<TextView>(R.id.tvTime).text = formatTime(elapsedSec)
                 findViewById<TextView>(R.id.tvShift).text = if (engine.mode.shifts) shiftRemainingSec.toString() else "—"
+                android.util.Log.d("MinesweeperSave", "DIAG: restored elapsedSec=$elapsedSec, shiftRemainingSec=$shiftRemainingSec, savedFromLoaded will be true")
             } else {
                 android.util.Log.e("MinesweeperSave", "Load failed — starting new game")
                 android.widget.Toast.makeText(this,
