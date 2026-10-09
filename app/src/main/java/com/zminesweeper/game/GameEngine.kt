@@ -781,39 +781,21 @@ class GameEngine {
         }
         mineCount = actualMines
 
-        // ДИАГНОСТИКА: проверяем что mines/revealed/flagged массивы не пустые.
-        android.util.Log.d("MinesweeperSave", "serializeToJson: START rows=$rows cols=$cols mines_array_size=${mines.size} revealed_array_size=${revealed.size} flagged_array_size=${flagged.size}")
-        if (mines.isEmpty() || revealed.isEmpty() || flagged.isEmpty()) {
-            android.util.Log.e("MinesweeperSave", "serializeToJson: ARRAYS EMPTY! mines=${mines.size} revealed=${revealed.size} flagged=${flagged.size}")
-        }
-        // Дамп первых 5 клеток.
-        val dump = StringBuilder()
-        for (r in 0 until minOf(2, rows)) {
-            for (c in 0 until minOf(5, cols)) {
-                val m = if (mines[r][c]) "M" else "."
-                val rv = if (revealed[r][c]) "R" else "."
-                val fl = if (flagged[r][c]) "F" else "."
-                dump.append("$m$rv$fl ")
-            }
-            dump.append("| ")
-        }
-        android.util.Log.d("MinesweeperSave", "serializeToJson: dump first cells: $dump")
-
-        // Собираем grid в ByteArray.
-        val gridBytes = ByteArray(rows * cols)
-        var idx = 0
+        // v1.2.9.4: ПРОСТАЯ сериализация. 3 отдельных массива строками "0101..."
+        // Без битовой упаковки и Base64 — максимально надёжно.
+        val minesStr = StringBuilder()
+        val revealedStr = StringBuilder()
+        val flaggedStr = StringBuilder()
         for (r in 0 until rows) {
             for (c in 0 until cols) {
-                val v = (if (mines[r][c]) 1 else 0) shl 2 or
-                        (if (revealed[r][c]) 1 else 0) shl 1 or
-                        (if (flagged[r][c]) 1 else 0)
-                gridBytes[idx++] = v.toByte()
+                minesStr.append(if (mines[r][c]) '1' else '0')
+                revealedStr.append(if (revealed[r][c]) '1' else '0')
+                flaggedStr.append(if (flagged[r][c]) '1' else '0')
             }
         }
-        val gridBase64 = android.util.Base64.encodeToString(gridBytes, android.util.Base64.NO_WRAP)
 
         val json = org.json.JSONObject()
-        json.put("v", 1)
+        json.put("v", 2)
         json.put("mode", mode.key)
         json.put("diff", difficulty.key)
         json.put("rows", rows)
@@ -826,10 +808,22 @@ class GameEngine {
         json.put("shifts", shiftsCount)
         json.put("elapsed", elapsedSec)
         json.put("shiftRem", shiftRemainingSec)
-        json.put("grid", gridBase64)
+        json.put("minesArr", minesStr.toString())
+        json.put("revealedArr", revealedStr.toString())
+        json.put("flaggedArr", flaggedStr.toString())
 
         val result = json.toString()
-        android.util.Log.d("MinesweeperSave", "serializeToJson: DONE ${rows}x${cols}, mines=$actualMines, revealed=$revealedCount, flags=$flaggedCount, firstClick=$firstClickDone, elapsed=$elapsedSec, shiftRem=$shiftRemainingSec, grid_b64_len=${gridBase64.length}, json_len=${result.length}")
+        android.util.Log.d("MinesweeperSave", "serializeToJson: ${rows}x${cols}, mines=$actualMines, revealed=$revealedCount, firstClick=$firstClickDone, elapsed=$elapsedSec, shiftRem=$shiftRemainingSec, minesArr_len=${minesStr.length}")
+
+        // ROUND-TRIP ТЕСТ: проверяем что сериализация→десериализация работает.
+        val testEngine = deserializeFromJson(result)
+        if (testEngine == null) {
+            android.util.Log.e("MinesweeperSave", "serializeToJson: ROUND-TRIP FAILED — deserialize returned null!")
+        } else if (testEngine.mineCount != actualMines) {
+            android.util.Log.e("MinesweeperSave", "serializeToJson: ROUND-TRIP FAILED — mines mismatch: orig=$actualMines loaded=${testEngine.mineCount}")
+        } else {
+            android.util.Log.d("MinesweeperSave", "serializeToJson: ROUND-TRIP OK — mines=$actualMines preserved")
+        }
         return result
     }
 
@@ -876,11 +870,13 @@ class GameEngine {
                 engine.elapsedSec = json.getInt("elapsed")
                 engine.shiftRemainingSec = json.getInt("shiftRem")
 
-                // Декодируем grid из Base64.
-                val gridBase64 = json.getString("grid")
-                val gridBytes = android.util.Base64.decode(gridBase64, android.util.Base64.NO_WRAP)
-                if (gridBytes.size < r * c) {
-                    android.util.Log.e("MinesweeperSave", "deserializeFromJson: grid too small (${gridBytes.size} < ${r * c})")
+                // v1.2.9.4: 3 отдельных массива строками.
+                val minesStr = json.getString("minesArr")
+                val revealedStr = json.getString("revealedArr")
+                val flaggedStr = json.getString("flaggedArr")
+                val expectedLen = r * c
+                if (minesStr.length < expectedLen || revealedStr.length < expectedLen || flaggedStr.length < expectedLen) {
+                    android.util.Log.e("MinesweeperSave", "deserializeFromJson: arrays too short. mines=${minesStr.length} revealed=${revealedStr.length} flagged=${flaggedStr.length} expected=$expectedLen")
                     return null
                 }
 
@@ -894,33 +890,20 @@ class GameEngine {
                     engine.revealed.add(BooleanArray(c))
                     engine.flagged.add(BooleanArray(c))
                     for (cc in 0 until c) {
-                        val v = gridBytes[idx++].toInt() and 0xFF
-                        engine.mines[rr][cc] = (v shr 2) and 1 == 1
-                        engine.revealed[rr][cc] = (v shr 1) and 1 == 1
-                        engine.flagged[rr][cc] = v and 1 == 1
+                        engine.mines[rr][cc] = minesStr[idx] == '1'
+                        engine.revealed[rr][cc] = revealedStr[idx] == '1'
+                        engine.flagged[rr][cc] = flaggedStr[idx] == '1'
                         if (engine.mines[rr][cc]) actualMineCount++
                         if (engine.revealed[rr][cc]) actualRevealedCount++
                         if (engine.flagged[rr][cc]) actualFlagCount++
+                        idx++
                     }
                 }
                 engine.revealedCount = actualRevealedCount
 
-                // ДИАГНОСТИКА: дамп первых клеток после загрузки.
-                val dump = StringBuilder()
-                for (rr in 0 until minOf(2, r)) {
-                    for (cc in 0 until minOf(5, c)) {
-                        val m = if (engine.mines[rr][cc]) "M" else "."
-                        val rv = if (engine.revealed[rr][cc]) "R" else "."
-                        val fl = if (engine.flagged[rr][cc]) "F" else "."
-                        dump.append("$m$rv$fl ")
-                    }
-                    dump.append("| ")
-                }
-                android.util.Log.d("MinesweeperSave", "deserializeFromJson: dump first cells: $dump")
-                android.util.Log.d("MinesweeperSave", "deserializeFromJson: OK ${r}x${c}, mines=$actualMineCount (saved=${engine.mineCount}), revealed=$actualRevealedCount, flags=$actualFlagCount (saved=${engine.flaggedCount}), firstClick=${engine.firstClickDone}, elapsed=${engine.elapsedSec}, shiftRem=${engine.shiftRemainingSec}")
+                android.util.Log.d("MinesweeperSave", "deserializeFromJson: OK ${r}x${c}, mines=$actualMineCount (saved=${engine.mineCount}), revealed=$actualRevealedCount, flags=$actualFlagCount, firstClick=${engine.firstClickDone}, elapsed=${engine.elapsedSec}, shiftRem=${engine.shiftRemainingSec}")
 
                 // ЗАЩИТА 1: если есть открытые клетки, но firstClickDone=false — исправляем.
-                // Иначе при первом клике ensureSafeStart перегенерирует мины.
                 if (actualRevealedCount > 0 && !engine.firstClickDone) {
                     android.util.Log.w("MinesweeperSave", "deserializeFromJson: revealedCount>0 but firstClickDone=false — forcing true")
                     engine.firstClickDone = true
@@ -934,28 +917,8 @@ class GameEngine {
 
                 // ЗАЩИТА 3: если mineCount не совпадает — исправляем.
                 if (actualMineCount != engine.mineCount) {
-                    android.util.Log.w("MinesweeperSave", "deserializeFromJson: mineCount mismatch (saved=${engine.mineCount}, actual=$actualMineCount) — fixing")
+                    android.util.Log.w("MinesweeperSave", "deserializeFromJson: mineCount mismatch — fixing to $actualMineCount")
                     engine.mineCount = actualMineCount
-                }
-
-                // ЗАЩИТА 4: если flaggedCount не совпадает — исправляем.
-                if (actualFlagCount != engine.flaggedCount) {
-                    android.util.Log.w("MinesweeperSave", "deserializeFromJson: flaggedCount mismatch (saved=${engine.flaggedCount}, actual=$actualFlagCount) — fixing")
-                    engine.flaggedCount = actualFlagCount
-                }
-
-                // ВЕРИФИКАЦИЯ: проверяем adjacentMines для нескольких открытых клеток.
-                var verifiedCells = 0
-                for (rr in 0 until r) {
-                    for (cc in 0 until c) {
-                        if (engine.revealed[rr][cc] && !engine.mines[rr][cc]) {
-                            val n = engine.adjacentMines(rr, cc)
-                            android.util.Log.v("MinesweeperSave", "verify cell ($rr,$cc): adjacentMines=$n")
-                            verifiedCells++
-                            if (verifiedCells >= 3) break
-                        }
-                    }
-                    if (verifiedCells >= 3) break
                 }
 
                 engine
