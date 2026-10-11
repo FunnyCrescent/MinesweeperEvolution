@@ -95,6 +95,8 @@ class MainActivity : AppCompatActivity() {
         // v1.2.9.6: пиксель-арт отрисовка для иконок Info и Telegram (без мыла).
         applyPixelArtIcon(R.id.btnInfo, R.drawable.icon_warning)
         applyPixelArtIcon(R.id.btnTelegram, R.drawable.icon_telegram)
+        // v1.2.9.8: пиксель-арт для QuickGame (icon_retry).
+        applyPixelArtIcon(R.id.btnQuickGame, R.drawable.icon_retry)
     }
 
     /** Применяет пиксель-арт отрисовку к ImageView (NEAREST scaling, filterBitmap=false). */

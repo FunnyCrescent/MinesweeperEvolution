@@ -90,7 +90,7 @@
                     android:id="@+id/btnQuickGame"
                     android:layout_width="56dp"
                     android:layout_height="56dp"
-                    android:background="@drawable/bg_button_secondary"
+                    android:background="@android:color/transparent"
                     android:padding="8dp"
                     android:scaleType="fitCenter"
                     android:src="@drawable/icon_retry"

@@ -20,7 +20,7 @@
     <string name="mode_classic_rules">Buscaminas clásico. Minas fijas.\n\nAbre celdas lógicamente por números. Número muestra cuántas minas alrededor. Pon bandera para marcar mina. Victoria — todas las celdas sin mina abiertas.</string>
     <string name="mode_drift_rules">Deriva: minas se mueven cada N segundos.\n\nMinas bajo banderas quedan fijas — pon banderas para fijar minas. Números se recalculan tras cambio. Gana quien abra todas las celdas seguras.</string>
     <string name="mode_chaos_rules">Caos: todas las minas se mueven cada N segundos.\n\nBanderas reinician en cada cambio. Campo cambia completamente — adapta rápido. Números se recalculan.</string>
-    <string name="mode_anarchy_rules">Anarquía: Caos + minas aleatorias cada cambio.\n\nNúmero de minas cambia aleatoriamente de 1 al tamaño del campo. Sin límite. Modo más impredecible.</string>
+    <string name="mode_anarchy_rules">Anarquía: Caos + minas aleatorias cada cambio.\n\nNúmero de minas cambia de la mitad al doble del estándar (para Veterano: 20–80, máx 198). Modo más impredecible.</string>
     <string name="mode_avalanche_rules">Avalancha: cada 25 segundos el campo se cierra.\n\nMeta — poner banderas en todas las minas. Minas bajo banderas quedan. Bandera incorrecta = derrota. Primer clic tras cobertura es seguro.</string>
 
     <!-- Difficulties -->
