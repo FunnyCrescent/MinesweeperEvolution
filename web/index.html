@@ -1169,6 +1169,16 @@ class BoardRenderer {
     this._pinchStartDist = 0;
     this._pinchStartZoom = 1;
     this._isPinching = false;
+
+    // v1.2.9.9: загружаем спрайты (как в Android-версии).
+    this.sprites = {};
+    const spriteNames = ['tile_closed','tile_open','tile_bomb','tile_flag','tile_bomb_wrong',
+                         'num_1','num_2','num_3','num_4','num_5','num_6','num_7','num_8'];
+    for (const name of spriteNames) {
+      const img = new Image();
+      img.src = name + '.png';
+      this.sprites[name] = img;
+    }
   }
 
   rebuildAnims() {
@@ -1213,79 +1223,96 @@ class BoardRenderer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     const pad = 1;
     const flashAlpha = this._shiftFlashAlpha();
-    // Применяем pan-смещение ко всем клеткам.
     ctx.save();
     ctx.translate(this.panX, this.panY);
+    ctx.imageSmoothingEnabled = false;  // NEAREST — чёткие пиксели.
     for (let r = 0; r < e.rows; r++) {
       for (let c = 0; c < e.cols; c++) {
         const left = c * cs + pad, top = r * cs + pad;
         const right = (c + 1) * cs - pad, bottom = (r + 1) * cs - pad;
+        const w = right - left, h = bottom - top;
         const isExploded = e.explodedRow() === r && e.explodedCol() === c;
         const revealProg = this._revealProgress(r, c);
         const flagScale = this._flagScale(r, c);
 
         if (e.isRevealed(r, c) && e.isMine(r, c)) {
+          // Открытая мина — tile_bomb.
           ctx.save();
           const cx = (left + right) / 2, cy = (top + bottom) / 2;
           const sc = 0.5 + 0.5 * revealProg;
           ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
           ctx.globalAlpha = revealProg;
-          ctx.fillStyle = isExploded ? COLORS.mineExploded : COLORS.mine;
-          this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
-          this._drawMine(left, top, right, bottom);
+          if (!this._drawSprite('tile_bomb', left, top, w, h)) {
+            ctx.fillStyle = isExploded ? COLORS.mineExploded : COLORS.mine;
+            this._roundRect(left, top, w, h, 4); ctx.fill();
+            this._drawMine(left, top, right, bottom);
+          }
           ctx.restore();
         } else if (e.gameOver && e.isMine(r, c) && !e.isFlagged(r, c)) {
-          // После поражения — показать ВСЕ мины, даже не открытые.
-          // Взорвавшаяся — красным (см. выше), остальные — серо-красным фоном.
-          ctx.save();
-          ctx.fillStyle = isExploded ? COLORS.mineExploded : COLORS.mineDim;
-          this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
-          this._drawMine(left, top, right, bottom);
-          ctx.restore();
+          // После поражения — показать все мины.
+          if (!this._drawSprite('tile_bomb', left, top, w, h)) {
+            ctx.save();
+            ctx.fillStyle = isExploded ? COLORS.mineExploded : COLORS.mineDim;
+            this._roundRect(left, top, w, h, 4); ctx.fill();
+            this._drawMine(left, top, right, bottom);
+            ctx.restore();
+          }
         } else if (e.isRevealed(r, c)) {
+          // Открытая клетка — tile_open + цифра.
           ctx.save();
           const cx = (left + right) / 2, cy = (top + bottom) / 2;
           const sc = 0.4 + 0.6 * revealProg;
           ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
           ctx.globalAlpha = revealProg;
-          ctx.fillStyle = COLORS.revealed;
-          this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
+          if (!this._drawSprite('tile_open', left, top, w, h)) {
+            ctx.fillStyle = COLORS.revealed;
+            this._roundRect(left, top, w, h, 4); ctx.fill();
+          }
           const n = e.adjacentMines(r, c);
-          if (n > 0) this._drawNumber(n, left, top, right, bottom);
+          if (n > 0 && n <= 8) {
+            if (!this._drawSprite('num_' + n, left, top, w, h)) {
+              this._drawNumber(n, left, top, right, bottom);
+            }
+          }
           ctx.restore();
         } else if (e.isFlagged(r, c)) {
+          // Флаг — tile_flag (или tile_bomb_wrong при поражении).
           ctx.save();
           const cx = (left + right) / 2, cy = (top + bottom) / 2;
           ctx.translate(cx, cy); ctx.scale(flagScale, flagScale); ctx.translate(-cx, -cy);
-          ctx.fillStyle = COLORS.hidden;
-          this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
-          ctx.fillStyle = COLORS.hiddenTop;
-          this._roundRect(left, top, right - left, (bottom - top) * 0.4, 4); ctx.fill();
-          this._drawFlag(left, top, right, bottom);
-          // Если поражение ИЛИ софтлок и флаг стоит НЕ на мине —
-          // перечёркиваем оранжевым крестом. Софтлок = игрок замуровал всё
-          // флагами, но победы нет — значит какие-то флаги неверные.
-          if (e.gameOver && !e.isMine(r, c)) {
-            ctx.strokeStyle = COLORS.flagWrong;
-            ctx.lineWidth = (right - left) * 0.12;
-            ctx.lineCap = 'round';
-            ctx.beginPath();
-            ctx.moveTo(left + (right - left) * 0.15, top + (bottom - top) * 0.15);
-            ctx.lineTo(right - (right - left) * 0.15, bottom - (bottom - top) * 0.15);
-            ctx.moveTo(right - (right - left) * 0.15, top + (bottom - top) * 0.15);
-            ctx.lineTo(left + (right - left) * 0.15, bottom - (bottom - top) * 0.15);
-            ctx.stroke();
+          const wrong = e.gameOver && !e.isMine(r, c);
+          if (!this._drawSprite(wrong ? 'tile_bomb_wrong' : 'tile_flag', left, top, w, h)) {
+            // Fallback на canvas-примитивы.
+            ctx.fillStyle = COLORS.hidden;
+            this._roundRect(left, top, w, h, 4); ctx.fill();
+            ctx.fillStyle = COLORS.hiddenTop;
+            this._roundRect(left, top, w, h * 0.4, 4); ctx.fill();
+            this._drawFlag(left, top, right, bottom);
+            if (wrong) {
+              ctx.strokeStyle = COLORS.flagWrong;
+              ctx.lineWidth = w * 0.12;
+              ctx.lineCap = 'round';
+              ctx.beginPath();
+              ctx.moveTo(left + w * 0.15, top + h * 0.15);
+              ctx.lineTo(right - w * 0.15, bottom - h * 0.15);
+              ctx.moveTo(right - w * 0.15, top + h * 0.15);
+              ctx.lineTo(left + w * 0.15, bottom - h * 0.15);
+              ctx.stroke();
+            }
           }
           ctx.restore();
         } else {
-          ctx.fillStyle = COLORS.hidden;
-          this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
-          ctx.fillStyle = COLORS.hiddenTop;
-          this._roundRect(left, top, right - left, (bottom - top) * 0.4, 4); ctx.fill();
+          // Закрытая клетка — tile_closed.
+          if (!this._drawSprite('tile_closed', left, top, w, h)) {
+            ctx.fillStyle = COLORS.hidden;
+            this._roundRect(left, top, w, h, 4); ctx.fill();
+            ctx.fillStyle = COLORS.hiddenTop;
+            this._roundRect(left, top, w, h * 0.4, 4); ctx.fill();
+          }
           if (flashAlpha > 0) {
             ctx.fillStyle = COLORS.shiftFlash;
             ctx.globalAlpha = flashAlpha * 0.43;
-            this._roundRect(left, top, right - left, bottom - top, 4); ctx.fill();
+            this._roundRect(left, top, w, h, 4); ctx.fill();
             ctx.globalAlpha = 1;
           }
         }
@@ -1304,6 +1331,16 @@ class BoardRenderer {
     ctx.arcTo(x, y + h, x, y, r);
     ctx.arcTo(x, y, x + w, y, r);
     ctx.closePath();
+  }
+
+  /** Отрисовать спрайт с NEAREST-фильтром (чёткие пиксели, без мыла). */
+  _drawSprite(name, left, top, w, h) {
+    const img = this.sprites[name];
+    if (!img || !img.complete || img.naturalWidth === 0) return false;
+    const ctx = this.ctx;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, left, top, w, h);
+    return true;
   }
 
   _drawMine(left, top, right, bottom) {
