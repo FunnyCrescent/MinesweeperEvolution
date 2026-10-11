@@ -79,6 +79,24 @@ struct SDL_MouseButtonEvent { uint type; uint timestamp; uint windowID; uint whi
 // ============ Game Logic ============
 
 enum GameMode { CLASSIC, DRIFT, CHAOS, ANARCHY, AVALANCHE }
+
+struct ModeProps {
+    bool hasMineLimit;
+    bool shifts;
+    bool preservesFlags;
+    bool coversAllAfterShift;
+}
+
+ModeProps modeProps(GameMode m) {
+    final switch (m) {
+        case GameMode.CLASSIC:   return ModeProps(true,  false, true,  false);
+        case GameMode.DRIFT:     return ModeProps(true,  true,  true,  false);
+        case GameMode.CHAOS:     return ModeProps(true,  true,  false, false);
+        case GameMode.ANARCHY:   return ModeProps(false, true,  false, false);
+        case GameMode.AVALANCHE: return ModeProps(true,  true,  true,  true);
+    }
+}
+
 enum RevealResult { NO_CHANGE, REVEALED, EXPLODED, WON }
 
 struct Cell {
@@ -89,20 +107,31 @@ struct Cell {
 
 class Engine {
     int rows, cols;
-    GameMode mode;
+    GameMode mode = GameMode.CLASSIC;
     Cell[][] grid;
-    int mineCount, flaggedCount, revealedCount;
+    int mineCount, flaggedCount, revealedCount, shiftsCount;
     bool gameOver, won, firstClickDone;
     int explodedRow = -1, explodedCol = -1;
+    int baseMineCount;  // для ANARCHY
 
     this(int rows, int cols, int mineCount, GameMode mode = GameMode.CLASSIC) {
         this.rows = rows;
         this.cols = cols;
         this.mode = mode;
         this.mineCount = mineCount;
+        this.baseMineCount = mineCount;
         grid = new Cell[][](rows);
         foreach (ref row; grid) row = new Cell[](cols);
+        auto props = modeProps(mode);
+        if (!props.hasMineLimit) {
+            // ANARCHY: [base/2 .. min(base*2, 198)]
+            int minM = maxOf(1, baseMineCount / 2);
+            int maxM = minOf(baseMineCount * 2, 198, rows * cols - 9);
+            mineCount = maxM <= minM ? minM : minM + randInt(maxM - minM + 1);
+        }
     }
+
+    int randInt(int n) { import std.random; return uniform(0, n, Random(unpredictableSeed)); }
 
     int adjacentMines(int r, int c) {
         int count = 0;
@@ -116,18 +145,160 @@ class Engine {
     }
 
     void placeMines(int excludeR, int excludeC) {
-        import std.random;
-        auto rng = Random(unpredictableSeed);
         int placed = 0;
         while (placed < mineCount) {
-            int r = uniform(0, rows, rng);
-            int c = uniform(0, cols, rng);
+            int r = randInt(rows);
+            int c = randInt(cols);
             if (grid[r][c].mine) continue;
-            // Exclude safe zone (click + neighbors)
             if (absInt(r - excludeR) <= 1 && absInt(c - excludeC) <= 1) continue;
             grid[r][c].mine = true;
             placed++;
         }
+        enforceNoFullySurroundedMines();
+    }
+
+    void enforceNoFullySurroundedMines() {
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                if (!grid[r][c].mine) continue;
+                bool allMines = true;
+                int count = 0;
+                for (int dr = -1; dr <= 1; dr++)
+                    for (int dc = -1; dc <= 1; dc++) {
+                        if (dr == 0 && dc == 0) continue;
+                        int nr = r + dr, nc = c + dc;
+                        if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+                            count++;
+                            if (!grid[nr][nc].mine) allMines = false;
+                        }
+                    }
+                if (count > 0 && allMines) {
+                    // Remove one neighbor mine
+                    for (int dr = -1; dr <= 1; dr++)
+                        for (int dc = -1; dc <= 1; dc++) {
+                            if (dr == 0 && dc == 0) continue;
+                            int nr = r + dr, nc = c + dc;
+                            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols && grid[nr][nc].mine) {
+                                grid[nr][nc].mine = false;
+                                mineCount--;
+                                return;  // one removal per call to avoid cascade
+                            }
+                        }
+                }
+            }
+        }
+    }
+
+    void shiftMines() {
+        if (gameOver) return;
+        auto props = modeProps(mode);
+        if (!props.shifts) return;
+
+        // Collect numbered revealed cells (drift rule)
+        int[][] numberedRevealed;
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                if (grid[r][c].revealed && !grid[r][c].mine && adjacentMines(r, c) > 0)
+                    numberedRevealed ~= [r, c];
+
+        // Frozen mines (under flags) for DRIFT
+        int[][] frozen;
+        if (props.preservesFlags) {
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                    if (grid[r][c].flagged && grid[r][c].mine) frozen ~= [r, c];
+        } else {
+            // CHAOS/ANARCHY: reset all flags
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++) grid[r][c].flagged = false;
+            flaggedCount = 0;
+        }
+
+        // New mine count (ANARCHY: random)
+        int newCount;
+        if (props.hasMineLimit) {
+            newCount = mineCount;
+        } else {
+            int minM = maxOf(1, baseMineCount / 2);
+            int maxM = minOf(baseMineCount * 2, 198, rows * cols - 9);
+            newCount = maxM <= minM ? minM : minM + randInt(maxM - minM + 1);
+        }
+
+        // Clear all mines, keep frozen
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++) grid[r][c].mine = false;
+        foreach (f; frozen) grid[f[0]][f[1]].mine = true;
+
+        // Available cells
+        int[][] available;
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++) {
+                if (grid[r][c].mine) continue;
+                if (grid[r][c].revealed) continue;
+                available ~= [r, c];
+            }
+        // Shuffle
+        for (int i = available.length - 1; i > 0; i--) {
+            int j = randInt(i + 1);
+            auto tmp = available[i]; available[i] = available[j]; available[j] = tmp;
+        }
+
+        int remaining = maxOf(0, newCount - cast(int)frozen.length);
+        int actual = minOf(remaining, cast(int)available.length);
+        for (int i = 0; i < actual; i++) grid[available[i][0]][available[i][1]].mine = true;
+        mineCount = cast(int)frozen.length + actual;
+        shiftsCount++;
+
+        enforceNoFullySurroundedMines();
+
+        if (!props.coversAllAfterShift) enforceNumberedInvariant(numberedRevealed);
+        if (mineCount == 0) forcePlaceOneMine();
+
+        // AVALANCHE: check wrong flags → lose; else cover field
+        if (props.coversAllAfterShift) {
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                    if (grid[r][c].flagged && !grid[r][c].mine) {
+                        explodedRow = r; explodedCol = c;
+                        gameOver = true;
+                        return;
+                    }
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++) grid[r][c].revealed = false;
+            firstClickDone = false;
+            revealedCount = 0;
+        }
+    }
+
+    void enforceNumberedInvariant(int[][] guarded) {
+        foreach (gc; guarded) {
+            int r = gc[0], c = gc[1];
+            if (adjacentMines(r, c) > 0) continue;
+            int[][] candidates;
+            for (int dr = -1; dr <= 1; dr++)
+                for (int dc = -1; dc <= 1; dc++) {
+                    if (dr == 0 && dc == 0) continue;
+                    int nr = r + dr, nc = c + dc;
+                    if (nr >= 0 && nr < rows && nc >= 0 && nc < cols &&
+                        !grid[nr][nc].revealed && !grid[nr][nc].flagged && !grid[nr][nc].mine)
+                        candidates ~= [nr, nc];
+                }
+            if (candidates.length > 0) {
+                auto pick = candidates[randInt(candidates.length)];
+                grid[pick[0]][pick[1]].mine = true;
+                mineCount++;
+            }
+        }
+    }
+
+    void forcePlaceOneMine() {
+        for (int r = 0; r < rows; r++)
+            for (int c = 0; c < cols; c++)
+                if (!grid[r][c].revealed && !grid[r][c].mine) {
+                    grid[r][c].mine = true;
+                    mineCount = 1;
+                    return;
+                }
     }
 
     RevealResult reveal(int r, int c) {
@@ -150,7 +321,6 @@ class Engine {
             return RevealResult.EXPLODED;
         }
 
-        // Flood fill if 0 mines around
         if (adjacentMines(r, c) == 0) floodReveal(r, c);
 
         if (checkWin()) {
@@ -162,8 +332,6 @@ class Engine {
     }
 
     void floodReveal(int r, int c) {
-        // Простой BFS через массив (без GC-контейнеров для @nogc совместимости).
-        // Используем стек рекурсии — поле небольшое.
         if (grid[r][c].mine) return;
         for (int dr = -1; dr <= 1; dr++)
             for (int dc = -1; dc <= 1; dc++) {
@@ -179,6 +347,16 @@ class Engine {
     }
 
     bool checkWin() {
+        auto props = modeProps(mode);
+        if (props.coversAllAfterShift) {
+            // AVALANCHE: all mines flagged + no wrong flags
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++) {
+                    if (grid[r][c].mine && !grid[r][c].flagged) return false;
+                    if (!grid[r][c].mine && grid[r][c].flagged) return false;
+                }
+            return true;
+        }
         for (int r = 0; r < rows; r++)
             for (int c = 0; c < cols; c++)
                 if (!grid[r][c].mine && !grid[r][c].revealed) return false;
@@ -191,6 +369,11 @@ class Engine {
         if (grid[r][c].revealed) return;
         grid[r][c].flagged = !grid[r][c].flagged;
         flaggedCount += grid[r][c].flagged ? 1 : -1;
+        auto props = modeProps(mode);
+        if (grid[r][c].flagged && props.coversAllAfterShift && checkWin()) {
+            won = true;
+            gameOver = true;
+        }
     }
 
     int minesLeft() { return mineCount - flaggedCount; }
