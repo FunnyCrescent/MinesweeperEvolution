@@ -1192,6 +1192,101 @@ class BoardRenderer {
       img.src = name + '.png';
       this.sprites[name] = img;
     }
+    // v1.3.0: кадры взрыва для цепной анимации
+    for (let i = 0; i < 8; i++) {
+      const img = new Image();
+      img.src = 'mine_explosion_0' + i + '.png';
+      this.sprites['mine_explosion_' + i] = img;
+    }
+    // v1.3.0: chain explosion sounds
+    this.sfx = {};
+    this.sfx.first = new Audio('sfx/sfx_explosion_first.mp3');
+    this.sfx.chain = [new Audio('sfx/sfx_explosion_01.mp3'), new Audio('sfx/sfx_explosion_02.mp3'),
+                      new Audio('sfx/sfx_explosion_03.mp3'), new Audio('sfx/sfx_explosion_04.mp3')];
+    this.sfx.end = new Audio('sfx/sfx_chain_end.mp3');
+    this.sfx.dialog = new Audio('sfx/sfx_dialog_open.mp3');
+    this.sfx.fuse = new Audio('sfx/sfx_fuse_tick.mp3');
+    // Chain explosion state
+    this.chainActive = false;
+    this.chainExplosions = [];  // {row, col, startMs}
+    this.chainExplodedCells = new Set();
+    this.chainSkipped = false;
+    this.shakeX = 0; this.shakeY = 0; this.shakeUntil = 0;
+  }
+
+  /** Запустить цепную взрывную анимацию (v1.3.0). */
+  startChainExplosion(firstRow, firstCol, onDone) {
+    this.chainActive = true;
+    this.chainSkipped = false;
+    this.chainExplosions = [];
+    this.chainExplodedCells = new Set();
+    const e = this.getEngine();
+    if (!e) return;
+
+    // Собираем все мины
+    const mines = [];
+    for (let r = 0; r < e.rows; r++)
+      for (let c = 0; c < e.cols; c++)
+        if (e.isMine(r, c)) mines.push({r, c});
+
+    // Сортировка по расстоянию
+    mines.sort((a, b) => {
+      const da = (a.r - firstRow) ** 2 + (a.c - firstCol) ** 2;
+      const db = (b.r - firstRow) ** 2 + (b.c - firstCol) ** 2;
+      return da - db;
+    });
+
+    const total = mines.length;
+    const baseDelay = total > 40 ? 30 : total > 20 ? 50 : 80;
+
+    // Первый взрыв
+    this._addExplosion(firstRow, firstCol);
+    this.sfx.first.play();
+    this.sfx.fuse.volume = 0.3; this.sfx.fuse.play();
+    this.shakeUntil = performance.now() + 500;
+    this.draw();
+
+    // Остальные
+    for (let i = 1; i < mines.length; i++) {
+      const {r, c} = mines[i];
+      const delay = i * baseDelay + Math.random() * 30;
+      setTimeout(() => {
+        if (this.chainSkipped) return;
+        this._addExplosion(r, c);
+        const snd = this.sfx.chain[Math.floor(Math.random() * 4)];
+        snd.volume = 0.6; snd.currentTime = 0; snd.play();
+        if (i % 3 === 0) { this.sfx.fuse.volume = 0.2; this.sfx.fuse.play(); }
+        this.draw();
+      }, delay);
+    }
+
+    // После последнего: chain_end → пауза → dialog
+    const lastTime = (mines.length - 1) * baseDelay + 30;
+    const chainEnd = lastTime + 667;
+    setTimeout(() => { if (!this.chainSkipped) this.sfx.end.play(); }, chainEnd);
+    setTimeout(() => {
+      if (this.chainSkipped) return;
+      this.sfx.dialog.play();
+      this.chainActive = false;
+      if (onDone) onDone();
+    }, chainEnd + 400);
+
+    // Тап = пропуск
+    this._chainSkipHandler = () => {
+      if (this.chainActive && !this.chainSkipped) {
+        this.chainSkipped = true;
+        this.chainExplosions = [];
+        this.chainActive = false;
+        this.sfx.dialog.play();
+        if (onDone) onDone();
+      }
+    };
+    this.canvas.addEventListener('click', this._chainSkipHandler, {once: true});
+  }
+
+  _addExplosion(row, col) {
+    this.chainExplosions.push({row, col, startMs: performance.now()});
+    this.chainExplodedCells.add(row + ',' + col);
   }
 
   rebuildAnims() {
@@ -1329,6 +1424,38 @@ class BoardRenderer {
             ctx.globalAlpha = 1;
           }
         }
+      }
+    }
+    // ===== Chain Explosion Rendering (v1.3.0) =====
+    if (this.chainActive || this.chainExplosions.length > 0) {
+      const now = performance.now();
+      // Screen shake
+      if (now < this.shakeUntil) {
+        const amt = ((this.shakeUntil - now) / 500) * 8;
+        this.shakeX = (Math.random() - 0.5) * amt;
+        this.shakeY = (Math.random() - 0.5) * amt;
+      } else { this.shakeX = 0; this.shakeY = 0; }
+      // Draw explosion frames
+      for (let i = this.chainExplosions.length - 1; i >= 0; i--) {
+        const ex = this.chainExplosions[i];
+        const elapsed = now - ex.startMs;
+        const frame = Math.floor(elapsed / 83);
+        if (frame >= 8) { this.chainExplosions.splice(i, 1); continue; }
+        const left = ex.col * cs + pad + this.shakeX;
+        const top = ex.row * cs + pad + this.shakeY;
+        const w = cs - 2 * pad, h = cs - 2 * pad;
+        const expW = w * 1.3, expH = h * 2.0;
+        const expLeft = left + (w - expW) / 2;
+        const expTop = top + (h - expH) / 2;
+        const img = this.sprites['mine_explosion_' + frame];
+        if (img && img.complete && img.naturalWidth > 0) {
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, expLeft, expTop, expW, expH);
+        }
+      }
+      // Continue animating
+      if (this.chainExplosions.length > 0 || now < this.shakeUntil) {
+        requestAnimationFrame(() => this.draw());
       }
     }
     ctx.restore();
@@ -2334,11 +2461,16 @@ function initGameScreen() {
   App.renderer.rebuildAnims();
   App.renderer.onRevealListener = (row, col, exploded, won) => {
     App.renderer.animateRevealWave(App.engine._lastRevealed, row, col);
-    if (exploded) App.sound.play('EXPLODE');
-    else if (won) App.sound.play('WIN');
-    else {
+    if (exploded) {
+      // v1.3.0: цепная взрывная анимация
+      App.renderer.startChainExplosion(row, col, () => {
+        showGameOver(false);
+      });
+    } else if (won) {
+      App.sound.play('WIN');
+      showGameOver(true);
+    } else {
       App.sound.play('REVEAL');
-      // No-Guess Solver: проверить на софтлок после открытия.
       if (App.engine) {
         const state = App.engine.analyzeSoftlock();
         if (state === 'Deadlock') {
@@ -2348,7 +2480,6 @@ function initGameScreen() {
       }
     }
     updateMinesLabel();
-    if (exploded || won) showGameOver(won);
   };
   App.renderer.onFlagListener = (r, c) => {
     App.sound.play('FLAG');

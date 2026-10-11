@@ -154,17 +154,14 @@ class GameActivity : AppCompatActivity() {
             // Анимация волной от точки клика по всем открытым в этом ходе клеткам
             gameView.animateRevealWave(engine.lastRevealed, row, col)
             if (exploded) {
-                sound?.play(SoundManager.Type.EXPLODE)
+                // v1.3.0: цепная взрывная анимация вместо мгновенного диалога.
+                startChainExplosion(row, col)
             } else if (won) {
                 sound?.play(SoundManager.Type.WIN)
+                showGameOver(won)
             } else {
                 sound?.play(SoundManager.Type.REVEAL)
-                // v1.2.3: превентивная генерация без софтлоков делается в
-                // GameEngine.ensureNoSoftlockOnFirstClick ПЕРЕД открытием клетки.
-                // Реактивный reshuffleMinesForLogicalMove убран — он менял числа
-                // открытых клеток (баг "цифра 3 → 1").
             }
-            if (exploded || won) showGameOver(won)
             updateMinesLabel()
         }
         gameView.onFlagListener = { _, _ ->
@@ -373,6 +370,82 @@ class GameActivity : AppCompatActivity() {
     private fun updateMinesLabel() {
         val mines = if (engine.mode.hasMineLimit) engine.minesLeft().toString() else "~${engine.mineCount}"
         findViewById<TextView>(R.id.tvMines).text = mines
+    }
+
+    // ===== Chain Explosion (v1.3.0) =====
+    @Volatile private var chainSkipped = false
+
+    private fun startChainExplosion(firstRow: Int, firstCol: Int) {
+        chainSkipped = false
+        gameView.chainExplosionActive = true
+        gameView.inputEnabled = false
+        handler.removeCallbacks(tickRunnable)
+        handler.removeCallbacks(shiftRunnable)
+
+        // Собираем все мины, сортируем по расстоянию от первой.
+        val mines = ArrayList<Pair<Int, Int>>()
+        for (r in 0 until engine.rows) {
+            for (c in 0 until engine.cols) {
+                if (engine.isMine(r, c)) mines.add(r to c)
+            }
+        }
+        // Сортировка по расстоянию от (firstRow, firstCol).
+        mines.sortBy { (it.first - firstRow) * (it.first - firstRow) + (it.second - firstCol) * (it.second - firstCol) }
+
+        val totalMines = mines.size
+        // Масштабируем задержку: больше мин = меньше задержка.
+        val baseDelay = when {
+            totalMines > 40 -> 30L
+            totalMines > 20 -> 50L
+            else -> 80L
+        }
+
+        // Первый взрыв — немедленно.
+        gameView.addChainExplosion(firstRow, firstCol)
+        sound?.play(SoundManager.Type.EXPLOSION_FIRST)
+        sound?.play(SoundManager.Type.FUSE_TICK, 0.3f)
+        gameView.startShake(500)
+
+        // Остальные мины — по цепочке.
+        for (i in 1 until mines.size) {
+            val (r, c) = mines[i]
+            val delay = i * baseDelay + kotlin.random.Random.nextLong(0, 30)
+            handler.postDelayed({
+                if (chainSkipped) return@postDelayed
+                gameView.addChainExplosion(r, c)
+                sound?.playRandomChainExplosion(0.6f)
+                if (i % 3 == 0) sound?.play(SoundManager.Type.FUSE_TICK, 0.2f)
+            }, delay)
+        }
+
+        // После последнего взрыва: chain_end → пауза → dialog.
+        val lastExplosionTime = (mines.size - 1) * baseDelay + 30
+        val chainEndTime = lastExplosionTime + 667  // 8 frames * 83ms
+        handler.postDelayed({
+            if (chainSkipped) return@postDelayed
+            sound?.play(SoundManager.Type.CHAIN_END)
+        }, chainEndTime)
+
+        handler.postDelayed({
+            if (chainSkipped) return@postDelayed
+            sound?.play(SoundManager.Type.DIALOG_OPEN)
+            gameView.chainExplosionActive = false
+            gameView.inputEnabled = true
+            showGameOver(false)
+        }, chainEndTime + 400)
+
+        // Тап во время цепочки = пропуск.
+        gameView.setOnClickListener {
+            if (gameView.chainExplosionActive && !chainSkipped) {
+                chainSkipped = true
+                handler.removeCallbacksAndMessages(null)
+                gameView.clearChainExplosion()
+                gameView.chainExplosionActive = false
+                gameView.inputEnabled = true
+                sound?.play(SoundManager.Type.DIALOG_OPEN)
+                showGameOver(false)
+            }
+        }
     }
 
     private fun showGameOver(won: Boolean) {

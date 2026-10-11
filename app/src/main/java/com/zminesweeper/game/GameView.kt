@@ -73,6 +73,8 @@ class GameView : View {
         rawBitmaps["flag"] = load("item_flag")
         rawBitmaps["flag_wrong"] = load("item_flag_wrong")
         for (i in 1..8) rawBitmaps["num_$i"] = load("num_$i")
+        // v1.3.0: кадры взрыва для цепной анимации
+        for (i in 0..7) rawBitmaps["mine_explosion_$i"] = load("mine_explosion_$i")
     }
 
     /**
@@ -126,6 +128,39 @@ class GameView : View {
 
     /** Если false — тапы игнорируются (ход другого игрока в мультиплеере). */
     var inputEnabled: Boolean = true
+
+    // ===== Chain Explosion State (v1.3.0) =====
+    /** Активна ли цепная взрывная анимация. */
+    @Volatile var chainExplosionActive: Boolean = false
+    /** Список активных взрывов: (row, col, startMs). */
+    private val chainExplosions = ArrayList<Triple<Int, Int, Long>>()
+    /** Экранный shake — (offsetX, offsetY, untilMs). */
+    private var shakeOffsetX: Float = 0f
+    private var shakeOffsetY: Float = 0f
+    private var shakeUntilMs: Long = 0L
+    /** Клетки, уже взорванные в цепочке — рисуются как tile_exploded. */
+    private val chainExplodedCells = HashSet<Pair<Int, Int>>()
+
+    /** Добавить взрыв клетки в цепочку. */
+    fun addChainExplosion(row: Int, col: Int) {
+        chainExplosions.add(Triple(row, col, SystemClock.uptimeMillis()))
+        chainExplodedCells.add(row to col)
+        invalidate()
+    }
+
+    /** Запустить тряску экрана. */
+    fun startShake(durationMs: Long = 400) {
+        shakeUntilMs = SystemClock.uptimeMillis() + durationMs
+    }
+
+    /** Очистить состояние цепной анимации. */
+    fun clearChainExplosion() {
+        chainExplosions.clear()
+        chainExplodedCells.clear()
+        chainExplosionActive = false
+        shakeUntilMs = 0
+        invalidate()
+    }
 
     /**
      * Timestamp (SystemClock.uptimeMillis) до которого клики блокируются.
@@ -554,7 +589,55 @@ class GameView : View {
                 }
             }
         }
+        // ===== Chain Explosion Rendering (v1.3.0) =====
+        if (chainExplosionActive || chainExplosions.isNotEmpty()) {
+            val now = SystemClock.uptimeMillis()
+            // Screen shake
+            if (now < shakeUntilMs) {
+                val shakeAmt = ((shakeUntilMs - now) / 400f).coerceIn(0f, 1f) * 8f
+                shakeOffsetX = (kotlin.random.Random.nextFloat() - 0.5f) * shakeAmt
+                shakeOffsetY = (kotlin.random.Random.nextFloat() - 0.5f) * shakeAmt
+            } else {
+                shakeOffsetX = 0f
+                shakeOffsetY = 0f
+            }
+            // Draw explosion frames
+            val iter = chainExplosions.iterator()
+            while (iter.hasNext()) {
+                val (er, ec, startMs) = iter.next()
+                val elapsed = now - startMs
+                val frameDur = 83L  // 1000/12 ≈ 83ms per frame (12fps)
+                val frame = (elapsed / frameDur).toInt()
+                if (frame >= 8) {
+                    // Animation done — cell stays as tile_exploded (already in chainExplodedCells)
+                    iter.remove()
+                    continue
+                }
+                // Draw explosion frame centered on cell
+                val left = ec * cellSize.toFloat() + offsetX
+                val top = er * cellSize.toFloat() + offsetY
+                val w = cellSize.toFloat()
+                val h = cellSize.toFloat()
+                // Explosion is larger than cell (44×72 on 44×46 cell) — scale up
+                val expW = w * 1.3f
+                val expH = h * 2.0f
+                val expLeft = left + (w - expW) / 2 + shakeOffsetX
+                val expTop = top + (h - expH) / 2 + shakeOffsetY
+                drawBitmapRaw(canvas, "mine_explosion_$frame", expLeft, expTop, expLeft + expW, expTop + expH)
+            }
+            // Continue animating
+            if (chainExplosions.isNotEmpty() || now < shakeUntilMs) {
+                invalidate()
+            }
+        }
         canvas.restore()  // снимаем canvas.translate(offsetX, offsetY)
+    }
+
+    /** Отрисовать битмап по имени без масштабирования (raw bitmap, NEAREST). */
+    private fun drawBitmapRaw(canvas: Canvas, key: String, left: Float, top: Float, right: Float, bottom: Float) {
+        val bmp = rawBitmaps[key] ?: return
+        destRect.set(left.toInt(), top.toInt(), right.toInt(), bottom.toInt())
+        canvas.drawBitmap(bmp, null, destRect, bitmapPaint)
     }
 
     /** Отрисовать битмап из кэша в dest прямоугольник (без alpha-модуляции). */
