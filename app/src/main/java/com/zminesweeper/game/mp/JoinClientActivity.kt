@@ -1,4 +1,5 @@
 package com.zminesweeper.game.mp
+import com.zminesweeper.game.LocaleAwareActivity
 
 import android.content.Intent
 import android.os.Bundle
@@ -28,7 +29,7 @@ import org.json.JSONObject
  *
  *  После подключения видит список игроков в лобби и ждёт старта хоста.
  */
-class JoinClientActivity : AppCompatActivity() {
+class JoinClientActivity : LocaleAwareActivity() {
 
     private lateinit var save: SaveManager
     private var client: MultiplayerClient? = null

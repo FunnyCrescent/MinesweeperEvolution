@@ -20,28 +20,9 @@ import com.zminesweeper.game.mp.LobbyHostActivity
 import com.zminesweeper.game.mp.RelayHostActivity
 import com.zminesweeper.game.mp.RelayJoinActivity
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : LocaleAwareActivity() {
 
     private lateinit var save: SaveManager
-
-    // v1.2.9.5: attachBaseContext применяет язык ДО создания View.
-    // Раньше applyLanguage в onCreate не работал — View уже созданы с системным языком.
-    override fun attachBaseContext(newBase: android.content.Context) {
-        val save = SaveManager(newBase)
-        val lang = save.language()
-        val locale = when (lang) {
-            "ru" -> java.util.Locale("ru")
-            "en" -> java.util.Locale("en")
-            "es" -> java.util.Locale("es")
-            else -> null  // system
-        }
-        if (locale != null) {
-            val config = android.content.res.Configuration(newBase.resources.configuration)
-            config.setLocale(locale)
-            applyOverrideConfiguration(config)
-        }
-        super.attachBaseContext(newBase)
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

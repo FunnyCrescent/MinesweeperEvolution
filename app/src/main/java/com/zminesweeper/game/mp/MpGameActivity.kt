@@ -1,4 +1,5 @@
 package com.zminesweeper.game.mp
+import com.zminesweeper.game.LocaleAwareActivity
 
 import android.os.Bundle
 import android.os.Handler
@@ -37,7 +38,7 @@ import org.json.JSONObject
  *  Сетевой объект (server для хоста, client для клиента) передаётся из лобби через
  *  MpContextHolder. Колбэки переопределяются на игровые при onCreate.
  */
-class MpGameActivity : AppCompatActivity() {
+class MpGameActivity : LocaleAwareActivity() {
 
     private lateinit var save: SaveManager
     private lateinit var gameView: GameView

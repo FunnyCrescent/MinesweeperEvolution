@@ -1,4 +1,5 @@
 package com.zminesweeper.game.mp
+import com.zminesweeper.game.LocaleAwareActivity
 
 import android.content.Intent
 import android.os.Bundle
@@ -22,7 +23,7 @@ import org.json.JSONObject
  * Игрок вводит URL сервера + код комнаты + ник.
  * После JOIN_ACK ждёт START от хоста → запускает MpGameActivity.
  */
-class RelayJoinActivity : AppCompatActivity() {
+class RelayJoinActivity : LocaleAwareActivity() {
 
     private lateinit var save: SaveManager
     private var relay: WebSocketRelay? = null

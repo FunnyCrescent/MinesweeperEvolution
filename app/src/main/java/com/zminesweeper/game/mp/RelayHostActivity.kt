@@ -1,4 +1,5 @@
 package com.zminesweeper.game.mp
+import com.zminesweeper.game.LocaleAwareActivity
 
 import android.content.Intent
 import android.os.Bundle
@@ -31,7 +32,7 @@ import org.json.JSONObject
  * Архитектура host-authoritative: хост держит GameEngine, шлёт BROADCAST (STATE/START/OVER),
  * клиенты шлют SEND_TO_HOST (CLICK/FLAG/CHORD).
  */
-class RelayHostActivity : AppCompatActivity() {
+class RelayHostActivity : LocaleAwareActivity() {
 
     private lateinit var save: SaveManager
     private var relay: WebSocketRelay? = null

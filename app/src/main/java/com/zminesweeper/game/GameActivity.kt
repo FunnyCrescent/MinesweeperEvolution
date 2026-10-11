@@ -16,7 +16,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 
-class GameActivity : AppCompatActivity() {
+class GameActivity : LocaleAwareActivity() {
 
     private lateinit var engine: GameEngine
     private lateinit var save: SaveManager

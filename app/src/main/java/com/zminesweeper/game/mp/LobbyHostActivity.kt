@@ -1,4 +1,5 @@
 package com.zminesweeper.game.mp
+import com.zminesweeper.game.LocaleAwareActivity
 
 import android.content.Intent
 import android.os.Bundle
@@ -30,7 +31,7 @@ import org.json.JSONObject
  *  - Хост видит подключающихся клиентов и может стартовать игру (1-5 игроков).
  *  - Ник хоста берётся из настроек; при совпадении с ником клиента — клиенту добавляется суффикс.
  */
-class LobbyHostActivity : AppCompatActivity() {
+class LobbyHostActivity : LocaleAwareActivity() {
 
     private lateinit var save: SaveManager
     private var server: MultiplayerServer? = null
