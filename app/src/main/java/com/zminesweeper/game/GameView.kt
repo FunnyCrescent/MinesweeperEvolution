@@ -153,10 +153,9 @@ class GameView : View {
         shakeUntilMs = SystemClock.uptimeMillis() + durationMs
     }
 
-    /** Очистить состояние цепной анимации. */
+    /** Очистить состояние цепной анимации (но НЕ chainExplodedCells — они остаются для game over). */
     fun clearChainExplosion() {
         chainExplosions.clear()
-        chainExplodedCells.clear()
         chainExplosionActive = false
         shakeUntilMs = 0
         invalidate()
@@ -534,20 +533,23 @@ class GameView : View {
 
                 when {
                     engine.isRevealed(r, c) && engine.isMine(r, c) -> {
-                        // Открытая мина: лёгкая пульсация при первом открытии.
-                        // v1.2.9: используем tile_bomb (единая клетка с миной).
+                        // Открытая мина (на которую нажали): tile_bomb или tile_exploded после цепочки.
+                        val isExploded = chainExplodedCells.contains(r to c)
                         canvas.save()
                         val cx = rect.centerX()
                         val cy = rect.centerY()
                         val sc = 0.5f + 0.5f * revealProg
                         canvas.scale(sc, sc, cx, cy)
                         val alpha = (255 * revealProg).toInt().coerceIn(0, 255)
-                        drawBitmapAlpha(canvas, "tile_bomb", left, top, right, bottom, alpha)
+                        val key = if (isExploded) "tile_exploded" else "tile_bomb"
+                        drawBitmapAlpha(canvas, key, left, top, right, bottom, alpha)
                         canvas.restore()
                     }
                     engine.gameOver && engine.isMine(r, c) && !engine.isFlagged(r, c) -> {
-                        // После поражения — показать ВСЕ мины, даже не открытые.
-                        drawBitmap(canvas, "tile_bomb", left, top, right, bottom)
+                        // После поражения — показать ВСЕ мины.
+                        // Взорванные в цепочке — tile_exploded, остальные — tile_bomb.
+                        val isExploded = chainExplodedCells.contains(r to c)
+                        drawBitmap(canvas, if (isExploded) "tile_exploded" else "tile_bomb", left, top, right, bottom)
                     }
                     engine.isRevealed(r, c) -> {
                         // Анимация открытия: масштаб + альфа.
