@@ -516,7 +516,29 @@ class GameEngine {
       this.mineCount = maxMines <= minMines ? minMines : minMines + this._randInt(maxMines - minMines + 1);
     }
     this.placeMinesRandomly([]);
+    this.enforceNoFullySurroundedMines();
     if (this.mineCount === 0) this.forcePlaceOneMine();
+  }
+
+  /** ПРАВИЛО: мина не может быть окружена минами со всех сторон. */
+  enforceNoFullySurroundedMines() {
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (!this.mines[r][c]) continue;
+        const neighbors = [];
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols) neighbors.push([nr, nc]);
+        }
+        if (neighbors.length === 0) continue;
+        if (neighbors.every(([nr, nc]) => this.mines[nr][nc])) {
+          const [mr, mc] = neighbors[this._randInt(neighbors.length)];
+          this.mines[mr][mc] = false;
+          this.mineCount--;
+        }
+      }
+    }
   }
 
   _randInt(n) { return Math.floor(Math.random() * n); }
@@ -611,6 +633,8 @@ class GameEngine {
     }
     this.mineCount = frozen.length + actual;
     this.shiftsCount++;
+    // ПРАВИЛО: мина не может быть окружена минами со всех сторон.
+    this.enforceNoFullySurroundedMines();
     // В Лавине enforceNumberedInvariant не нужен — все клетки закрываются,
     // «цифр» после сдвига нет. Пропускаем, иначе он добавит лишние мины.
     if (!this.mode.coversAllAfterShift) {
@@ -630,16 +654,15 @@ class GameEngine {
           }
         }
       }
-      let covered = 0;
+      // Все флаги корректны — закрываем поле ПОЛНОСТЬЮ.
       for (let r = 0; r < this.rows; r++) {
         for (let c = 0; c < this.cols; c++) {
-          if (this.revealed[r][c] && !this.flagged[r][c]) {
-            this.revealed[r][c] = false;
-            covered++;
-          }
+          this.revealed[r][c] = false;
         }
       }
-      this.revealedCount -= covered;
+      this.firstClickDone = false;
+      this.revealedCount = 0;
+      this._lastRevealed = [];
     }
   }
 
@@ -684,6 +707,7 @@ class GameEngine {
     if (!this.firstClickDone) {
       this.firstClickDone = true;
       this.ensureSafeStart(row, col);
+      this.ensureNoSoftlockOnFirstClick(row, col);
     }
     this._lastRevealed = [];
     this.revealed[row][col] = true; this.revealedCount++;
@@ -719,12 +743,16 @@ class GameEngine {
         }
       }
     }
-    for (const [r, c] of safe) this.mines[r][c] = false;
+    // Сбросить мины с безопасной зоны, КРОМЕ мин под флажками (frozen).
+    for (const [r, c] of safe) {
+      if (!this.flagged[r][c]) this.mines[r][c] = false;
+    }
     const available = [];
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         if (taken.some(p => p[0] === r && p[1] === c)) continue;
         if (occupied.some(p => p[0] === r && p[1] === c)) continue;
+        if (this.flagged[r][c]) continue;  // не ставим мины под флагами
         available.push([r, c]);
       }
     }
@@ -732,9 +760,91 @@ class GameEngine {
       const j = this._randInt(i + 1);
       [available[i], available[j]] = [available[j], available[i]];
     }
-    const needed = this.mineCount - occupied.length;
+    // Считаем сколько мин нужно добавить (вычитая замороженные под флагами в safe).
+    let frozenInSafe = 0;
+    for (const [r, c] of safe) if (this.flagged[r][c] && this.mines[r][c]) frozenInSafe++;
+    const needed = this.mineCount - occupied.length - frozenInSafe;
     for (let i = 0; i < Math.min(needed, available.length); i++) {
       const [r, c] = available[i]; this.mines[r][c] = true;
+    }
+  }
+
+  /** Превентивная генерация без софтлоков для первого клика (1:1 порт из Kotlin). */
+  ensureNoSoftlockOnFirstClick(row, col) {
+    const safeZone = [[row, col]];
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+      const nr = row + dr, nc = col + dc;
+      if (nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols) safeZone.push([nr, nc]);
+    }
+    let frozenInSafe = 0;
+    for (const [r, c] of safeZone) if (this.flagged[r][c] && this.mines[r][c]) frozenInSafe++;
+    const targetMinesOutside = this.mineCount - frozenInSafe;
+    const candidates = [];
+    for (let r = 0; r < this.rows; r++) for (let c = 0; c < this.cols; c++) {
+      if (safeZone.some(p => p[0] === r && p[1] === c)) continue;
+      if (this.revealed[r][c]) continue;
+      if (this.flagged[r][c]) continue;
+      candidates.push([r, c]);
+    }
+    if (candidates.length === 0 || targetMinesOutside <= 0) return;
+
+    // Snapshot revealed for rollback.
+    const revealedSnapshot = this.revealed.map(row => row.slice());
+    const savedRevealedCount = this.revealedCount;
+    // Snapshot mines for rollback.
+    const minesSnapshot = this.mines.map(row => row.slice());
+
+    const MAX_PREVENTIVE_ATTEMPTS = 30;
+    let bestAttempt = -1;
+
+    for (let attempt = 0; attempt < MAX_PREVENTIVE_ATTEMPTS; attempt++) {
+      if (attempt > 0) {
+        for (const [r, c] of candidates) this.mines[r][c] = false;
+        for (let i = candidates.length - 1; i > 0; i--) {
+          const j = this._randInt(i + 1);
+          [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+        }
+        for (let i = 0; i < Math.min(targetMinesOutside, candidates.length); i++) {
+          const [r, c] = candidates[i]; this.mines[r][c] = true;
+        }
+      }
+      // Virtual reveal.
+      this.revealed[row][col] = true;
+      this.revealedCount++;
+      if (this.adjacentMines(row, col) === 0) this._virtualFloodReveal(row, col);
+
+      const hasLogicalMove = this.findLogicalMove() !== null;
+
+      // Rollback virtual reveal.
+      for (let r = 0; r < this.rows; r++) this.revealed[r] = revealedSnapshot[r].slice();
+      this.revealedCount = savedRevealedCount;
+
+      if (hasLogicalMove) { bestAttempt = attempt; break; }
+    }
+    if (bestAttempt === -1) {
+      for (let r = 0; r < this.rows; r++) this.mines[r] = minesSnapshot[r].slice();
+    }
+  }
+
+  _virtualFloodReveal(row, col) {
+    const queue = [[row, col]];
+    const visited = new Set([`${row},${col}`]);
+    while (queue.length > 0) {
+      const [r, c] = queue.shift();
+      if (this.mines[r][c]) continue;
+      if (!this.revealed[r][c]) { this.revealed[r][c] = true; this.revealedCount++; }
+      if (this.adjacentMines(r, c) === 0) {
+        for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < this.rows && nc >= 0 && nc < this.cols) {
+            const key = `${nr},${nc}`;
+            if (!visited.has(key) && !this.revealed[nr][nc] && !this.flagged[nr][nc] && !this.mines[nr][nc]) {
+              visited.add(key); queue.push([nr, nc]);
+            }
+          }
+        }
+      }
     }
   }
 
@@ -875,9 +985,24 @@ class GameEngine {
       }
     }
     if (candidates.length === 0) return;
+
+    // Snapshot чисел всех открытых клеток (v1.2.3: сохраняем числа).
+    const originalNumbers = new Map();
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.revealed[r][c]) originalNumbers.set(`${r},${c}`, this.adjacentMines(r, c));
+      }
+    }
+
+    // Сохраняем исходные позиции мин (для отката).
+    const originalMinePositions = [];
     let currentMines = 0;
-    for (const [r, c] of candidates) if (this.mines[r][c]) currentMines++;
+    for (const [r, c] of candidates) {
+      if (this.mines[r][c]) { originalMinePositions.push([r, c]); currentMines++; }
+    }
+
     for (const [r, c] of candidates) this.mines[r][c] = false;
+
     for (let attempt = 0; attempt < 50; attempt++) {
       for (let i = candidates.length - 1; i > 0; i--) {
         const j = this._randInt(i + 1);
@@ -887,13 +1012,21 @@ class GameEngine {
         const [r, c] = candidates[i];
         this.mines[r][c] = true;
       }
-      if (this.findLogicalMove() !== null) return;
+      if (this._numbersMatchSnapshot(originalNumbers) && this.findLogicalMove() !== null) {
+        return;  // успех — мины оставляем
+      }
       for (const [r, c] of candidates) this.mines[r][c] = false;
     }
-    for (let i = 0; i < currentMines; i++) {
-      const [r, c] = candidates[i];
-      this.mines[r][c] = true;
+    // Откат к исходным позициям.
+    for (const [r, c] of originalMinePositions) this.mines[r][c] = true;
+  }
+
+  _numbersMatchSnapshot(snapshot) {
+    for (const [key, expected] of snapshot) {
+      const [r, c] = key.split(',').map(Number);
+      if (this.adjacentMines(r, c) !== expected) return false;
     }
+    return true;
   }
 
   serialize() {
