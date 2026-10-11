@@ -127,8 +127,17 @@ class GameEngine {
         this.mineCount = if (mode.hasMineLimit) {
             mineCount
         } else {
-            val total = rows * cols
-            1 + rng.nextInt(total)   // 1..total включительно
+            // ANARCHY: случайное число мин в диапазоне [baseMineCount/2 .. min(baseMineCount*2, 198)].
+            // baseMineCount — из сложности (BEGINNER=10, VETERAN=40, MASTER=99).
+            // v1.2.9.7: фикс бага "8 секунд победа" (1 мина) и "невозможно выиграть" (64 мины на 64 клетки).
+            val base = difficulty.mineCount
+            val minMines = maxOf(1, base / 2)
+            val maxMines = minOf(base * 2, 198, rows * cols - 9)  // -9 чтобы осталось место для safe zone
+            if (maxMines <= minMines) {
+                minMines
+            } else {
+                minMines + rng.nextInt(maxMines - minMines + 1)
+            }
         }
         placeMinesRandomly(emptyList())
         enforceNoFullySurroundedMines()
@@ -249,8 +258,12 @@ class GameEngine {
 
         // В Анархии — случайное число мин каждый сдвиг.
         val newCount = if (!mode.hasMineLimit) {
-            val total = rows * cols
-            1 + rng.nextInt(total)
+            // v1.2.9.7: диапазон [base/2 .. min(base*2, 198)] как при initGame.
+            val base = difficulty.mineCount
+            val minMines = maxOf(1, base / 2)
+            val maxMines = minOf(base * 2, 198, rows * cols - 9)
+            if (maxMines <= minMines) minMines
+            else minMines + rng.nextInt(maxMines - minMines + 1)
         } else {
             mineCount
         }
