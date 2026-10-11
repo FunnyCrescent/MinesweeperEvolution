@@ -590,13 +590,16 @@ class GameView : View {
             }
         }
         // ===== Chain Explosion Rendering (v1.3.0) =====
+        // ВНИМАНИЕ: мы уже внутри canvas.translate(offsetX, offsetY),
+        // поэтому НЕ добавляем offsetX/offsetY вручную — иначе двойное смещение!
         if (chainExplosionActive || chainExplosions.isNotEmpty()) {
             val now = SystemClock.uptimeMillis()
-            // Screen shake
+            // Screen shake — применяем через дополнительный translate
             if (now < shakeUntilMs) {
-                val shakeAmt = ((shakeUntilMs - now) / 400f).coerceIn(0f, 1f) * 8f
+                val shakeAmt = ((shakeUntilMs - now) / 500f).coerceIn(0f, 1f) * 10f
                 shakeOffsetX = (kotlin.random.Random.nextFloat() - 0.5f) * shakeAmt
                 shakeOffsetY = (kotlin.random.Random.nextFloat() - 0.5f) * shakeAmt
+                canvas.translate(shakeOffsetX, shakeOffsetY)
             } else {
                 shakeOffsetX = 0f
                 shakeOffsetY = 0f
@@ -609,20 +612,19 @@ class GameView : View {
                 val frameDur = 83L  // 1000/12 ≈ 83ms per frame (12fps)
                 val frame = (elapsed / frameDur).toInt()
                 if (frame >= 8) {
-                    // Animation done — cell stays as tile_exploded (already in chainExplodedCells)
                     iter.remove()
                     continue
                 }
-                // Draw explosion frame centered on cell
-                val left = ec * cellSize.toFloat() + offsetX
-                val top = er * cellSize.toFloat() + offsetY
+                // Position: cell coordinates (без offsetX/offsetY — уже в translate)
+                val left = ec * cellSize.toFloat()
+                val top = er * cellSize.toFloat()
                 val w = cellSize.toFloat()
                 val h = cellSize.toFloat()
-                // Explosion is larger than cell (44×72 on 44×46 cell) — scale up
-                val expW = w * 1.3f
-                val expH = h * 2.0f
-                val expLeft = left + (w - expW) / 2 + shakeOffsetX
-                val expTop = top + (h - expH) / 2 + shakeOffsetY
+                // Explosion is larger than cell — scale up 1.5x
+                val expW = w * 1.5f
+                val expH = h * 1.8f
+                val expLeft = left + (w - expW) / 2f
+                val expTop = top + (h - expH) / 2f
                 drawBitmapRaw(canvas, "mine_explosion_$frame", expLeft, expTop, expLeft + expW, expTop + expH)
             }
             // Continue animating
