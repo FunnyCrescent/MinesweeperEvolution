@@ -1,0 +1,26 @@
+# Maintainer: FunnyCrescent <crescentfunny@telegram.me>
+pkgname=minesweeper-evolution
+pkgver=1.2.9.8
+pkgrel=1
+pkgdesc="Сапёр: Эволюция — Desktop (D + SDL2)"
+arch=('x86_64')
+url="https://github.com/FunnyCrescent/MinesweeperEvolution"
+license=('MIT')
+depends=('sdl2' 'sdl2_image' 'sdl2_ttf')
+source=("$pkgname-$pkgver::https://github.com/FunnyCrescent/MinesweeperEvolution/releases/download/v$pkgver/MinesweeperEvolution-$pkgver-linux-x86_64.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+    install -Dm755 "$srcdir/minesweeper" "$pkgdir/usr/bin/minesweeper"
+    install -dm755 "$pkgdir/usr/share/minesweeper/assets"
+    cp "$srcdir/assets/"*.png "$pkgdir/usr/share/minesweeper/assets/"
+    install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/minesweeper.desktop" << 'DESKTOP'
+[Desktop Entry]
+Name=Сапёр: Эволюция
+Exec=minesweeper
+Icon=minesweeper
+Type=Application
+Categories=Game;
+Terminal=false
+DESKTOP
+}
