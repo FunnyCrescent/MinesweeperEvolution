@@ -11,6 +11,11 @@
 <link rel="apple-touch-icon" href="icon.png">
 <title>Сапёр: Эволюция</title>
 <style>
+/* ===== Pixel fonts (как в Android) ===== */
+@font-face { font-family: 'press_start_2p'; src: url('fonts/press_start_2p.ttf') format('truetype'); }
+@font-face { font-family: 'pixelify_sans'; src: url('fonts/pixelify_sans.ttf') format('truetype'); }
+@font-face { font-family: 'vt323'; src: url('fonts/vt323.ttf') format('truetype'); }
+
 :root {
   --bg-dark: #101418;
   --bg-panel: #1A1F26;
@@ -41,7 +46,7 @@ html, body {
   margin: 0; padding: 0;
   background: var(--bg-dark);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: 'pixelify_sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   font-size: 15px;
   overflow-x: hidden;
   overscroll-behavior: none;
@@ -61,12 +66,14 @@ body {
 .screen.active { display: flex; }
 .scroll { overflow-y: auto; }
 h1 {
-  font-size: 28px; font-weight: 700; margin: 16px 0 4px; text-align: center;
-  color: var(--text-primary);
+  font-family: 'press_start_2p', monospace;
+  font-size: 20px; font-weight: 700; margin: 16px 0 4px; text-align: center;
+  color: var(--text-primary); max-width: 90%; margin-left: auto; margin-right: auto;
+  line-height: 1.4;
 }
-.subtitle { text-align: center; color: var(--text-secondary); font-size: 13px; margin-bottom: 24px; }
+.subtitle { text-align: center; color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; font-family: 'pixelify_sans', sans-serif; }
 button {
-  font-family: inherit; font-size: 15px; color: var(--text-primary);
+  font-family: 'pixelify_sans', sans-serif; font-size: 15px; color: var(--text-primary);
   background: var(--bg-panel-alt); border: 1px solid var(--text-dim);
   border-radius: 12px; padding: 14px 16px; cursor: pointer;
   transition: transform 0.1s, background 0.2s, border-color 0.2s;
@@ -83,7 +90,8 @@ button.secondary { background: var(--bg-panel-alt); }
 button.selected { background: var(--accent); color: var(--bg-dark); border-color: var(--accent-2); }
 button.danger { background: var(--danger); color: white; border: none; }
 .field-label {
-  font-size: 13px; color: var(--text-secondary); font-weight: 600;
+  font-family: 'press_start_2p', monospace;
+  font-size: 10px; color: var(--text-secondary); font-weight: 600;
   margin: 16px 0 8px 4px;
 }
 .input {
@@ -115,7 +123,7 @@ button.danger { background: var(--danger); color: white; border: none; }
 }
 .topbar-cell { text-align: center; }
 .topbar-value {
-  font-family: "SF Mono", Menlo, monospace; font-size: 18px; font-weight: 700;
+  font-family: 'press_start_2p', monospace; font-size: 14px; font-weight: 700;
 }
 .topbar-value.mines { color: var(--danger); }
 .topbar-value.time { color: var(--accent); }
@@ -141,7 +149,7 @@ button.danger { background: var(--danger); color: white; border: none; }
   margin-bottom: 8px; font-weight: 700; font-size: 16px; color: var(--text-secondary);
 }
 .turn-indicator.you { color: var(--accent); background: rgba(0, 188, 212, 0.1); }
-.mode-label { color: var(--text-secondary); font-size: 12px; padding: 0 4px 8px; }
+.mode-label { color: var(--text-secondary); font-size: 14px; padding: 0 4px 8px; font-family: 'vt323', monospace; }
 
 /* Board canvas wrapper — scrollable */
 .board-wrap {
@@ -228,6 +236,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   <h1>Сапёр: Эволюция</h1>
   <div class="subtitle">Веб-версия — работай с iPhone и Android</div>
 
+  <!-- Mascot -->
+  <div style="text-align:center; margin:12px 0 16px">
+    <img src="mascot_idle.png" alt="Mascot" style="width:120px; height:120px; image-rendering:pixelated">
+  </div>
+
   <button id="btnContinue" class="primary" style="display:none">Продолжить</button>
 
   <div class="row" style="gap:8px; margin-bottom:8px">
@@ -251,13 +264,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 
   <div class="spacer"></div>
   <div class="row" style="gap:24px; justify-content:center">
-    <button id="btnStats" class="secondary" style="min-width:48px">📊</button>
-    <button id="btnSettings" class="secondary" style="min-width:48px">⚙</button>
+    <button id="btnStats" class="secondary" style="min-width:48px; min-height:48px; padding:8px"><img src="icon_stats.png" style="width:24px; height:24px; image-rendering:pixelated" alt="Stats"></button>
+    <button id="btnSettings" class="secondary" style="min-width:48px; min-height:48px; padding:8px"><img src="icon_settings.png" style="width:24px; height:24px; image-rendering:pixelated" alt="Settings"></button>
   </div>
   <!-- Info + Telegram в нижнем правом углу -->
   <div style="position:fixed; bottom:16px; right:16px; display:flex; flex-direction:column; gap:8px; z-index:100">
-    <button id="btnInfo" class="secondary" style="min-width:48px; min-height:48px; padding:8px" title="Правила">ℹ</button>
-    <button id="btnTelegram" class="secondary" style="min-width:48px; min-height:48px; padding:8px" title="Telegram">✈</button>
+    <button id="btnInfo" class="secondary" style="min-width:48px; min-height:48px; padding:8px; border:none; background:transparent" title="Правила"><img src="icon_warning.png" style="width:28px; height:28px; image-rendering:pixelated" alt="Info"></button>
+    <button id="btnTelegram" class="secondary" style="min-width:48px; min-height:48px; padding:8px; border:none; background:transparent" title="Telegram"><img src="icon_telegram.png" style="width:28px; height:28px; image-rendering:pixelated" alt="Telegram"></button>
   </div>
   <div class="muted" style="text-align:center; margin-top:16px">
     v1.2.9.8-web · <a href="https://github.com/FunnyCrescent/MinesweeperEvolution" target="_blank" style="color:var(--accent)">GitHub</a>
@@ -280,11 +293,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       <div class="topbar-label">Сдвиг</div>
     </div>
     <div class="topbar-cell">
-      <button class="topbar-btn" id="btnFlagMode">🚩</button>
+      <button class="topbar-btn" id="btnFlagMode"><img src="item_pickaxe.png" style="width:20px; height:20px; image-rendering:pixelated" alt="dig"></button>
       <div class="topbar-label">Флажок</div>
     </div>
     <div class="topbar-cell">
-      <button class="topbar-btn" id="btnMenu">⏸</button>
+      <button class="topbar-btn" id="btnMenu"><img src="icon_pause.png" style="width:20px; height:20px; image-rendering:pixelated" alt="pause"></button>
       <div class="topbar-label">Пауза</div>
     </div>
   </div>
@@ -418,7 +431,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       <div class="topbar-label">Сдвиг</div>
     </div>
     <div class="topbar-cell">
-      <button class="topbar-btn" id="btnMpFlagMode">🚩</button>
+      <button class="topbar-btn" id="btnMpFlagMode"><img src="item_pickaxe.png" style="width:20px; height:20px; image-rendering:pixelated" alt="dig"></button>
       <div class="topbar-label">Флажок</div>
     </div>
     <div class="topbar-cell">
@@ -2102,7 +2115,7 @@ function initMenu() {
   for (const m of Object.values(GameMode)) {
     const card = document.createElement('div');
     card.className = 'mode-card' + (m === App.selectedMode ? ' selected' : '');
-    card.innerHTML = `<div class="name">${m.display}</div><div class="desc">${m.shortDesc}</div>`;
+    card.innerHTML = `<div style="display:flex; align-items:center; gap:10px"><img src="mode_${m.key}.png" style="width:40px; height:40px; image-rendering:pixelated" alt=""><div style="flex:1"><div class="name">${m.display}</div><div class="desc">${m.shortDesc}</div></div></div>`;
     card.onclick = () => {
       App.selectedMode = m;
       mc.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
@@ -2351,11 +2364,15 @@ function initGameScreen() {
 
   const btnFlag = $('btnFlagMode');
   btnFlag.classList.toggle('flag-on', App.renderer.flagMode);
-  btnFlag.textContent = App.renderer.flagMode ? '⛏' : '🚩';
+  btnFlag.innerHTML = App.renderer.flagMode
+    ? '<img src="item_flag.png" style="width:20px; height:20px; image-rendering:pixelated" alt="flag">'
+    : '<img src="item_pickaxe.png" style="width:20px; height:20px; image-rendering:pixelated" alt="dig">';
   btnFlag.onclick = () => {
     App.renderer.flagMode = !App.renderer.flagMode;
     btnFlag.classList.toggle('flag-on', App.renderer.flagMode);
-    btnFlag.textContent = App.renderer.flagMode ? '⛏' : '🚩';
+    btnFlag.innerHTML = App.renderer.flagMode
+      ? '<img src="item_flag.png" style="width:20px; height:20px; image-rendering:pixelated" alt="flag">'
+      : '<img src="item_pickaxe.png" style="width:20px; height:20px; image-rendering:pixelated" alt="dig">';
     App.sound.play('CLICK');
   };
   $('btnMenu').onclick = pauseGame;
@@ -3137,11 +3154,15 @@ function initMpGameScreen(isHost) {
 
   const btnFlag = $('btnMpFlagMode');
   btnFlag.classList.toggle('flag-on', App.renderer.flagMode);
-  btnFlag.textContent = App.renderer.flagMode ? '⛏' : '🚩';
+  btnFlag.innerHTML = App.renderer.flagMode
+    ? '<img src="item_flag.png" style="width:20px; height:20px; image-rendering:pixelated" alt="flag">'
+    : '<img src="item_pickaxe.png" style="width:20px; height:20px; image-rendering:pixelated" alt="dig">';
   btnFlag.onclick = () => {
     App.renderer.flagMode = !App.renderer.flagMode;
     btnFlag.classList.toggle('flag-on', App.renderer.flagMode);
-    btnFlag.textContent = App.renderer.flagMode ? '⛏' : '🚩';
+    btnFlag.innerHTML = App.renderer.flagMode
+      ? '<img src="item_flag.png" style="width:20px; height:20px; image-rendering:pixelated" alt="flag">'
+      : '<img src="item_pickaxe.png" style="width:20px; height:20px; image-rendering:pixelated" alt="dig">';
     App.sound.play('CLICK');
   };
   $('btnMpMenu').onclick = () => {
