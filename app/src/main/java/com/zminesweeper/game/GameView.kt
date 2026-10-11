@@ -73,8 +73,8 @@ class GameView : View {
         rawBitmaps["flag"] = load("item_flag")
         rawBitmaps["flag_wrong"] = load("item_flag_wrong")
         for (i in 1..8) rawBitmaps["num_$i"] = load("num_$i")
-        // v1.3.0: кадры взрыва для цепной анимации
-        for (i in 0..7) rawBitmaps["mine_explosion_$i"] = load("mine_explosion_$i")
+        // v1.3.0: кадры взрыва для цепной анимации (файлы: mine_explosion_00..07)
+        for (i in 0..7) rawBitmaps["mine_explosion_$i"] = load("mine_explosion_0$i")
     }
 
     /**
