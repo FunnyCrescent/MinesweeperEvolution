@@ -58,6 +58,7 @@
     <string name="mines_left">Minas</string>
     <string name="shift_in">Cambio en</string>
     <string name="play_again">Jugar de Nuevo</string>
+    <string name="view_field">Ver campo</string>
     <string name="to_menu">Menú</string>
     <string name="no_save">Sin partida guardada</string>
     <string name="save_loaded">Partida cargada</string>

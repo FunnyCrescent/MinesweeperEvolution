@@ -383,10 +383,11 @@ class GameActivity : LocaleAwareActivity() {
         handler.removeCallbacks(shiftRunnable)
 
         // Собираем все мины, сортируем по расстоянию от первой.
+        // v1.3.2: мины под флагами НЕ взрываются — флаг остаётся на месте.
         val mines = ArrayList<Pair<Int, Int>>()
         for (r in 0 until engine.rows) {
             for (c in 0 until engine.cols) {
-                if (engine.isMine(r, c)) mines.add(r to c)
+                if (engine.isMine(r, c) && !engine.isFlagged(r, c)) mines.add(r to c)
             }
         }
         // Сортировка по расстоянию от (firstRow, firstCol).
@@ -434,7 +435,7 @@ class GameActivity : LocaleAwareActivity() {
             showGameOver(false)
         }, chainEndTime + 400)
 
-        // Тап во время цепочки = пропуск.
+        // Тап во время цепочки = пропуск. Двойной тап тоже = пропуск.
         gameView.setOnClickListener {
             if (gameView.chainExplosionActive && !chainSkipped) {
                 chainSkipped = true
@@ -443,6 +444,10 @@ class GameActivity : LocaleAwareActivity() {
                 gameView.chainExplosionActive = false
                 gameView.inputEnabled = true
                 sound?.play(SoundManager.Type.DIALOG_OPEN)
+                showGameOver(false)
+            } else if (viewingField) {
+                // v1.3.2: тап по полю в режиме просмотра → снова показать диалог.
+                viewingField = false
                 showGameOver(false)
             }
         }
@@ -473,6 +478,11 @@ class GameActivity : LocaleAwareActivity() {
             dialog?.dismiss()
             restartGame()
         }
+        view.findViewById<android.widget.Button>(R.id.btnViewField).setOnClickListener {
+            // v1.3.2: убираем диалог, игрок смотрит поле.
+            viewingField = true
+            dialog?.dismiss()
+        }
         view.findViewById<android.widget.Button>(R.id.btnToMenu).setOnClickListener {
             dialog?.dismiss()
             finish()
@@ -485,6 +495,7 @@ class GameActivity : LocaleAwareActivity() {
     }
 
     private var dialog: AlertDialog? = null
+    private var viewingField = false
 
     private fun formatTime(sec: Int): String {
         val m = sec / 60

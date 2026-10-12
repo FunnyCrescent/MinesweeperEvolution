@@ -45,13 +45,35 @@
         android:textColor="@color/text_primary"
         android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/btnToMenu"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:orientation="horizontal"
         android:layout_marginTop="8dp"
-        android:background="@drawable/bg_button_secondary"
-        android:fontFamily="@font/pixelify_sans"
-        android:text="@string/to_menu"
-        android:textColor="@color/text_primary" />
+        android:weightSum="2">
+
+        <Button
+            android:id="@+id/btnViewField"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="4dp"
+            android:background="@drawable/bg_button_secondary"
+            android:fontFamily="@font/pixelify_sans"
+            android:text="@string/view_field"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp" />
+
+        <Button
+            android:id="@+id/btnToMenu"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_button_secondary"
+            android:fontFamily="@font/pixelify_sans"
+            android:text="@string/to_menu"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp" />
+    </LinearLayout>
 </LinearLayout>

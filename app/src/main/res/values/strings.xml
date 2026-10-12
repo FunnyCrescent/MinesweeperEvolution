@@ -58,6 +58,7 @@
     <string name="mines_left">Мин</string>
     <string name="shift_in">Сдвиг через</string>
     <string name="play_again">Играть снова</string>
+    <string name="view_field">Посмотреть поле</string>
     <string name="to_menu">В меню</string>
     <string name="no_save">Нет сохранённой игры</string>
     <string name="save_loaded">Сохранение загружено</string>

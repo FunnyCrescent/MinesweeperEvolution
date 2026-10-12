@@ -58,6 +58,7 @@
     <string name="mines_left">Mines</string>
     <string name="shift_in">Shift in</string>
     <string name="play_again">Play Again</string>
+    <string name="view_field">View field</string>
     <string name="to_menu">Menu</string>
     <string name="no_save">No saved game</string>
     <string name="save_loaded">Save loaded</string>
