@@ -382,12 +382,12 @@ class GameActivity : LocaleAwareActivity() {
         handler.removeCallbacks(tickRunnable)
         handler.removeCallbacks(shiftRunnable)
 
-        // Собираем все мины, сортируем по расстоянию от первой.
-        // v1.3.2: мины под флагами НЕ взрываются — флаг остаётся на месте.
+        // Собираем все мины (включая под флагами), сортируем по расстоянию.
+        // v1.3.2.1: мины под флагами ТОЖЕ взрываются — флаги убираются.
         val mines = ArrayList<Pair<Int, Int>>()
         for (r in 0 until engine.rows) {
             for (c in 0 until engine.cols) {
-                if (engine.isMine(r, c) && !engine.isFlagged(r, c)) mines.add(r to c)
+                if (engine.isMine(r, c)) mines.add(r to c)
             }
         }
         // Сортировка по расстоянию от (firstRow, firstCol).

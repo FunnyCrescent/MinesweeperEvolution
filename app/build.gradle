@@ -11,8 +11,8 @@ android {
         applicationId "com.zminesweeper.game"
         minSdk 21
         targetSdk 34
-        versionCode 27
-        versionName "1.3.2"
+        versionCode 28
+        versionName "1.3.2.1"
         // Ограничиваем языки, чтобы ускорить обработку ресурсов.
         resConfigs 'ru', 'en', 'es'
     }
