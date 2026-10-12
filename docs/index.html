@@ -1884,6 +1884,12 @@ class BoardRenderer {
       haptic(false);  // короткая вибрация — фидбек, что клик заблокирован
       return;
     }
+    // v1.3.2: если игрок смотрит поле после game over — тап возвращает диалог.
+    if (App.viewingField) {
+      App.viewingField = false;
+      showGameOver(false);
+      return;
+    }
     const isFlagAction = isLong ? !this.flagMode : this.flagMode;
     const ext = this.externalClickListener;
     if (ext) {
@@ -2817,11 +2823,13 @@ function showGameOver(won) {
   else SaveManager.recordGame(App.engine.mode, App.engine.difficulty, false, 0);
   SaveManager.clearSavedGame();
   const shifts = App.engine.mode.shifts ? `<br>Сдвигов: ${App.engine.shiftsCount}` : '';
+  const mascot = won ? 'mascot_victory.png' : 'mascot_gameover.png';
   showModal(
     won ? '🏆 Победа!' : '💥 Поражение',
-    `<p>Время: ${formatTime(App.elapsedSec)}${shifts}</p>`,
+    `<div style="text-align:center"><img src="${mascot}" style="width:120px; height:160px; image-rendering:pixelated"><p>Время: ${formatTime(App.elapsedSec)}${shifts}</p></div>`,
     [
       { label: 'Играть снова', class: 'primary', onClick: () => restartGame() },
+      { label: 'Посмотреть поле', onClick: () => { closeModal(); App.viewingField = true; }},
       { label: 'В меню', onClick: () => { showScreen('screen-menu'); updateContinueButton(); }}
     ]
   );
